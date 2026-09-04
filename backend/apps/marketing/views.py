@@ -661,11 +661,44 @@ def brief_edit(request, project_pk):
 
 
 @role_required("marketing")
+def task_list(request):
+    """Resumen operativo de tareas propias del área de Marketing."""
+    from django.db.models import Q
+
+    records = MarketingTask.objects.select_related("project__client", "assigned_to").order_by("status", "due_date", "project__client__business_name")
+    if not request.user.is_manager:
+        records = records.filter(
+            Q(assigned_to=request.user)
+            | Q(project__assignments__user=request.user, project__assignments__area="marketing")
+        ).distinct()
+
+    q = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "").strip()
+    if q:
+        records = records.filter(
+            Q(title__icontains=q)
+            | Q(description__icontains=q)
+            | Q(project__name__icontains=q)
+            | Q(project__project_code__icontains=q)
+            | Q(project__client__business_name__icontains=q)
+        )
+    if status:
+        records = records.filter(status=status)
+
+    return render(request, "marketing/task_list.html", {
+        "records": records[:300],
+        "q": q,
+        "selected_status": status,
+        "status_choices": MarketingTask._meta.get_field("status").choices,
+    })
+
+
+@role_required("marketing")
 def task_create(request):
     form = MarketingTaskForm(request.POST or None, user=request.user)
     if request.method == "POST" and form.is_valid():
         obj = form.save()
         log_activity(request.user, "marketing", "task_create", obj)
         messages.success(request, "Tarea creada.")
-        return redirect("marketing:list")
+        return redirect("marketing:tasks")
     return render(request, "marketing/form.html", {"form": form, "title": "Nueva tarea de marketing", "subtitle": "Tarea operativa independiente."})

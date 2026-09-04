@@ -916,6 +916,36 @@ def _website_fill_context(questionnaire):
 
 
 @role_required("developer")
+def development_information(request):
+    """Entrada limpia a la información/formulario del área de Desarrollo."""
+    projects = projects_for_area("development").order_by("-updated_at", "-created_at")
+    rows = []
+    for project in projects:
+        sync_project_area_records(project, request.user)
+        questionnaire = (
+            ProjectQuestionnaire.objects
+            .filter(project=project)
+            .select_related("template")
+            .order_by("id")
+            .first()
+        )
+        if questionnaire and questionnaire.template.code == WEBSITE_TEMPLATE_CODE:
+            progress = website_questionnaire_progress(questionnaire)
+        else:
+            progress = {
+                "complete": 1 if questionnaire and questionnaire.status == QuestionnaireStatus.COMPLETE else 0,
+                "total": 1 if questionnaire else 0,
+                "percent": 100 if questionnaire and questionnaire.status == QuestionnaireStatus.COMPLETE else 0,
+            }
+        rows.append({
+            "project": project,
+            "questionnaire": questionnaire,
+            "progress": progress,
+        })
+    return render(request, "questionnaires/development_information.html", {"rows": rows})
+
+
+@role_required("developer")
 def development_dashboard(request):
     projects = projects_for_area("development").order_by("-updated_at", "-created_at")
 

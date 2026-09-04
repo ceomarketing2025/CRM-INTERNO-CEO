@@ -10,60 +10,109 @@
 <body>
 <div class="app-shell">
   <aside class="sidebar" id="sidebar">
-    <div class="brand"><div class="brand-mark">C</div><div><strong>{{ PROJECT_NAME }}</strong><span>Gestión interna sincronizada</span></div></div>
-    <nav class="nav">
-      <a href="{% url 'dashboard:home' %}" class="nav-link"><span>⌂</span><b>Dashboard</b></a>
+    <div class="brand">
+      <div class="brand-mark">C</div>
+      <div><strong>{{ PROJECT_NAME }}</strong><span>Gestión interna sincronizada</span></div>
+    </div>
 
-      {% if current_role == 'administration' or current_role == 'manager' or request.user.is_superuser %}
-      <div class="nav-label">Administración</div>
-      <a href="{% url 'clients:list' %}" class="nav-link"><span>◉</span><b>Clientes</b></a>
-      <a href="{% url 'operations:general_list' %}" class="nav-link"><span>◎</span><b>Dominios y Hosting</b></a>
-      <a href="{% url 'operations:credential_list' %}" class="nav-link"><span>⌘</span><b>Credenciales</b></a>
-      <a href="{% url 'operations:production_list' %}" class="nav-link"><span>▦</span><b>Producción comercial</b></a>
-      {% endif %}
-
-      <div class="nav-label">Control</div>
-      <a href="{% url 'plans:list' %}" class="nav-link"><span>◇</span><b>Planes</b></a>
-      <a href="{% url 'projects:list' %}" class="nav-link"><span>▣</span><b>Proyectos</b></a>
-      <a href="{% url 'reminders:list' %}" class="nav-link"><span>◷</span><b>Recordatorios</b></a>
-      <a href="{% url 'reminders:meeting_list' %}" class="nav-link"><span>◫</span><b>Reuniones Meet</b></a>
+    <nav class="nav nav-v15">
+      <a href="{% url 'dashboard:home' %}" class="nav-link {% if active_nav_group == 'dashboard' %}active{% endif %}"><span>⌂</span><b>Dashboard</b></a>
 
       {% if current_role == 'design' or current_role == 'manager' or request.user.is_superuser %}
-      <div class="nav-label">Ficha de Diseño</div>
-      <a href="{% url 'design:list' %}" class="nav-link"><span>✦</span><b>Ficha de Diseño</b></a>
-      <a href="{% url 'design:tasks' %}" class="nav-link"><span>✓</span><b>Tareas de Diseño</b></a>
+      <details class="nav-section" {% if active_nav_group == 'design' %}open{% endif %}>
+        <summary><span class="nav-section-icon">✦</span><b>Diseño</b><i>⌄</i></summary>
+        <div class="nav-section-links">
+          <a href="{% url 'design:list' %}" class="nav-link {% if current_namespace == 'design' and current_page_label == 'Información Diseño' %}active{% endif %}"><span>◫</span><b>Información Diseño</b></a>
+          <a href="{% url 'design:tasks' %}" class="nav-link {% if current_namespace == 'design' and current_page_label == 'Tareas de Diseño' %}active{% endif %}"><span>✓</span><b>Tareas de Diseño</b></a>
+        </div>
+      </details>
       {% endif %}
 
       {% if current_role == 'marketing' or current_role == 'manager' or request.user.is_superuser %}
-      <div class="nav-label">Ficha de Marketing</div>
-      <a href="{% url 'marketing:list' %}" class="nav-link"><span>↗</span><b>Ficha de Marketing</b></a>
-      <a href="{% url 'marketing:campaign_list' %}" class="nav-link"><span>⌁</span><b>Campañas Ads</b></a>
-      <a href="{% url 'marketing:social_plans' %}" class="nav-link"><span>◌</span><b>Planes Social</b></a>
-      {% endif %}
-
-      {% if current_role == 'administration' or current_role == 'manager' or request.user.is_superuser %}
-      <div class="nav-label">Gerencia / Control</div>
-      <a href="{% url 'marketing:general_audit' %}" class="nav-link"><span>✓</span><b>Auditoría General</b></a>
+      <details class="nav-section" {% if active_nav_group == 'marketing' %}open{% endif %}>
+        <summary><span class="nav-section-icon">↗</span><b>Marketing</b><i>⌄</i></summary>
+        <div class="nav-section-links">
+          <a href="{% url 'marketing:list' %}" class="nav-link {% if active_nav_group == 'marketing' and current_page_label == 'Información Marketing' %}active{% endif %}"><span>◫</span><b>Información Marketing</b></a>
+          <a href="{% url 'marketing:tasks' %}" class="nav-link {% if active_nav_group == 'marketing' and current_page_label == 'Tareas de Marketing' %}active{% endif %}"><span>✓</span><b>Tareas de Marketing</b></a>
+          <a href="{% url 'marketing:campaign_list' %}" class="nav-link {% if active_nav_group == 'marketing' and current_page_label == 'Campañas Ads' %}active{% endif %}"><span>⌁</span><b>Campañas Ads</b></a>
+        </div>
+      </details>
       {% endif %}
 
       {% if current_role == 'developer' or current_role == 'manager' or request.user.is_superuser %}
-      <div class="nav-label">Desarrollo</div>
-      <a href="{% url 'questionnaires:development_dashboard' %}" class="nav-link"><span>⌘</span><b>Proyectos Desarrollo</b></a>
-      <a href="{% url 'questionnaires:seo_status' %}" class="nav-link"><span>↗</span><b>Estado SEO</b></a>
-      <a href="{% url 'domains:list' %}" class="nav-link"><span>◎</span><b>Dominios</b></a>
+      <details class="nav-section" {% if active_nav_group == 'development' %}open{% endif %}>
+        <summary><span class="nav-section-icon">⌘</span><b>Desarrollo</b><i>⌄</i></summary>
+        <div class="nav-section-links">
+          <a href="{% url 'questionnaires:development_information' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Información Desarrollo' %}active{% endif %}"><span>◫</span><b>Información Desarrollo</b></a>
+          <a href="{% url 'questionnaires:seo_status' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Estado SEO' %}active{% endif %}"><span>↗</span><b>Estado SEO</b></a>
+          <a href="{% url 'questionnaires:development_dashboard' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Resumen de tareas' %}active{% endif %}"><span>✓</span><b>Resumen de tareas</b></a>
+        </div>
+      </details>
+      {% endif %}
+
+      {% if current_role == 'administration' or current_role == 'manager' or request.user.is_superuser %}
+      <details class="nav-section" {% if active_nav_group == 'administration' %}open{% endif %}>
+        <summary><span class="nav-section-icon">◎</span><b>Administración</b><i>⌄</i></summary>
+        <div class="nav-section-links">
+          <a href="{% url 'clients:list' %}" class="nav-link {% if current_namespace == 'clients' %}active{% endif %}"><span>◉</span><b>Clientes</b></a>
+          <a href="{% url 'operations:general_list' %}" class="nav-link {% if active_nav_group == 'administration' and current_page_label == 'Dominios y Hosting' %}active{% endif %}"><span>◎</span><b>Dominios y Hosting</b></a>
+          <a href="{% url 'operations:credential_list' %}" class="nav-link {% if active_nav_group == 'administration' and current_page_label == 'Credenciales' %}active{% endif %}"><span>⌘</span><b>Credenciales</b></a>
+          <a href="{% url 'finance:operating_list' %}" class="nav-link {% if current_namespace == 'finance' and current_page_label == 'Gastos operativos' %}active{% endif %}"><span>◈</span><b>Gastos operativos</b></a>
+          <a href="{% url 'finance:dashboard' %}" class="nav-link {% if current_namespace == 'finance' and current_page_label == 'Billetera / Finanzas' %}active{% endif %}"><span>$</span><b>Billetera / Finanzas</b></a>
+        </div>
+      </details>
+      {% endif %}
+
+      <details class="nav-section" {% if active_nav_group == 'control' %}open{% endif %}>
+        <summary><span class="nav-section-icon">◇</span><b>Control / Auditoría</b><i>⌄</i></summary>
+        <div class="nav-section-links">
+          <a href="{% url 'plans:list' %}" class="nav-link {% if current_namespace == 'plans' %}active{% endif %}"><span>◇</span><b>Planes</b></a>
+          <a href="{% url 'projects:list' %}" class="nav-link {% if current_namespace == 'projects' %}active{% endif %}"><span>▣</span><b>Proyectos</b></a>
+          <a href="{% url 'reminders:list' %}" class="nav-link {% if current_namespace == 'reminders' and current_page_label == 'Recordatorios' %}active{% endif %}"><span>◷</span><b>Recordatorios</b></a>
+          <a href="{% url 'reminders:meeting_list' %}" class="nav-link {% if current_namespace == 'reminders' and current_page_label == 'Reuniones' %}active{% endif %}"><span>◫</span><b>Reuniones</b></a>
+          {% if current_role == 'administration' or current_role == 'manager' or request.user.is_superuser %}
+          <a href="{% url 'marketing:general_audit' %}" class="nav-link {% if current_page_label == 'Auditoría General' %}active{% endif %}"><span>✓</span><b>Auditoría General</b></a>
+          {% endif %}
+        </div>
+      </details>
+
+      {% if current_role == 'administration' or current_role == 'manager' or request.user.is_superuser %}
+      <details class="nav-section nav-section-placeholder">
+        <summary><span class="nav-section-icon">♙</span><b>Vendedores</b><i>⌄</i></summary>
+        <div class="nav-section-links">
+          <span class="nav-empty-state"><b>Módulo reservado</b><small>Próximamente</small></span>
+        </div>
+      </details>
       {% endif %}
 
       {% if current_role == 'manager' or request.user.is_superuser %}
-      <div class="nav-label">Gerencia</div>
-      <a href="{% url 'finance:dashboard' %}" class="nav-link"><span>$</span><b>Billetera / Finanzas</b></a>
-      <a href="{% url 'finance:operating_list' %}" class="nav-link"><span>◈</span><b>Gastos operativos</b></a>
-      <a href="{% url 'accounts:user_list' %}" class="nav-link"><span>♙</span><b>Usuarios</b></a>
+      <details class="nav-section" {% if active_nav_group == 'configuration' %}open{% endif %}>
+        <summary><span class="nav-section-icon">⚙</span><b>Configuración</b><i>⌄</i></summary>
+        <div class="nav-section-links">
+          <a href="{% url 'accounts:user_list' %}" class="nav-link {% if current_page_label == 'Usuarios' %}active{% endif %}"><span>♙</span><b>Usuarios</b></a>
+          <a href="{% url 'audit:logs' %}" class="nav-link {% if current_page_label == 'Logs del sistema' %}active{% endif %}"><span>≡</span><b>Logs del sistema</b></a>
+          {% if request.user.is_superuser %}<a href="/admin/" class="nav-link"><span>⚙</span><b>Panel técnico</b></a>{% endif %}
+        </div>
+      </details>
       {% endif %}
     </nav>
-    <div class="sidebar-footer"><div class="user-chip"><div class="avatar">{{ request.user.first_name|first|default:'U' }}</div><div><strong>{{ request.user.display_name }}</strong><span>{{ request.user.get_role_display }}</span></div></div><form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn btn-ghost btn-full" type="submit">Cerrar sesión</button></form></div>
+
+    <div class="sidebar-footer">
+      <div class="user-chip"><div class="avatar">{{ request.user.first_name|first|default:'U' }}</div><div><strong>{{ request.user.display_name }}</strong><span>{{ request.user.get_role_display }}</span></div></div>
+      <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn btn-ghost btn-full" type="submit">Cerrar sesión</button></form>
+    </div>
   </aside>
+
   <main class="main">
-    <header class="topbar"><button class="menu-toggle" type="button" onclick="document.body.classList.toggle('sidebar-open')">☰</button><div><span class="eyebrow">Sistema interno</span><h1>{% block page_heading %}{{ PROJECT_NAME }}{% endblock %}</h1></div><div class="role-pill">{{ request.user.get_role_display }}</div></header>
+    <header class="topbar">
+      <button class="menu-toggle" type="button" onclick="document.body.classList.toggle('sidebar-open')">☰</button>
+      <div class="topbar-context">
+        <div class="module-tracker"><span class="module-tracker-dot"></span><b>{{ current_module_label }}</b><i>›</i><span>{{ current_page_label }}</span></div>
+        <h1>{% block page_heading %}{{ PROJECT_NAME }}{% endblock %}</h1>
+      </div>
+      <div class="role-pill">{{ request.user.get_role_display }}</div>
+    </header>
+
     {% if messages %}<div class="messages">{% for message in messages %}<div class="alert {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
     <section class="content">{% block content %}{% endblock %}</section>
   </main>

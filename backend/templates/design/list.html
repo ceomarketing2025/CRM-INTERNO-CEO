@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
-{% block page_heading %}Diseño{% endblock %}
+{% block page_heading %}Información Diseño{% endblock %}
 {% block content %}
 <div class="page-intro">
   <div>
     <span class="eyebrow">Área de Diseño</span>
-    <h2>Ficha de Diseño</h2>
-    <p>Los proyectos llegan automáticamente según los planes contratados. Completa brief, paleta y recursos sin duplicar información.</p>
+    <h2>Información Diseño</h2>
+    <p>Aquí se recopila la información de Diseño por proyecto. Brief, paleta y recursos se centralizan automáticamente en el proyecto y alimentan las tareas y la auditoría.</p>
   </div>
 </div>
 
@@ -43,8 +43,8 @@
 
     <div class="quick-action-grid">
       <a href="{% url 'design:brief_edit' p.pk %}">
-        <b>Diseño</b>
-        <small>Ficha / brief visual</small>
+        <b>Información</b>
+        <small>Brief / ficha visual</small>
       </a>
       {% if row.palette %}
       <a href="{% url 'design:palette_detail' row.palette.pk %}">

@@ -30,7 +30,7 @@ def _contracted_by_department(project):
     return groups
 
 
-def _control_data(project):
+def _control_data(project, viewer=None):
     questionnaire = ProjectQuestionnaire.objects.filter(project=project).select_related("template").prefetch_related("answers__question").order_by("id").first()
     sheet = WebProductionSheet.objects.filter(project=project).prefetch_related("pages", "counties__services", "cities").first()
     brief = DesignBrief.objects.filter(project=project).first()
@@ -96,8 +96,20 @@ def _control_data(project):
         progress_parts.append(development_percent)
     overall_percent = round(sum(progress_parts) / len(progress_parts)) if progress_parts else 0
 
-    last_log = ActivityLog.objects.filter(metadata__project_id=project.pk).select_related("user").first()
-    logs = ActivityLog.objects.filter(metadata__project_id=project.pk).select_related("user")[:20]
+    can_view_administration = bool(
+        viewer and (getattr(viewer, "is_manager", False) or getattr(viewer, "role", "") == "administration")
+    )
+    logs_qs = ActivityLog.objects.filter(metadata__project_id=project.pk).select_related("user")
+    if not can_view_administration:
+        logs_qs = logs_qs.exclude(module__in=["finance", "administration"]).exclude(
+            module="operations",
+            action__in=[
+                "domain_status", "domain_hosting_delete", "domain_hosting_save",
+                "credential_delete", "credential_save", "credential_purchase",
+            ],
+        )
+    last_log = logs_qs.first()
+    logs = logs_qs[:20]
 
     social_contracts = [
         item for item in contracted.get(PlanDepartment.DESIGN, [])
@@ -121,7 +133,10 @@ def _control_data(project):
     else:
         domain_status_label = "Dominio pendiente"
         domain_status_code = "pending"
-    visible_credential_count = project.project_credentials.filter(enabled=True, visible_to_team=True).count()
+    visible_credentials = list(
+        project.project_credentials.filter(enabled=True, visible_to_team=True).order_by("credential_type", "custom_name", "id")
+    )
+    visible_credential_count = len(visible_credentials)
     credential_count = project.project_credentials.filter(enabled=True).count()
 
     return {
@@ -138,6 +153,7 @@ def _control_data(project):
         "domain_status_code": domain_status_code,
         "credential_count": credential_count,
         "visible_credential_count": visible_credential_count,
+        "visible_credentials": visible_credentials,
         "admin_done": bool(admin_percent),
         "admin_percent": admin_percent,
         "design_steps": design_steps,
@@ -155,6 +171,7 @@ def _control_data(project):
         "production_percent": production_percent,
         "overall_percent": overall_percent,
         "area_flags": area_flags,
+        "can_view_administration": can_view_administration,
         "last_log": last_log,
         "logs": logs,
     }
@@ -169,7 +186,7 @@ def project_list(request):
     rows = []
     for project in projects:
         sync_project_area_records(project, request.user)
-        rows.append({"project": project, "control": _control_data(project)})
+        rows.append({"project": project, "control": _control_data(project, viewer=request.user)})
     return render(request, "projects/list.html", {"project_rows": rows, "status_filter": status})
 
 
@@ -188,7 +205,7 @@ def project_detail(request, pk):
         raise PermissionDenied("Este proyecto no está asignado a tu área.")
     sync_project_area_records(project, request.user)
     note_form = ProjectNoteForm()
-    control = _control_data(project)
+    control = _control_data(project, viewer=request.user)
     payment_summary = project_payment_summary(project)
     project_payments = project.client_payments.select_related("created_by").all()
     return render(request, "projects/detail.html", {
@@ -212,6 +229,7 @@ def project_create(request):
         obj.created_by = request.user
         obj.save()
         form.save_plan_assignments(obj)
+        form.save_responsible_assignments(obj)
         sync_project_area_records(obj, request.user)
         log_activity(request.user, "projects", "create", obj)
         messages.success(request, "Proyecto creado y productos contratados asignados por área.")
@@ -248,9 +266,19 @@ def assignment_create(request, pk):
     if request.method == "POST" and form.is_valid():
         obj = form.save(commit=False)
         obj.project = project
-        obj.save()
+        # Regla actual: un único responsable principal por área. Esta ruta se
+        # conserva por compatibilidad, pero no puede crear duplicados del área.
+        project.assignments.filter(area=obj.area).exclude(user=obj.user).delete()
+        existing = project.assignments.filter(area=obj.area, user=obj.user).first()
+        if existing:
+            existing.status = obj.status
+            existing.responsibility = obj.responsibility
+            existing.save(update_fields=["status", "responsibility", "updated_at"])
+            obj = existing
+        else:
+            obj.save()
         log_activity(request.user, "projects", "assign", obj)
-        messages.success(request, "Responsable asignado.")
+        messages.success(request, "Responsable principal del área actualizado.")
         return redirect("projects:detail", pk=project.pk)
     return render(request, "shared/form.html", {"form": form, "title": "Asignar responsable", "subtitle": project.name})
 

@@ -2,120 +2,273 @@
 {% block page_heading %}Proyectos{% endblock %}
 {% block content %}
 <style>
-.project-contract-form-v10{display:grid;gap:16px}.project-base-grid-v10{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.project-base-grid-v10 .form-wide{grid-column:1/-1}
-.service-selector-v10{padding:0;overflow:hidden}.service-selector-head-v10{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding:18px;border-bottom:1px solid rgba(127,127,127,.12);flex-wrap:wrap}.service-selector-head-v10 h3{margin:0 0 5px}.service-selector-head-v10 p{margin:0;max-width:830px}.service-count-v10{min-width:160px;text-align:right}.service-count-v10 strong{font-size:26px;display:block}.service-count-v10 span{font-size:11px;opacity:.68}
-.service-tools-v10{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid rgba(127,127,127,.12)}.service-tools-v10 input{min-width:240px;flex:1;min-height:42px}.area-filter-v10{display:flex;gap:7px;flex-wrap:wrap}.area-filter-btn-v10{border:1px solid rgba(127,127,127,.2);background:transparent;border-radius:999px;padding:8px 12px;cursor:pointer;font-weight:700;font-size:12px}.area-filter-btn-v10.active{background:var(--primary,#2768e8);color:#fff;border-color:transparent}
-.service-grid-v10{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:11px;padding:16px 18px 18px}.service-option-v10{position:relative;border:1px solid rgba(127,127,127,.16);border-radius:15px;padding:14px;cursor:pointer;display:flex;gap:12px;align-items:flex-start;transition:.16s ease}.service-option-v10:hover{transform:translateY(-1px);border-color:rgba(39,104,232,.35)}.service-option-v10.selected{border-color:rgba(39,104,232,.65);box-shadow:0 0 0 2px rgba(39,104,232,.09)}.service-option-v10 input{width:18px;height:18px;margin-top:2px;flex:0 0 auto}.service-option-v10 strong{display:block}.service-option-v10 small{display:block;margin-top:3px;opacity:.67}.service-option-v10 .price{margin-top:7px;font-size:12px;font-weight:800}.service-area-pill-v10{display:inline-flex;margin-bottom:7px;padding:4px 7px;border-radius:999px;font-size:10px;font-weight:800;background:rgba(127,127,127,.1)}.service-area-pill-v10.design{background:rgba(136,84,208,.12)}.service-area-pill-v10.marketing{background:rgba(41,146,96,.12)}.service-area-pill-v10.developer{background:rgba(39,104,232,.12)}.service-area-pill-v10.administration{background:rgba(230,151,43,.12)}
-.service-empty-v10{display:none;padding:30px;text-align:center;opacity:.7}.auto-route-note-v10{margin:0 18px 18px;padding:12px 14px;border-radius:12px;background:rgba(39,104,232,.07);font-size:12px;line-height:1.55}.field-error{color:#b84646;font-size:12px;display:block;margin-top:4px}
-@media(max-width:980px){.service-grid-v10{grid-template-columns:repeat(2,minmax(210px,1fr))}}@media(max-width:680px){.project-base-grid-v10{grid-template-columns:1fr}.service-grid-v10{grid-template-columns:1fr}.service-count-v10{text-align:left}}
+.project-form-v11{display:grid;gap:20px;max-width:1500px;margin:0 auto 32px}.project-card-v11{border:1px solid rgba(127,127,127,.14);border-radius:22px;background:var(--card-bg,var(--surface,#fff));box-shadow:0 16px 42px rgba(15,23,42,.055);overflow:hidden}.project-section-head-v11{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:22px 24px;border-bottom:1px solid rgba(127,127,127,.12)}.project-section-head-v11 h3{margin:4px 0 5px;font-size:20px}.project-section-head-v11 p{margin:0;max-width:820px;line-height:1.55;opacity:.72}.project-step-v11{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:10px;background:rgba(37,99,235,.10);color:#2563eb;font-weight:900;font-size:13px;margin-right:10px}.project-section-title-v11{display:flex;align-items:center}.project-core-v11{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:18px;padding:22px 24px}.project-core-left-v11,.project-core-right-v11{display:grid;gap:17px;align-content:start}.project-field-v11{display:grid;gap:7px}.project-field-v11>label{font-size:12px;font-weight:850;letter-spacing:.025em;color:var(--text-color,#1f2937)}.project-field-v11 .hint{font-size:11px;line-height:1.45;opacity:.62;margin-top:-2px}.project-control-v11{width:100%;min-height:48px;border:1px solid rgba(100,116,139,.24)!important;border-radius:13px!important;padding:10px 13px!important;background:var(--input-bg,rgba(255,255,255,.72))!important;color:inherit!important;outline:none;transition:.15s ease;box-sizing:border-box}.project-control-v11:focus{border-color:rgba(37,99,235,.65)!important;box-shadow:0 0 0 4px rgba(37,99,235,.09)!important}.project-field-v11 textarea.project-control-v11{min-height:126px;resize:vertical;line-height:1.55}.field-error-v11{color:#dc2626;font-size:11px;font-weight:750;line-height:1.45}.project-status-wrap-v11{padding:0 24px 24px}.project-status-title-v11{display:flex;justify-content:space-between;gap:12px;align-items:end;margin-bottom:11px}.project-status-title-v11 strong{font-size:12px;letter-spacing:.025em}.project-status-title-v11 small{opacity:.62}.status-grid-v11{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:9px}.status-card-v11{position:relative;display:flex;flex-direction:column;gap:5px;min-height:86px;border:1px solid rgba(100,116,139,.18);border-radius:14px;padding:13px 13px 12px;cursor:pointer;transition:.15s ease;overflow:hidden}.status-card-v11:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--status-color)}.status-card-v11 input{position:absolute;opacity:0;pointer-events:none}.status-card-v11 .status-name-v11{display:flex;align-items:center;gap:7px;font-weight:900;font-size:13px}.status-card-v11 .status-dot-v11{width:9px;height:9px;border-radius:50%;background:var(--status-color);box-shadow:0 0 0 4px color-mix(in srgb,var(--status-color) 12%,transparent)}.status-card-v11 small{font-size:10px;line-height:1.35;opacity:.64}.status-card-v11:has(input:checked){border-color:var(--status-color);box-shadow:0 0 0 3px color-mix(in srgb,var(--status-color) 11%,transparent);background:color-mix(in srgb,var(--status-color) 5%,transparent)}.status-card-v11.disabled{opacity:.38;cursor:not-allowed;filter:saturate(.55)}.status-card-v11.development{--status-color:#f59e0b}.status-card-v11.active{--status-color:#2563eb}.status-card-v11.completed{--status-color:#16a34a}.status-card-v11.paused{--status-color:#dc2626}.status-card-v11.cancelled{--status-color:#6b7280}.status-rule-v11{display:flex;align-items:flex-start;gap:9px;margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(37,99,235,.06);font-size:11px;line-height:1.48}.status-rule-v11 b{white-space:nowrap}.service-selector-v11{overflow:hidden}.service-selector-head-v11{align-items:center}.service-summary-v11{display:grid;grid-template-columns:repeat(2,minmax(105px,1fr));gap:8px;min-width:250px}.service-summary-box-v11{border:1px solid rgba(100,116,139,.13);border-radius:13px;padding:10px 12px;text-align:right;background:rgba(127,127,127,.035)}.service-summary-box-v11 strong{display:block;font-size:23px;line-height:1}.service-summary-box-v11 span{display:block;font-size:10px;opacity:.62;margin-top:5px}.service-tools-v11{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:15px 24px;border-bottom:1px solid rgba(127,127,127,.10);background:rgba(127,127,127,.018)}.service-search-v11{position:relative;flex:1;min-width:260px}.service-search-v11 input{width:100%;min-height:44px;border:1px solid rgba(100,116,139,.20);border-radius:12px;padding:9px 13px 9px 39px;background:transparent;color:inherit;outline:none}.service-search-v11 input:focus{border-color:rgba(37,99,235,.55);box-shadow:0 0 0 3px rgba(37,99,235,.08)}.service-search-v11:before{content:"⌕";position:absolute;left:14px;top:50%;transform:translateY(-52%);font-size:21px;opacity:.48}.area-filter-v11{display:flex;gap:6px;flex-wrap:wrap}.area-filter-btn-v11{border:1px solid rgba(100,116,139,.17);background:transparent;color:inherit;border-radius:999px;padding:8px 11px;cursor:pointer;font-weight:800;font-size:11px;transition:.15s ease}.area-filter-btn-v11:hover{border-color:rgba(37,99,235,.40)}.area-filter-btn-v11.active{background:#2563eb;color:#fff;border-color:#2563eb;box-shadow:0 5px 14px rgba(37,99,235,.16)}.service-grid-v11{display:grid;grid-template-columns:repeat(3,minmax(230px,1fr));gap:12px;padding:18px 24px 22px}.service-option-v11{position:relative;display:grid;grid-template-columns:24px 1fr;gap:12px;min-height:156px;padding:15px;border:1px solid rgba(100,116,139,.16);border-radius:17px;cursor:pointer;transition:.17s ease;background:rgba(255,255,255,.015);overflow:hidden}.service-option-v11:after{content:"";position:absolute;left:0;top:0;width:4px;height:100%;background:var(--area-color,#64748b);opacity:.55}.service-option-v11:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--area-color,#2563eb) 48%,rgba(100,116,139,.16));box-shadow:0 10px 25px rgba(15,23,42,.07)}.service-option-v11.selected{border-color:var(--area-color,#2563eb);background:color-mix(in srgb,var(--area-color,#2563eb) 4%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--area-color,#2563eb) 9%,transparent)}.service-option-v11.design{--area-color:#8b5cf6}.service-option-v11.marketing{--area-color:#10b981}.service-option-v11.developer{--area-color:#2563eb}.service-option-v11.administration{--area-color:#f59e0b}.service-check-v11{display:flex;align-items:flex-start;justify-content:center;padding-top:1px}.service-check-v11 input{appearance:none;-webkit-appearance:none;width:20px;height:20px;border:1.5px solid rgba(100,116,139,.38);border-radius:6px;margin:0;background:transparent;display:grid;place-items:center;cursor:pointer}.service-check-v11 input:checked{background:var(--area-color,#2563eb);border-color:var(--area-color,#2563eb)}.service-check-v11 input:checked:after{content:"✓";color:#fff;font-size:13px;font-weight:950;line-height:1}.service-content-v11{min-width:0}.service-topline-v11{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:7px}.service-area-v11,.service-billing-v11{display:inline-flex;align-items:center;border-radius:999px;padding:4px 7px;font-size:9px;font-weight:900;letter-spacing:.035em}.service-area-v11{background:color-mix(in srgb,var(--area-color,#64748b) 12%,transparent);color:var(--area-color,#64748b)}.service-billing-v11{background:rgba(100,116,139,.09);opacity:.8}.service-billing-v11.recurring{background:rgba(37,99,235,.09);color:#2563eb;opacity:1}.service-option-v11 h4{font-size:14px;margin:0 0 4px;line-height:1.25}.service-type-v11{font-size:10px;font-weight:750;opacity:.62}.service-desc-v11{font-size:10px;line-height:1.45;opacity:.60;margin:7px 0 11px;min-height:29px}.service-bottom-v11{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-top:auto}.service-price-v11 strong{font-size:16px}.service-price-v11 span{font-size:9px;opacity:.55;margin-left:3px}.service-cycle-v11{font-size:9px;font-weight:800;opacity:.62;text-align:right}.service-empty-v11{display:none;margin:0 24px 22px;padding:32px 18px;border:1px dashed rgba(100,116,139,.22);border-radius:15px;text-align:center;opacity:.66}.auto-route-note-v11{display:flex;gap:11px;margin:0 24px 22px;padding:13px 14px;border-radius:14px;background:rgba(37,99,235,.06);font-size:11px;line-height:1.5}.auto-route-note-v11 .icon{display:grid;place-items:center;flex:0 0 27px;height:27px;border-radius:9px;background:rgba(37,99,235,.12);color:#2563eb;font-weight:900}.form-actions-v11{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:4px 2px}.form-actions-v11 .save-note-v11{font-size:11px;line-height:1.45;opacity:.62;max-width:650px}.save-project-v11{min-height:48px!important;padding:0 20px!important;border-radius:13px!important;font-weight:900!important}.project-form-v11 .alert.error{border-radius:14px}.project-form-v11 select.project-control-v11{appearance:auto}.project-form-v11 input[type=date].project-control-v11{min-height:48px}
+.responsible-grid-v12{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:14px;padding:20px 24px 24px}.responsible-card-v12{--owner-color:#64748b;position:relative;display:grid;gap:11px;padding:16px;border:1px solid rgba(100,116,139,.16);border-radius:17px;background:rgba(127,127,127,.025);overflow:hidden;transition:.16s ease}.responsible-card-v12:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--owner-color);opacity:.72}.responsible-card-v12.design{--owner-color:#8b5cf6}.responsible-card-v12.marketing{--owner-color:#10b981}.responsible-card-v12.development{--owner-color:#2563eb}.responsible-card-v12.area-active{border-color:color-mix(in srgb,var(--owner-color) 42%,rgba(100,116,139,.16));background:color-mix(in srgb,var(--owner-color) 4%,transparent)}.responsible-top-v12{display:flex;align-items:center;justify-content:space-between;gap:10px}.responsible-area-v12{display:flex;align-items:center;gap:9px}.responsible-icon-v12{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:color-mix(in srgb,var(--owner-color) 12%,transparent);color:var(--owner-color);font-size:11px;font-weight:950}.responsible-area-v12 strong{display:block;font-size:13px}.responsible-area-v12 span{display:block;font-size:10px;opacity:.58;margin-top:2px}.responsible-area-state-v12{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 8px;background:rgba(100,116,139,.08);font-size:9px;font-weight:900;opacity:.7}.responsible-area-state-v12:before{content:"";width:6px;height:6px;border-radius:50%;background:#94a3b8}.responsible-card-v12.area-active .responsible-area-state-v12{color:var(--owner-color);background:color-mix(in srgb,var(--owner-color) 10%,transparent);opacity:1}.responsible-card-v12.area-active .responsible-area-state-v12:before{background:var(--owner-color)}.responsible-card-v12 label{font-size:10px;font-weight:850;opacity:.7}.responsible-card-v12 select{min-height:46px!important}.responsible-help-v12{font-size:10px;line-height:1.45;opacity:.58}.responsible-policy-v12{display:flex;gap:10px;align-items:flex-start;margin:0 24px 22px;padding:12px 14px;border-radius:13px;background:rgba(16,185,129,.055);font-size:11px;line-height:1.48}.responsible-policy-v12 b{color:#059669}.team-summary-v12{display:flex;align-items:center;gap:8px;border:1px solid rgba(100,116,139,.13);border-radius:12px;padding:9px 11px;background:rgba(127,127,127,.025);font-size:10px;white-space:nowrap}.team-summary-v12 strong{font-size:17px}
+@media(max-width:1150px){.status-grid-v11{grid-template-columns:repeat(3,minmax(150px,1fr))}.service-grid-v11{grid-template-columns:repeat(2,minmax(230px,1fr))}.responsible-grid-v12{grid-template-columns:repeat(2,minmax(220px,1fr))}}@media(max-width:820px){.project-core-v11{grid-template-columns:1fr}.responsible-grid-v12{grid-template-columns:1fr}.service-selector-head-v11{align-items:flex-start}.service-summary-v11{width:100%;min-width:0}.service-summary-box-v11{text-align:left}.status-grid-v11{grid-template-columns:repeat(2,minmax(140px,1fr))}}@media(max-width:590px){.project-section-head-v11,.project-core-v11,.project-status-wrap-v11{padding-left:16px;padding-right:16px}.responsible-grid-v12{padding-left:16px;padding-right:16px}.responsible-policy-v12{margin-left:16px;margin-right:16px}.project-section-head-v11{padding-top:18px;padding-bottom:18px}.status-grid-v11,.service-grid-v11{grid-template-columns:1fr}.service-tools-v11,.service-grid-v11{padding-left:16px;padding-right:16px}.auto-route-note-v11,.service-empty-v11{margin-left:16px;margin-right:16px}.form-actions-v11{align-items:stretch;flex-direction:column-reverse}.save-project-v11{width:100%}}
 </style>
 
 <div class="page-intro">
-  <div><span class="eyebrow">Administración</span><h2>{{ title }}</h2><p>{{ subtitle }}</p></div>
-  <div class="actions"><a class="btn btn-secondary" href="{% url 'projects:list' %}">Volver</a></div>
+  <div>
+    <span class="eyebrow">Control / Proyectos</span>
+    <h2>{{ title }}</h2>
+    <p>{{ subtitle }}</p>
+  </div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'projects:list' %}">Volver a proyectos</a></div>
 </div>
 
-<form method="post" class="project-contract-form-v10" id="projectFormV10">
+<form method="post" class="project-form-v11" id="projectFormV11" novalidate>
   {% csrf_token %}
   {% if form.non_field_errors %}<div class="alert error">{{ form.non_field_errors }}</div>{% endif %}
 
-  <div class="card">
-    <div class="card-head"><div><h3>1. Datos del proyecto</h3><p>El proyecto puede tener varios servicios al mismo tiempo. Ya no depende de un único “tipo principal”.</p></div></div>
-    <div class="project-base-grid-v10">
-      {% for field in form %}
-        {% if field.name != 'service_plans' %}
-        <div class="form-field {% if field.name == 'summary' or field.name == 'internal_notes' %}form-wide{% endif %}">
-          <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
-          {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
-        </div>
-        {% endif %}
-      {% endfor %}
-    </div>
-  </div>
-
-  <div class="card service-selector-v10">
-    <div class="service-selector-head-v10">
+  <section class="project-card-v11">
+    <div class="project-section-head-v11">
       <div>
-        <span class="eyebrow">Servicios múltiples</span>
-        <h3>2. Servicios contratados</h3>
-        <p>Selecciona todos los productos vendidos. Usa los filtros por área para encontrarlos rápido. Un mismo servicio no puede repetirse dentro del proyecto.</p>
-      </div>
-      <div class="service-count-v10"><strong id="selectedServiceCountV10">0</strong><span>servicios seleccionados</span></div>
-    </div>
-
-    <div class="service-tools-v10">
-      <input id="serviceSearchV10" type="search" placeholder="Buscar servicio, categoría o plan…" autocomplete="off">
-      <div class="area-filter-v10" id="areaFiltersV10">
-        <button class="area-filter-btn-v10 active" type="button" data-area="all">Todos</button>
-        <button class="area-filter-btn-v10" type="button" data-area="design">Diseño</button>
-        <button class="area-filter-btn-v10" type="button" data-area="marketing">Marketing</button>
-        <button class="area-filter-btn-v10" type="button" data-area="developer">Desarrollo</button>
-        <button class="area-filter-btn-v10" type="button" data-area="administration">Administración</button>
+        <div class="project-section-title-v11"><span class="project-step-v11">1</span><h3>Información esencial</h3></div>
+        <p>Solo los datos necesarios para abrir y controlar el proyecto. Las áreas operativas completarán sus propias fichas después.</p>
       </div>
     </div>
 
-    {% if form.service_plans.errors %}<div class="alert error" style="margin:14px 18px 0">{{ form.service_plans.errors }}</div>{% endif %}
-    <div class="service-grid-v10" id="serviceGridV10">
+    <div class="project-core-v11">
+      <div class="project-core-left-v11">
+        <div class="project-field-v11">
+          <label for="{{ form.client.id_for_label }}">Cliente</label>
+          {{ form.client }}
+          <span class="hint">Empresa o cliente al que pertenece este proyecto.</span>
+          {% for error in form.client.errors %}<span class="field-error-v11">{{ error }}</span>{% endfor %}
+        </div>
+        <div class="project-field-v11">
+          <label for="{{ form.name.id_for_label }}">Nombre del proyecto</label>
+          {{ form.name }}
+          <span class="hint">Usa un nombre corto y reconocible para todo el equipo.</span>
+          {% for error in form.name.errors %}<span class="field-error-v11">{{ error }}</span>{% endfor %}
+        </div>
+        <div class="project-field-v11">
+          <label for="{{ form.start_date.id_for_label }}">Fecha de inicio</label>
+          {{ form.start_date }}
+          {% for error in form.start_date.errors %}<span class="field-error-v11">{{ error }}</span>{% endfor %}
+        </div>
+      </div>
+      <div class="project-core-right-v11">
+        <div class="project-field-v11">
+          <label for="{{ form.internal_notes.id_for_label }}">Internal Notes</label>
+          {{ form.internal_notes }}
+          <span class="hint">Información interna. No sustituye las fichas de Diseño, Marketing o Desarrollo.</span>
+          {% for error in form.internal_notes.errors %}<span class="field-error-v11">{{ error }}</span>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="project-status-wrap-v11">
+      <div class="project-status-title-v11">
+        <strong>Estado del proyecto</strong>
+        <small>El color permite identificarlo de un vistazo en Control.</small>
+      </div>
+      {% with current_status=form.status.value|default:"in_development" %}
+      <div class="status-grid-v11" id="statusGridV11">
+        <label class="status-card-v11 development">
+          <input type="radio" name="status" value="in_development" {% if current_status == 'in_development' %}checked{% endif %}>
+          <span class="status-name-v11"><i class="status-dot-v11"></i>En desarrollo</span>
+          <small>Amarillo · El equipo está trabajando y todavía no está completado.</small>
+        </label>
+        <label class="status-card-v11 active" id="activeStatusCardV11">
+          <input type="radio" name="status" value="active" id="activeStatusV11" {% if current_status == 'active' %}checked{% endif %}>
+          <span class="status-name-v11"><i class="status-dot-v11"></i>Activo</span>
+          <small>Azul · Solo para servicios con suscripción o renovación recurrente.</small>
+        </label>
+        <label class="status-card-v11 completed">
+          <input type="radio" name="status" value="completed" {% if current_status == 'completed' %}checked{% endif %}>
+          <span class="status-name-v11"><i class="status-dot-v11"></i>Completado</span>
+          <small>Verde · Trabajo finalizado y entregado.</small>
+        </label>
+        <label class="status-card-v11 paused">
+          <input type="radio" name="status" value="paused" {% if current_status == 'paused' %}checked{% endif %}>
+          <span class="status-name-v11"><i class="status-dot-v11"></i>Pausado</span>
+          <small>Rojo · El trabajo queda detenido hasta nueva indicación.</small>
+        </label>
+        <label class="status-card-v11 cancelled">
+          <input type="radio" name="status" value="cancelled" {% if current_status == 'cancelled' %}checked{% endif %}>
+          <span class="status-name-v11"><i class="status-dot-v11"></i>Cancelado</span>
+          <small>Gris · El proyecto queda cerrado en el punto en que se encontraba.</small>
+        </label>
+      </div>
+      {% endwith %}
+      {% for error in form.status.errors %}<span class="field-error-v11" style="display:block;margin-top:9px">{{ error }}</span>{% endfor %}
+      <div class="status-rule-v11" id="statusRuleV11">
+        <span>ℹ</span><div><b>Regla:</b> los trabajos de pago único pasan de <strong>En desarrollo</strong> a <strong>Completado</strong>. <strong>Activo</strong> se habilita únicamente cuando el proyecto tiene al menos un servicio recurrente/mensual.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="project-card-v11 service-selector-v11">
+    <div class="project-section-head-v11 service-selector-head-v11">
+      <div>
+        <div class="project-section-title-v11"><span class="project-step-v11">2</span><h3>Servicios contratados</h3></div>
+        <p>Agrega todos los productos vendidos al mismo proyecto. Cada servicio se enviará automáticamente al área que le corresponde sin duplicarlo.</p>
+      </div>
+      <div class="service-summary-v11">
+        <div class="service-summary-box-v11"><strong id="selectedServiceCountV11">0</strong><span>seleccionados</span></div>
+        <div class="service-summary-box-v11"><strong id="recurringServiceCountV11">0</strong><span>recurrentes</span></div>
+      </div>
+    </div>
+
+    <div class="service-tools-v11">
+      <div class="service-search-v11"><input id="serviceSearchV11" type="search" placeholder="Buscar servicio, producto o categoría…" autocomplete="off"></div>
+      <div class="area-filter-v11" id="areaFiltersV11">
+        <button class="area-filter-btn-v11 active" type="button" data-area="all">Todos</button>
+        <button class="area-filter-btn-v11" type="button" data-area="design">Diseño</button>
+        <button class="area-filter-btn-v11" type="button" data-area="marketing">Marketing</button>
+        <button class="area-filter-btn-v11" type="button" data-area="developer">Desarrollo</button>
+        <button class="area-filter-btn-v11" type="button" data-area="administration">Administración</button>
+      </div>
+    </div>
+
+    {% if form.service_plans.errors %}<div class="alert error" style="margin:14px 24px 0">{{ form.service_plans.errors }}</div>{% endif %}
+    <div class="service-grid-v11" id="serviceGridV11">
       {% for plan in form.service_plans.field.queryset %}
-      <label class="service-option-v10" data-area="{{ plan.department }}" data-search="{{ plan.name|lower }} {{ plan.get_service_type_display|lower }} {{ plan.get_department_display|lower }}">
-        <input type="checkbox" name="service_plans" value="{{ plan.pk }}" {% if plan.pk in form.selected_service_plan_ids %}checked{% endif %}>
-        <span>
-          <span class="service-area-pill-v10 {{ plan.department }}">{{ plan.get_department_display }}</span>
-          <strong>{{ plan.name }}</strong>
-          <small>{{ plan.get_service_type_display }}{% if plan.description %} · {{ plan.description|truncatechars:80 }}{% endif %}</small>
-          <span class="price">${{ plan.base_price }} {{ plan.currency }} · {{ plan.get_billing_cycle_display }}</span>
+      <label class="service-option-v11 {{ plan.department }}" data-area="{{ plan.department }}" data-subscription="{% if plan.is_subscription_product %}1{% else %}0{% endif %}" data-search="{{ plan.name|lower }} {{ plan.get_service_type_display|lower }} {{ plan.get_department_display|lower }} {{ plan.get_billing_cycle_display|lower }}">
+        <span class="service-check-v11"><input type="checkbox" name="service_plans" value="{{ plan.pk }}" {% if plan.pk in form.selected_service_plan_ids %}checked{% endif %}></span>
+        <span class="service-content-v11">
+          <span class="service-topline-v11">
+            <span class="service-area-v11">{{ plan.get_department_display }}</span>
+            <span class="service-billing-v11 {% if plan.is_subscription_product %}recurring{% endif %}">{% if plan.is_subscription_product %}↻ Recurrente{% else %}Pago único{% endif %}</span>
+          </span>
+          <h4>{{ plan.name }}</h4>
+          <div class="service-type-v11">{{ plan.get_service_type_display }}</div>
+          <div class="service-desc-v11">{% if plan.description %}{{ plan.description|truncatechars:115 }}{% else %}Servicio del catálogo de {{ plan.get_department_display }}.{% endif %}</div>
+          <div class="service-bottom-v11">
+            <div class="service-price-v11"><strong>${{ plan.base_price }}</strong><span>{{ plan.currency }}</span></div>
+            <div class="service-cycle-v11">{{ plan.get_billing_cycle_display }}</div>
+          </div>
         </span>
       </label>
       {% endfor %}
     </div>
-    <div class="service-empty-v10" id="serviceEmptyV10">No hay servicios que coincidan con este filtro.</div>
-    <div class="auto-route-note-v10">
-      <strong>Automático:</strong> al guardar, cada servicio se enruta a su área correspondiente. Diseño recibe sus tareas; Marketing prepara su ficha/checklist; Desarrollo prepara la ficha técnica. Los productos de Social Media quedan con una alerta hasta configurar la frecuencia de control (semanal, quincenal o mensual).
+    <div class="service-empty-v11" id="serviceEmptyV11">No hay servicios que coincidan con esta búsqueda o área.</div>
+    <div class="auto-route-note-v11">
+      <span class="icon">→</span>
+      <div><strong>Distribución automática:</strong> Diseño recibe sus tareas, Marketing genera su información/checklists y Desarrollo prepara su ficha técnica y producción. Los servicios recurrentes conservan su ciclo de seguimiento para la Auditoría General.</div>
     </div>
-  </div>
+  </section>
 
-  <div class="form-actions"><button class="btn btn-primary btn-lg" type="submit">Guardar proyecto y distribuir servicios</button></div>
+  <section class="project-card-v11" id="responsiblesSectionV12">
+    <div class="project-section-head-v11">
+      <div>
+        <div class="project-section-title-v11"><span class="project-step-v11">3</span><h3>Responsables del proyecto</h3></div>
+        <p>Asigna un responsable principal por cada área operativa. Puedes dejar un área sin asignar y completarla después al editar el proyecto.</p>
+      </div>
+      <div class="team-summary-v12"><strong id="responsibleCountV12">0</strong><span>responsables asignados</span></div>
+    </div>
+    <div class="responsible-grid-v12">
+      <div class="responsible-card-v12 design" data-responsible-area="design">
+        <div class="responsible-top-v12"><div class="responsible-area-v12"><span class="responsible-icon-v12">D</span><div><strong>Diseño</strong><span>Ficha visual y tareas de diseño</span></div></div><span class="responsible-area-state-v12">Sin servicios</span></div>
+        <div class="project-field-v11"><label for="{{ form.design_responsible.id_for_label }}">Responsable principal</label>{{ form.design_responsible }}{% for error in form.design_responsible.errors %}<span class="field-error-v11">{{ error }}</span>{% endfor %}</div>
+        <div class="responsible-help-v12">Muestra usuarios activos de Diseño y Gerencia.</div>
+      </div>
+      <div class="responsible-card-v12 marketing" data-responsible-area="marketing">
+        <div class="responsible-top-v12"><div class="responsible-area-v12"><span class="responsible-icon-v12">M</span><div><strong>Marketing</strong><span>Ficha, Google y campañas</span></div></div><span class="responsible-area-state-v12">Sin servicios</span></div>
+        <div class="project-field-v11"><label for="{{ form.marketing_responsible.id_for_label }}">Responsable principal</label>{{ form.marketing_responsible }}{% for error in form.marketing_responsible.errors %}<span class="field-error-v11">{{ error }}</span>{% endfor %}</div>
+        <div class="responsible-help-v12">Muestra usuarios activos de Marketing y Gerencia.</div>
+      </div>
+      <div class="responsible-card-v12 development" data-responsible-area="developer">
+        <div class="responsible-top-v12"><div class="responsible-area-v12"><span class="responsible-icon-v12">WEB</span><div><strong>Desarrollo</strong><span>Ficha técnica, web e indexación</span></div></div><span class="responsible-area-state-v12">Sin servicios</span></div>
+        <div class="project-field-v11"><label for="{{ form.development_responsible.id_for_label }}">Responsable principal</label>{{ form.development_responsible }}{% for error in form.development_responsible.errors %}<span class="field-error-v11">{{ error }}</span>{% endfor %}</div>
+        <div class="responsible-help-v12">Muestra usuarios activos de Desarrollo y Gerencia.</div>
+      </div>
+    </div>
+    <div class="responsible-policy-v12"><span>✓</span><div><b>Un responsable por área.</b> Al editar el proyecto puedes reemplazarlo o dejarlo sin asignar. El cambio no borra las tareas ni las fichas del proyecto.</div></div>
+  </section>
+
+  <div class="form-actions-v11">
+    <div class="save-note-v11">Al guardar se crearán o sincronizarán únicamente las fichas correspondientes a los servicios seleccionados.</div>
+    <button class="btn btn-primary btn-lg save-project-v11" type="submit">Guardar proyecto y distribuir servicios</button>
+  </div>
 </form>
 
 <script>
 (function(){
-  const grid=document.getElementById('serviceGridV10');
+  const grid=document.getElementById('serviceGridV11');
   if(!grid) return;
-  const cards=[...grid.querySelectorAll('.service-option-v10')];
-  const search=document.getElementById('serviceSearchV10');
-  const count=document.getElementById('selectedServiceCountV10');
-  const empty=document.getElementById('serviceEmptyV10');
-  const buttons=[...document.querySelectorAll('.area-filter-btn-v10')];
+  const cards=[...grid.querySelectorAll('.service-option-v11')];
+  const search=document.getElementById('serviceSearchV11');
+  const selectedCount=document.getElementById('selectedServiceCountV11');
+  const recurringCount=document.getElementById('recurringServiceCountV11');
+  const empty=document.getElementById('serviceEmptyV11');
+  const filterButtons=[...document.querySelectorAll('.area-filter-btn-v11')];
+  const activeStatus=document.getElementById('activeStatusV11');
+  const activeStatusCard=document.getElementById('activeStatusCardV11');
+  const developmentStatus=document.querySelector('input[name="status"][value="in_development"]');
+  const responsibleCards=[...document.querySelectorAll('[data-responsible-area]')];
+  const responsibleSelects=[...document.querySelectorAll('.responsible-select-v12')];
+  const responsibleCount=document.getElementById('responsibleCountV12');
   let area='all';
-  function refreshSelected(){
-    let selected=0;
-    cards.forEach(card=>{
-      const input=card.querySelector('input[type=checkbox]');
-      card.classList.toggle('selected',input.checked);
-      if(input.checked) selected++;
-    });
-    count.textContent=selected;
+
+  function hasRecurringSelection(){
+    return cards.some(card=>card.dataset.subscription==='1' && card.querySelector('input[type="checkbox"]').checked);
   }
-  function filter(){
+
+  function refreshStatusRule(){
+    const recurring=hasRecurringSelection();
+    if(activeStatus){
+      activeStatus.disabled=!recurring;
+      activeStatusCard.classList.toggle('disabled',!recurring);
+      if(!recurring && activeStatus.checked && developmentStatus){
+        developmentStatus.checked=true;
+      }
+    }
+  }
+
+  function refreshResponsibleAreas(){
+    const selectedAreas=new Set(cards.filter(card=>card.querySelector('input[type="checkbox"]').checked).map(card=>card.dataset.area));
+    responsibleCards.forEach(card=>{
+      const active=selectedAreas.has(card.dataset.responsibleArea);
+      card.classList.toggle('area-active',active);
+      const state=card.querySelector('.responsible-area-state-v12');
+      if(state) state.textContent=active?'Área activa':'Sin servicios';
+    });
+    if(responsibleCount){
+      responsibleCount.textContent=responsibleSelects.filter(select=>Boolean(select.value)).length;
+    }
+  }
+
+  function refreshSelected(){
+    let selected=0, recurring=0;
+    cards.forEach(card=>{
+      const input=card.querySelector('input[type="checkbox"]');
+      card.classList.toggle('selected',input.checked);
+      if(input.checked){
+        selected++;
+        if(card.dataset.subscription==='1') recurring++;
+      }
+    });
+    selectedCount.textContent=selected;
+    recurringCount.textContent=recurring;
+    refreshStatusRule();
+    refreshResponsibleAreas();
+  }
+
+  function filterCards(){
     const q=(search.value||'').trim().toLowerCase();
     let visible=0;
     cards.forEach(card=>{
       const areaOk=area==='all'||card.dataset.area===area;
       const searchOk=!q||(card.dataset.search||'').includes(q);
       const show=areaOk&&searchOk;
-      card.style.display=show?'flex':'none';
+      card.style.display=show?'grid':'none';
       if(show) visible++;
     });
     empty.style.display=visible?'none':'block';
   }
-  buttons.forEach(btn=>btn.addEventListener('click',()=>{
+
+  filterButtons.forEach(btn=>btn.addEventListener('click',()=>{
     area=btn.dataset.area;
-    buttons.forEach(x=>x.classList.toggle('active',x===btn));
-    filter();
+    filterButtons.forEach(x=>x.classList.toggle('active',x===btn));
+    filterCards();
   }));
-  cards.forEach(card=>card.querySelector('input').addEventListener('change',refreshSelected));
-  search.addEventListener('input',filter);
-  refreshSelected();filter();
+  cards.forEach(card=>card.querySelector('input[type="checkbox"]').addEventListener('change',refreshSelected));
+  responsibleSelects.forEach(select=>select.addEventListener('change',refreshResponsibleAreas));
+  search.addEventListener('input',filterCards);
+  refreshSelected();
+  filterCards();
 })();
 </script>
 {% endblock %}

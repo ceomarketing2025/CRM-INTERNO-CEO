@@ -9,7 +9,7 @@
   <div class="project-list-title"><div><h3>{{ p.name }}</h3><p>{{ p.client.business_name }} · {{ p.client.full_name|default:'—' }}</p></div><strong class="project-percent">{{ c.overall_percent }}%</strong></div>
   <div class="progress slim project-progress"><i style="width:{{ c.overall_percent }}%"></i></div>
   <div class="contracted-mini-v9">
-    {% for item in p.contracted_plans.all %}{% if item.is_active %}<span class="contract-chip dept-{{ item.plan.department }}">{{ item.plan.name }}</span>{% endif %}{% empty %}<span class="table-sub">Sin productos asignados</span>{% endfor %}
+    {% for item in p.contracted_plans.all %}{% if item.is_active %}{% if item.plan.department != 'administration' or c.can_view_administration %}<span class="contract-chip dept-{{ item.plan.department }}">{{ item.plan.name }}</span>{% endif %}{% endif %}{% empty %}<span class="table-sub">Sin productos asignados</span>{% endfor %}
   </div>
   <div class="project-area-status-v122">
     {% if c.contracted.design %}<span>Diseño <b>{{ c.design_percent }}%</b></span>{% endif %}

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block page_heading %}Tareas de Marketing{% endblock %}
+{% block content %}
+<div class="page-intro">
+  <div>
+    <span class="eyebrow">Marketing · operación</span>
+    <h2>Tareas de Marketing</h2>
+    <p>Resumen de actividades operativas del área. La información base del cliente se mantiene separada en Información Marketing.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'marketing:task_create' %}">＋ Nueva tarea</a>
+</div>
+
+<form method="get" class="card toolbar" style="align-items:center;flex-wrap:wrap">
+  <input type="search" name="q" value="{{ q }}" placeholder="Buscar proyecto o tarea">
+  <select name="status"><option value="">Todos los estados</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  <button class="btn btn-secondary" type="submit">Filtrar</button>
+  {% if q or selected_status %}<a class="btn btn-ghost" href="{% url 'marketing:tasks' %}">Limpiar</a>{% endif %}
+</form>
+
+<div class="project-grid">
+{% for task in records %}
+  <article class="card area-information-card">
+    <div class="area-info-title">
+      <div><span class="project-code">{{ task.project.project_code }}</span><h3>{{ task.title }}</h3><p>{{ task.project.client.business_name }} · {{ task.project.name }}</p></div>
+      <span class="badge">{{ task.get_status_display }}</span>
+    </div>
+    {% if task.description %}<p style="margin:0;color:var(--muted);font-size:10px;line-height:1.5">{{ task.description|truncatechars:180 }}</p>{% endif %}
+    <div class="area-task-summary"><div><span>Responsable</span><strong style="font-size:12px">{{ task.assigned_to.display_name|default:'Sin asignar' }}</strong><small>{% if task.due_date %}Entrega {{ task.due_date|date:'d/m/Y' }}{% else %}Sin fecha límite{% endif %}</small></div></div>
+    <div class="area-info-actions"><a href="{% url 'marketing:workspace' task.project_id %}">Información Marketing</a><a href="{% url 'handoff:summary' task.project_id %}">Resumen proyecto</a></div>
+  </article>
+{% empty %}<div class="card empty">No hay tareas de Marketing con estos filtros.</div>{% endfor %}
+</div>
+{% endblock %}

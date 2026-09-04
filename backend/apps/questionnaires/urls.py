@@ -5,6 +5,12 @@ app_name = "questionnaires"
 
 urlpatterns = [
     path(
+        "development/information/",
+        views.development_information,
+        name="development_information",
+    ),
+
+    path(
         "development/",
         views.development_dashboard,
         name="development_dashboard",

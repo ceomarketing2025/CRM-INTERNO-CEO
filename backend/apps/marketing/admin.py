@@ -9,6 +9,7 @@ from .models import (
     MarketingDocument,
     MarketingTask,
     MarketingWorkspace,
+    SocialMediaAudit,
     SocialMediaDailyLog,
     SocialMediaPlan,
     SocialMediaTracking,
@@ -25,6 +26,7 @@ for model in [
     AdCampaign,
     CampaignWeeklyReport,
     SocialMediaTracking,
+    SocialMediaAudit,
     SocialMediaPlan,
     SocialMediaDailyLog,
 ]:

@@ -1,83 +1,85 @@
 {% extends 'base.html' %}
-{% block page_heading %}Ficha de Diseño{% endblock %}
+{% block page_heading %}Diseño{% endblock %}
 {% block content %}
 <div class="page-intro">
   <div>
     <span class="eyebrow">Área de Diseño</span>
-    <h2>Proyectos para llenar Diseño</h2>
-    <p>Cada proyecto que corresponde a Diseño aparece aquí. Desde esta misma tarjeta continúas la Ficha de Diseño, la Paleta y los Links / Imágenes.</p>
+    <h2>Ficha de Diseño</h2>
+    <p>Los proyectos llegan automáticamente según los planes contratados. Completa brief, paleta y recursos sin duplicar información.</p>
   </div>
 </div>
 
-<div class="project-grid area-sheet-grid">
+<div class="project-grid">
 {% for row in project_rows %}
   {% with p=row.project %}
-  <article class="project-card area-project-card area-sheet-card">
+  <article class="project-card area-project-card design-project-card-v13">
     <div class="project-card-top">
       <span class="project-code">{{ p.project_code }}</span>
       <span class="badge">{{ p.get_project_type_display }}</span>
     </div>
 
-    <div class="area-sheet-heading">
-      <div>
-        <span class="eyebrow">{{ p.client.business_name }}</span>
-        <h3>{{ p.name }}</h3>
-        <p>{{ p.client.full_name|default:'Sin contacto' }}</p>
-      </div>
-      <div class="area-progress-number"><strong>{{ row.design_percent }}%</strong><span>Diseño</span></div>
-    </div>
+    <h3>{{ p.client.business_name }}</h3>
+    <p>{{ p.client.full_name|default:'Sin contacto' }}</p>
 
     {% if row.design_plans %}
-      <div class="contracted-mini-v9">{% for plan in row.design_plans %}<span class="contract-chip dept-design">{{ plan.name }}</span>{% endfor %}</div>
+      <div class="contracted-mini-v9">
+        {% for plan in row.design_plans %}<span class="contract-chip dept-design">{{ plan.name }}</span>{% endfor %}
+      </div>
     {% elif row.workflow_plans %}
-      <div class="contracted-mini-v9">{% for plan in row.workflow_plans %}<span class="contract-chip">{{ plan.name }}</span>{% endfor %}<span class="badge">Proyecto web → Diseño</span></div>
+      <div class="contracted-mini-v9">
+        {% for plan in row.workflow_plans|slice:':2' %}<span class="contract-chip">{{ plan.name }}</span>{% endfor %}
+        <span class="badge">Flujo web → Diseño</span>
+      </div>
     {% endif %}
 
-    <section class="control-area-card embedded-area-control {% if row.design_done == 3 %}complete{% endif %}">
-      <div class="control-area-head">
-        <b>D</b>
-        <div><strong>Diseño</strong><span>{{ row.design_done }}/3 completos</span></div>
-      </div>
-      <div class="progress slim"><i style="width:{{ row.design_percent }}%"></i></div>
-      <ul>
-        {% for label,done in row.design_steps %}<li class="{% if done %}done{% endif %}">{{ label }}</li>{% endfor %}
-      </ul>
-    </section>
+    <div class="area-checks design-card-checks-v13">
+      <span class="{% if row.brief_done %}done{% endif %}"><i></i> Ficha {% if row.brief_done %}completa{% else %}pendiente{% endif %}</span>
+      <span class="{% if row.palette_done %}done{% endif %}"><i></i> Paleta {% if row.palette_done %}lista{% else %}pendiente{% endif %}</span>
+      <span class="{% if row.resources_ready %}done{% endif %}"><i></i> Recursos {% if row.resources_ready %}listos{% else %}pendientes{% endif %}</span>
+    </div>
 
-    <div class="area-fill-list">
-      <a class="area-fill-row {% if row.brief_done %}is-complete{% endif %}" href="{% url 'design:brief_edit' p.pk %}">
-        <span class="fill-state">{% if row.brief_done %}✓{% else %}1{% endif %}</span>
-        <div><strong>Ficha de Diseño</strong><small>{% if row.brief_done %}Completa · puedes editarla{% else %}Pendiente · entrar a llenar{% endif %}</small></div>
-        <b>{% if row.brief_done %}Editar{% else %}Llenar{% endif %} →</b>
+    <div class="progress"><i style="width:{{ row.design_percent }}%"></i></div>
+    <div class="design-progress-copy-v13"><span>Avance Diseño</span><strong>{{ row.design_done }}/3 · {{ row.design_percent }}%</strong></div>
+
+    <div class="quick-action-grid">
+      <a href="{% url 'design:brief_edit' p.pk %}">
+        <b>Diseño</b>
+        <small>Ficha / brief visual</small>
       </a>
-
       {% if row.palette %}
-      <a class="area-fill-row {% if row.palette_done %}is-complete{% endif %}" href="{% url 'design:palette_detail' row.palette.pk %}">
-        <span class="fill-state">{% if row.palette_done %}✓{% else %}2{% endif %}</span>
-        <div><strong>Paleta de colores</strong><small>{% if row.palette_done %}Lista · colores, degradados y PDF{% else %}Pendiente de completar{% endif %}</small></div>
-        <b>{% if row.palette_done %}Editar{% else %}Llenar{% endif %} →</b>
+      <a href="{% url 'design:palette_detail' row.palette.pk %}">
+        <b>Paleta</b>
+        <small>Colores + PDF</small>
       </a>
       {% else %}
-      <a class="area-fill-row" href="{% url 'design:palette_create' p.pk %}">
-        <span class="fill-state">2</span><div><strong>Paleta de colores</strong><small>Pendiente · crear paleta</small></div><b>Crear →</b>
+      <a href="{% url 'design:palette_create' p.pk %}">
+        <b>Paleta</b>
+        <small>Crear paleta</small>
       </a>
       {% endif %}
-
-      <a class="area-fill-row {% if row.resources_ready %}is-complete{% endif %}" href="{% url 'resources:project' p.pk %}">
-        <span class="fill-state">{% if row.resources_ready %}✓{% else %}3{% endif %}</span>
-        <div><strong>Links e imágenes</strong><small>{% if row.resources_ready %}Links principales listos · {{ row.photo_count }} referencias{% else %}Pendiente · logo, paleta y fotos por servicio{% endif %}</small></div>
-        <b>{% if row.resources_ready %}Editar{% else %}Llenar{% endif %} →</b>
+      <a href="{% url 'handoff:summary' p.pk %}">
+        <b>Resumen</b>
+        <small>Ver todo el proyecto</small>
       </a>
     </div>
 
-    {% if row.palette %}<div class="swatches large">{% for c in row.palette.colors.all|slice:':5' %}<span style="background:{{ c.hex_code }}" title="{{ c.hex_code }}"></span>{% endfor %}</div>{% endif %}
+    <a class="design-resources-link-v13 {% if row.resources_ready %}is-ready{% endif %}" href="{% url 'resources:project' p.pk %}">
+      <span><b>Links e imágenes</b><small>{% if row.resources_ready %}Recursos principales listos · {{ row.photo_count }} referencias{% else %}Logo, paleta y fotos por servicio{% endif %}</small></span>
+      <strong>{% if row.resources_ready %}Editar{% else %}Completar{% endif %} →</strong>
+    </a>
 
-    <div class="area-card-actions">
-      <a class="btn btn-secondary btn-small" href="{% url 'handoff:summary' p.pk %}">Ver resumen completo</a>
+    {% if row.palette %}
+    <div class="swatches design-swatches-v13">{% for c in row.palette.colors.all|slice:':5' %}<span style="background:{{ c.hex_code }}" title="{{ c.hex_code }}"></span>{% endfor %}</div>
+    {% endif %}
+
+    <div class="project-footer">
+      <span>{% if row.last_log %}Última: {{ row.last_log.user.display_name|default:'Sistema' }}{% else %}Sin actividad registrada{% endif %}</span>
+      <span>{% if row.last_log %}{{ row.last_log.created_at|date:'d/m H:i' }}{% endif %}</span>
     </div>
-    <div class="project-footer"><span>{% if row.last_log %}Última modificación: {{ row.last_log.user.display_name|default:'Sistema' }}{% else %}Sin actividad registrada{% endif %}</span><span>{% if row.last_log %}{{ row.last_log.created_at|date:'d/m/Y H:i' }}{% endif %}</span></div>
   </article>
   {% endwith %}
-{% empty %}<div class="card empty">No hay proyectos pendientes o asignados a la Ficha de Diseño.</div>{% endfor %}
+{% empty %}
+  <div class="empty card">No hay proyectos asignados a Diseño.</div>
+{% endfor %}
 </div>
 {% endblock %}

@@ -1,40 +1,94 @@
 {% extends 'base.html' %}
-{% block page_heading %}Social Media · Diseño{% endblock %}
+{% block page_heading %}Tareas de Diseño{% endblock %}
 {% block content %}
-<div class="page-intro">
-  <div><span class="eyebrow">Diseño · Suscripciones</span><h2>Control Social Media</h2><p>El plan define posts/videos. La suscripción del cliente define proyecto, redes, renovación y próximo pago.</p></div>
-  <div class="actions"><a class="btn btn-secondary" href="{% url 'plans:list' %}">Planes de Diseño</a><a class="btn btn-secondary" href="{% url 'plans:create' %}?department=design">+ Crear plan</a><a class="btn btn-primary" href="{% url 'design:social_media_assign' %}">+ Configurar suscripción</a></div>
-</div>
+<style>
+.dt-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-bottom:18px}.dt-head h2{margin:4px 0}.dt-head p{margin:0;max-width:900px}
+.dt-kpis{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:11px;margin-bottom:15px}.dt-kpi{padding:15px}.dt-kpi span{display:block;font-size:11px;opacity:.68}.dt-kpi strong{display:block;font-size:25px;margin-top:4px}.dt-kpi small{display:block;margin-top:4px;opacity:.62}
+.dt-filter{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;margin-bottom:15px}.dt-filter input{flex:1;min-width:240px}.dt-filter input,.dt-filter select{min-height:42px}
+.dt-product{padding:0;overflow:hidden;margin-bottom:14px}.dt-product-head{display:grid;grid-template-columns:minmax(230px,1.4fr) minmax(210px,1fr) minmax(160px,.65fr) auto;gap:16px;align-items:center;padding:16px 18px;border-bottom:1px solid rgba(127,127,127,.12)}.dt-product-head h3{margin:2px 0 4px}.dt-product-head small{display:block;opacity:.66}.dt-progress strong{font-size:19px}.dt-bar{height:7px;border-radius:999px;background:rgba(127,127,127,.12);overflow:hidden;margin:6px 0}.dt-bar i{height:100%;display:block;border-radius:999px}.dt-bar.red i{background:#d94b4b}.dt-bar.yellow i{background:#d8a125}.dt-bar.green i{background:#2b9c66}
+.dt-task{padding:15px 18px;border-bottom:1px solid rgba(127,127,127,.1)}.dt-task:last-child{border-bottom:0}.dt-task-top{display:grid;grid-template-columns:minmax(250px,1.5fr) minmax(150px,.6fr) minmax(170px,.7fr) auto;gap:15px;align-items:center}.dt-task-title strong{display:block;font-size:15px}.dt-task-title small{display:block;margin-top:4px;opacity:.64;max-width:650px}.dt-state{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800;width:max-content}.dt-state.red{background:rgba(217,75,75,.12);color:#a53a3a}.dt-state.yellow{background:rgba(216,161,37,.14);color:#8d680c}.dt-state.green{background:rgba(43,156,102,.13);color:#21754e}.dt-alert{margin-top:11px;border:1px solid rgba(217,75,75,.2);background:rgba(217,75,75,.06);padding:11px 12px;border-radius:11px;font-size:12px}.dt-alert strong{display:block;margin-bottom:3px}
+.dt-cycles{margin-top:12px;border:1px solid rgba(127,127,127,.13);border-radius:12px;overflow:hidden}.dt-cycle{display:grid;grid-template-columns:minmax(170px,1fr) 130px 130px minmax(150px,.7fr);gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid rgba(127,127,127,.09)}.dt-cycle:last-child{border-bottom:0}.dt-cycle.current{background:rgba(39,104,232,.045)}.dt-cycle-label strong{display:block}.dt-cycle-label small{opacity:.62}.dt-check-form{display:inline}.dt-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(127,127,127,.18);background:transparent;border-radius:9px;padding:7px 9px;cursor:pointer;font-size:11px;font-weight:800}.dt-toggle.on{background:rgba(43,156,102,.12);border-color:rgba(43,156,102,.24)}.dt-empty{padding:18px;opacity:.68}
+@media(max-width:1050px){.dt-kpis{grid-template-columns:repeat(3,minmax(130px,1fr))}.dt-product-head,.dt-task-top{grid-template-columns:1fr 1fr}.dt-cycles{overflow:auto}.dt-cycle{min-width:720px}}@media(max-width:650px){.dt-kpis{grid-template-columns:repeat(2,minmax(120px,1fr))}.dt-product-head,.dt-task-top{grid-template-columns:1fr}}
+</style>
 
-<div class="stats-grid social-stats-v9">
-  <div class="stat-card"><span>Clientes activos</span><strong>{{ active_clients }}</strong><small>{{ social_plan_count }} planes disponibles</small></div>
-  <div class="stat-card"><span>Listos</span><strong>{{ ready_clients }}</strong><small>ciclo completado</small></div>
-  <div class="stat-card"><span>En cola</span><strong>{{ queue_clients }}</strong><small>pendientes / programados</small></div>
-  <div class="stat-card"><span>Renuevan pronto</span><strong>{{ due_soon }}</strong><small>0–2 días</small></div>
-  <div class="stat-card"><span>Vencidos</span><strong>{{ overdue }}</strong><small>requieren revisión</small></div>
-  <div class="stat-card"><span>Avance general</span><strong>{{ overall_progress }}%</strong><small>{{ completed_items }}/{{ total_items }} contenidos</small></div>
-</div>
-
-<div class="card">
-  <div class="card-head"><div><h3>Suscripciones activas</h3><p>Proyecto, plan, contenido, redes, estado, pago y renovación en una sola vista.</p></div></div>
-  <div class="table-wrap">
-    <table class="social-dashboard-table-v9">
-      <thead><tr><th>Cliente / proyecto</th><th>Plan</th><th>Contenido</th><th>Redes</th><th>Avance</th><th>Pago</th><th>Se renueva</th><th></th></tr></thead>
-      <tbody>
-      {% for row in rows %}
-        <tr>
-          <td><strong>{{ row.assignment.client.business_name }}</strong>{% if row.project %}<span class="table-sub">{{ row.project.project_code }} · {{ row.project.name }}</span>{% else %}<span class="table-sub warning-text">Sin proyecto vinculado</span>{% endif %}</td>
-          <td><strong>{{ row.assignment.plan.name }}</strong><span class="table-sub">{{ row.assignment.get_renewal_frequency_display }}</span></td>
-          <td><span class="content-mini">{{ row.assignment.plan.weekly_posts }} posts</span><span class="content-mini">{{ row.assignment.plan.weekly_videos }} videos</span></td>
-          <td><span class="table-sub networks-cell">{{ row.assignment.social_networks_label }}</span></td>
-          <td><div class="table-progress-cell"><b>{{ row.progress }}%</b><div class="progress slim"><i style="width:{{ row.progress }}%"></i></div><small>{{ row.done_count }}/{{ row.item_count }} · {{ row.status }}</small></div></td>
-          <td><span class="payment-badge payment-{{ row.assignment.payment_status }}">{{ row.assignment.get_payment_status_display }}</span><span class="table-sub">Pagado hasta {{ row.assignment.paid_until|date:'d/m/Y'|default:'—' }}</span></td>
-          <td><span class="renewal-badge {{ row.urgency.class }}"><b>{{ row.assignment.renewal_date|date:'d/m/Y'|default:'—' }}</b><small>{{ row.urgency.label }}</small></span></td>
-          <td class="row-actions"><a class="icon-action" title="Ver y actualizar" href="{% url 'design:social_media_detail' row.assignment.pk %}">👁</a><a class="icon-action" title="Editar suscripción" href="{% url 'design:social_media_assignment_edit' row.assignment.pk %}">✎</a></td>
-        </tr>
-      {% empty %}<tr><td colspan="8" class="empty">Todavía no hay suscripciones Social Media activas.</td></tr>{% endfor %}
-      </tbody>
-    </table>
+<div class="dt-head">
+  <div>
+    <span class="eyebrow">Diseño · operación automática por servicio</span>
+    <h2>Tareas de Diseño</h2>
+    <p>Los productos de Diseño contratados generan una actividad base automáticamente. Logo, asesoría, jackets y piezas únicas se completan una sola vez. Las publicaciones pueden renovarse por semana, quincena o mes y conservan historial de <strong>Creado</strong> y <strong>Publicado</strong>.</p>
   </div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'design:task_create' %}">+ Nueva actividad</a></div>
 </div>
+
+<div class="dt-kpis">
+  <div class="card dt-kpi"><span>Productos</span><strong>{{ product_count }}</strong><small>servicios de Diseño</small></div>
+  <div class="card dt-kpi"><span>Tareas</span><strong>{{ total_tasks }}</strong><small>actividades visibles</small></div>
+  <div class="card dt-kpi"><span>Completas</span><strong>{{ completed_tasks }}</strong><small>100% actual</small></div>
+  <div class="card dt-kpi"><span>Pendientes</span><strong>{{ pending_tasks }}</strong><small>requieren trabajo</small></div>
+  <div class="card dt-kpi"><span>Sin configurar</span><strong>{{ configuration_pending }}</strong><small>renovación pendiente</small></div>
+  <div class="card dt-kpi"><span>Avance</span><strong>{{ overall_progress }}%</strong><small>{% if overdue_tasks %}{{ overdue_tasks }} vencida(s){% else %}estado actual{% endif %}</small></div>
+</div>
+
+<form method="get" class="card dt-filter">
+  <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar cliente, proyecto, producto o tarea…">
+  <select name="status">
+    <option value="all" {% if selected_status == 'all' %}selected{% endif %}>Todas</option>
+    <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Pendientes</option>
+    <option value="done" {% if selected_status == 'done' %}selected{% endif %}>Completas</option>
+    <option value="configuration" {% if selected_status == 'configuration' %}selected{% endif %}>Falta configurar</option>
+    <option value="created" {% if selected_status == 'created' %}selected{% endif %}>Contenido creado</option>
+    <option value="published" {% if selected_status == 'published' %}selected{% endif %}>Contenido publicado</option>
+    <option value="overdue" {% if selected_status == 'overdue' %}selected{% endif %}>Vencidas</option>
+  </select>
+  <button class="btn btn-secondary" type="submit">Filtrar</button>
+  {% if search_query or selected_status != 'all' %}<a class="btn btn-ghost" href="{% url 'design:tasks' %}">Limpiar</a>{% endif %}
+</form>
+
+{% for row in rows %}
+<div class="card dt-product">
+  <div class="dt-product-head">
+    <div><span class="project-code">{{ row.project.project_code }}</span><h3>{{ row.project.client.business_name }}</h3><small>{{ row.project.name }}</small></div>
+    <div><span class="eyebrow">Producto de Diseño</span><strong>{{ row.plan.name }}</strong><small>{{ row.plan.get_service_type_display }} · {{ row.plan.get_billing_cycle_display }}</small></div>
+    <div class="dt-progress"><strong>{{ row.progress }}%</strong><div class="dt-bar {{ row.progress_state }}"><i style="width:{{ row.progress }}%"></i></div><small>{{ row.done }}/{{ row.total }} al 100%</small></div>
+    <div class="actions"><a class="btn btn-secondary btn-sm" href="{% url 'design:task_create' %}?project_plan={{ row.assignment.pk }}">+ Actividad</a></div>
+  </div>
+
+  {% for item in row.tasks %}
+  <div class="dt-task">
+    <div class="dt-task-top">
+      <div class="dt-task-title"><strong>{{ item.task.title }}</strong>{% if item.task.description %}<small>{{ item.task.description }}</small>{% endif %}</div>
+      <div><span class="dt-state {{ item.state }}">{% if item.state == 'green' %}✓{% elif item.state == 'yellow' %}◐{% else %}○{% endif %} {{ item.state_label }}</span></div>
+      <div><small style="opacity:.62;display:block">Responsable</small><strong>{{ item.task.assigned_to.display_name|default:'Sin asignar' }}</strong>{% if item.task.due_date %}<small style="display:block;margin-top:3px">Límite {{ item.task.due_date|date:'d/m/Y' }}{% if item.overdue %} · Vencida{% endif %}</small>{% endif %}</div>
+      <div class="actions">
+        {% if item.task.task_type == 'standard' %}
+        <form method="post" action="{% url 'design:task_toggle' item.task.pk %}" style="display:inline">{% csrf_token %}<button class="btn btn-ghost btn-sm" type="submit">{% if item.progress == 100 %}↺ Reabrir{% else %}✓ Completar{% endif %}</button></form>
+        {% endif %}
+        <a class="btn btn-secondary btn-sm" href="{% url 'design:task_edit' item.task.pk %}">Editar</a>
+      </div>
+    </div>
+
+    {% if item.needs_configuration %}
+      <div class="dt-alert"><strong>⚠ Falta configurar la renovación</strong>Define si esta publicación se controla semanal, quincenal o mensualmente y desde qué fecha. Hasta configurarla se mostrará en rojo en Auditoría General. <a href="{% url 'design:task_edit' item.task.pk %}">Configurar ahora →</a></div>
+    {% elif item.task.task_type == 'content' %}
+      <div class="dt-cycles">
+        {% for cycle in item.cycles %}
+        <div class="dt-cycle {% if cycle.is_current_period %}current{% endif %}">
+          <div class="dt-cycle-label"><strong>{{ cycle.label }}{% if cycle.is_current_period %} · Actual{% endif %}</strong><small>{{ cycle.period_start|date:'d/m/Y' }} — {{ cycle.period_end|date:'d/m/Y' }}</small></div>
+          <form class="dt-check-form" method="post" action="{% url 'design:task_cycle_update' cycle.pk %}">{% csrf_token %}<input type="hidden" name="action" value="toggle_created"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="dt-toggle {% if cycle.content_created %}on{% endif %}" type="submit">{% if cycle.content_created %}✓{% else %}○{% endif %} Creado</button></form>
+          <form class="dt-check-form" method="post" action="{% url 'design:task_cycle_update' cycle.pk %}">{% csrf_token %}<input type="hidden" name="action" value="toggle_published"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="dt-toggle {% if cycle.content_published %}on{% endif %}" type="submit">{% if cycle.content_published %}✓{% else %}○{% endif %} Publicado</button></form>
+          <span class="dt-state {{ cycle.state_code }}">{{ cycle.progress_percent }}% · {{ cycle.state_label }}</span>
+        </div>
+        {% empty %}
+        <div class="dt-empty">El primer periodo se generará automáticamente al guardar la configuración.</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  {% empty %}
+  <div class="dt-empty">No hay actividades para este producto.</div>
+  {% endfor %}
+</div>
+{% empty %}
+<div class="card dt-empty">No hay productos de Diseño que coincidan con el filtro.</div>
+{% endfor %}
 {% endblock %}

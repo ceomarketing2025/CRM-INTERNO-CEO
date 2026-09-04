@@ -8,6 +8,7 @@ from .entities import (
     MarketingDocument,
     MarketingTask,
     MarketingWorkspace,
+    SocialMediaAudit,
     SocialMediaDailyLog,
     SocialMediaPlan,
     SocialMediaTracking,

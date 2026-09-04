@@ -13,9 +13,13 @@ from apps.plans.forms import SOCIAL_NETWORK_CHOICES, SocialMediaAssignmentForm
 from apps.plans.models import ClientPlan, ServicePlan
 from apps.plans.models.choices import PlanDepartment, ServiceType
 from apps.plans.services import renewal_urgency
-from .forms import DesignBriefForm, PaletteForm, PaletteQuickForm
-from .models import ColorPalette, DesignBrief, PaletteColor, SocialMediaContentItem, SocialMediaCycle
-from .services import build_palette_pdf, complete_design_brief, ensure_current_social_media_cycle
+from .forms import DesignBriefForm, PaletteForm, PaletteQuickForm, DesignTaskForm
+from .models import ColorPalette, DesignBrief, DesignTask, DesignTaskCycle, PaletteColor, SocialMediaContentItem, SocialMediaCycle
+from .services import (
+    build_palette_pdf, complete_design_brief, design_task_progress,
+    ensure_current_design_task_cycle, ensure_current_social_media_cycle,
+    ensure_default_design_tasks_for_project,
+)
 
 
 PALETTE_DEFAULTS = {
@@ -217,85 +221,222 @@ def palette_pdf(request, pk):
 
 @role_required("design")
 def social_media_dashboard(request):
+    """Tareas de Diseño con control simple y ciclos de publicación."""
+    from django.db.models import Q
     from django.utils import timezone
+    from apps.plans.models.choices import PlanDepartment
 
     today = timezone.localdate()
-    assignments = ClientPlan.objects.select_related("client", "plan", "created_by").filter(
-        plan__service_type=ServiceType.SOCIAL_MEDIA,
-        plan__department=PlanDepartment.DESIGN,
-        is_active=True,
-    ).order_by("client__business_name")
+    plan_assignments = (
+        ProjectPlanAssignment.objects
+        .select_related("project__client", "plan")
+        .prefetch_related("design_tasks__assigned_to", "design_tasks__cycles")
+        .filter(is_active=True, plan__department=PlanDepartment.DESIGN)
+        .order_by("project__client__business_name", "plan__name")
+    )
+
+    q = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "all").strip()
+    if q:
+        plan_assignments = plan_assignments.filter(
+            Q(project__client__business_name__icontains=q)
+            | Q(project__name__icontains=q)
+            | Q(project__project_code__icontains=q)
+            | Q(plan__name__icontains=q)
+            | Q(design_tasks__title__icontains=q)
+        ).distinct()
+
+    # Repara automáticamente proyectos antiguos que ya tenían productos de Diseño
+    # pero fueron creados antes de existir las tareas automáticas.
+    seen_projects = set()
+    for assignment in list(plan_assignments):
+        if assignment.project_id not in seen_projects:
+            ensure_default_design_tasks_for_project(assignment.project, user=request.user)
+            seen_projects.add(assignment.project_id)
+
+    # Recargamos para incluir las tareas recién creadas.
+    plan_assignments = plan_assignments.prefetch_related("design_tasks__assigned_to", "design_tasks__cycles")
 
     rows = []
-    total_items = 0
-    completed_items = 0
-    ready_clients = 0
-    queue_clients = 0
-    due_soon = 0
-    overdue = 0
+    task_states_all = []
+    overdue_tasks = 0
+    configuration_pending = 0
+    for assignment in plan_assignments:
+        task_rows = []
+        for task in assignment.design_tasks.all().order_by("order", "id"):
+            state = design_task_progress(task, today=today)
+            if state["needs_configuration"]:
+                configuration_pending += 1
+            overdue = bool(
+                task.task_type == DesignTask.TaskType.STANDARD
+                and state["progress"] < 100
+                and task.due_date
+                and task.due_date < today
+            )
+            if overdue:
+                overdue_tasks += 1
 
-    for assignment in assignments:
-        cycle = ensure_current_social_media_cycle(assignment, today=today)
-        urgency = renewal_urgency(assignment.renewal_date, today=today)
-        progress = cycle.progress_percent if cycle else 0
-        item_count = cycle.items.count() if cycle else 0
-        done_count = sum(1 for item in cycle.items.all() if item.is_complete) if cycle else 0
-        project_link = assignment.project_links.select_related("project").first()
-        total_items += item_count
-        completed_items += done_count
+            recent_cycles = []
+            if task.task_type == DesignTask.TaskType.CONTENT and not state["needs_configuration"]:
+                current_cycle = state.get("cycle")
+                recent_cycles = list(task.cycles.all().order_by("-period_start")[:6])
+                for cycle in recent_cycles:
+                    cycle.is_current_period = bool(current_cycle and cycle.pk == current_cycle.pk)
 
-        if cycle and cycle.completed:
-            status = "Listo"
-            status_class = "done"
-            ready_clients += 1
-        elif assignment.start_date and assignment.start_date > today:
-            status = "Programado"
-            status_class = "scheduled"
-            queue_clients += 1
-        elif urgency["class"] == "overdue":
-            status = "Vencido"
-            status_class = "overdue"
-            overdue += 1
-        else:
-            status = "En cola"
-            status_class = "queued"
-            queue_clients += 1
+            include = True
+            if status == "pending":
+                include = state["progress"] < 100
+            elif status == "done":
+                include = state["progress"] == 100
+            elif status == "overdue":
+                include = overdue
+            elif status == "configuration":
+                include = state["needs_configuration"]
+            elif status == "created":
+                include = bool(state.get("cycle") and state["cycle"].content_created)
+            elif status == "published":
+                include = bool(state.get("cycle") and state["cycle"].content_published)
+            if not include:
+                continue
 
-        if urgency["days"] is not None and 0 <= urgency["days"] <= 2:
-            due_soon += 1
+            task_rows.append({
+                "task": task,
+                "progress": state["progress"],
+                "state": state["state"],
+                "state_label": state["label"],
+                "needs_configuration": state["needs_configuration"],
+                "current_cycle": state.get("cycle"),
+                "cycles": recent_cycles,
+                "overdue": overdue,
+            })
+            task_states_all.append(state)
 
+        if status != "all" and not task_rows:
+            continue
+
+        total = len(task_rows)
+        progress = round(sum(item["progress"] for item in task_rows) / total) if total else 0
         rows.append({
             "assignment": assignment,
-            "project": project_link.project if project_link else None,
-            "cycle": cycle,
-            "urgency": urgency,
+            "project": assignment.project,
+            "plan": assignment.plan,
+            "tasks": task_rows,
+            "total": total,
+            "done": sum(1 for item in task_rows if item["progress"] == 100),
             "progress": progress,
-            "item_count": item_count,
-            "done_count": done_count,
-            "status": status,
-            "status_class": status_class,
+            "progress_state": "green" if progress == 100 else ("yellow" if progress > 50 else "red"),
         })
 
-    overall_progress = round(completed_items * 100 / total_items) if total_items else 0
-    social_plan_count = ServicePlan.objects.filter(
-        department=PlanDepartment.DESIGN,
-        service_type=ServiceType.SOCIAL_MEDIA,
-        is_active=True,
-    ).count()
-
+    total_tasks = len(task_states_all)
+    completed_tasks = sum(1 for item in task_states_all if item["progress"] == 100)
+    overall_progress = round(sum(item["progress"] for item in task_states_all) / total_tasks) if total_tasks else 0
     return render(request, "design/social_media.html", {
         "rows": rows,
-        "active_clients": len(rows),
-        "ready_clients": ready_clients,
-        "queue_clients": queue_clients,
-        "due_soon": due_soon,
-        "overdue": overdue,
-        "overall_progress": overall_progress,
-        "completed_items": completed_items,
-        "total_items": total_items,
-        "social_plan_count": social_plan_count,
         "today": today,
+        "product_count": len(rows),
+        "total_tasks": total_tasks,
+        "completed_tasks": completed_tasks,
+        "pending_tasks": max(total_tasks - completed_tasks, 0),
+        "overdue_tasks": overdue_tasks,
+        "configuration_pending": configuration_pending,
+        "overall_progress": overall_progress,
+        "search_query": q,
+        "selected_status": status,
     })
+
+
+@role_required("design")
+def design_task_create(request):
+    initial = {}
+    if request.GET.get("project_plan"):
+        initial["project_plan"] = request.GET.get("project_plan")
+    form = DesignTaskForm(request.POST or None, user=request.user, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        task = form.save(commit=False)
+        task.created_by = request.user
+        task.updated_by = request.user
+        task.save()
+        ensure_current_design_task_cycle(task)
+        log_activity(request.user, "design", "design_task_create", task, task.title)
+        messages.success(request, "Actividad de Diseño creada.")
+        return redirect("design:tasks")
+    return render(request, "shared/form.html", {
+        "form": form,
+        "title": "Nueva tarea de Diseño",
+        "subtitle": "Las tareas únicas se completan una vez. Para posts/contenido usa una frecuencia semanal, quincenal o mensual.",
+    })
+
+
+@role_required("design")
+def design_task_edit(request, pk):
+    task = get_object_or_404(DesignTask.objects.select_related("project_plan__project", "project_plan__plan"), pk=pk)
+    if not can_access_project(request.user, task.project_plan.project):
+        raise PermissionDenied("Esta tarea no pertenece a un proyecto asignado a Diseño.")
+    form = DesignTaskForm(request.POST or None, instance=task, user=request.user)
+    if request.method == "POST" and form.is_valid():
+        task = form.save(commit=False)
+        task.updated_by = request.user
+        task.save()
+        ensure_current_design_task_cycle(task)
+        log_activity(request.user, "design", "design_task_update", task, task.title)
+        messages.success(request, "Actividad actualizada.")
+        return redirect("design:tasks")
+    return render(request, "shared/form.html", {
+        "form": form,
+        "title": "Editar tarea de Diseño",
+        "subtitle": f"{task.project_plan.project.client.business_name} · {task.project_plan.plan.name}",
+    })
+
+
+@role_required("design")
+def design_task_toggle(request, pk):
+    if request.method != "POST":
+        return redirect("design:tasks")
+    task = get_object_or_404(DesignTask.objects.select_related("project_plan__project"), pk=pk)
+    if not can_access_project(request.user, task.project_plan.project):
+        raise PermissionDenied("Esta tarea no pertenece a un proyecto asignado a Diseño.")
+    if task.task_type == DesignTask.TaskType.CONTENT:
+        messages.warning(request, "Las tareas de contenido se controlan con los checks Creado y Publicado del periodo actual.")
+        return redirect("design:tasks")
+    task.status = DesignTask.Status.TODO if task.status == DesignTask.Status.DONE else DesignTask.Status.DONE
+    task.updated_by = request.user
+    task.save(update_fields=["status", "updated_by", "updated_at"])
+    log_activity(request.user, "design", "design_task_toggle", task, task.get_status_display())
+    return redirect("design:tasks")
+
+
+@role_required("design")
+def design_task_cycle_update(request, pk):
+    if request.method != "POST":
+        return redirect("design:tasks")
+    cycle = get_object_or_404(
+        DesignTaskCycle.objects.select_related("task__project_plan__project"),
+        pk=pk,
+    )
+    if not can_access_project(request.user, cycle.task.project_plan.project):
+        raise PermissionDenied("Este periodo no pertenece a un proyecto asignado a Diseño.")
+
+    action = request.POST.get("action")
+    if action == "toggle_created":
+        cycle.content_created = not cycle.content_created
+        if not cycle.content_created:
+            cycle.content_published = False
+    elif action == "toggle_published":
+        cycle.content_published = not cycle.content_published
+        if cycle.content_published:
+            cycle.content_created = True
+    cycle.updated_by = request.user
+    cycle.save()
+    log_activity(
+        request.user,
+        "design",
+        "design_task_cycle_update",
+        cycle.task,
+        description=f"{cycle.label} · {cycle.state_label}",
+        metadata={"cycle_id": cycle.pk},
+    )
+    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER")
+    return redirect(next_url or "design:tasks")
 
 
 @role_required("design")

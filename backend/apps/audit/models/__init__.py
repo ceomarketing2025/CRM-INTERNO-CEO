@@ -1,1 +1,1 @@
-from .entities import ActivityLog
+from .entities import ActivityLog, GeneralAuditCheck

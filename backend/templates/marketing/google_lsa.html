@@ -80,6 +80,13 @@
           {{ form.leads_last_7_days.errors }}
         </div>
 
+        <div class="field">
+          <label>{{ form.last_lead_date.label }}</label>
+          {{ form.last_lead_date }}
+          <small>Se muestra automáticamente en el dashboard de Seguimiento Social Media.</small>
+          {{ form.last_lead_date.errors }}
+        </div>
+
         <div class="field form-wide">
           <label>{{ form.notes.label }}</label>
           {{ form.notes }}

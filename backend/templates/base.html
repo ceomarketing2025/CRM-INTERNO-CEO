@@ -31,7 +31,7 @@
       {% if current_role == 'design' or current_role == 'manager' or request.user.is_superuser %}
       <div class="nav-label">Ficha de Diseño</div>
       <a href="{% url 'design:list' %}" class="nav-link"><span>✦</span><b>Ficha de Diseño</b></a>
-      <a href="{% url 'design:social_media' %}" class="nav-link"><span>◌</span><b>Social Media</b></a>
+      <a href="{% url 'design:tasks' %}" class="nav-link"><span>✓</span><b>Tareas de Diseño</b></a>
       {% endif %}
 
       {% if current_role == 'marketing' or current_role == 'manager' or request.user.is_superuser %}
@@ -41,9 +41,9 @@
       <a href="{% url 'marketing:social_plans' %}" class="nav-link"><span>◌</span><b>Planes Social</b></a>
       {% endif %}
 
-      {% if current_role == 'marketing' or current_role == 'administration' or current_role == 'manager' or request.user.is_superuser %}
-      <div class="nav-label">Seguimiento</div>
-      <a href="{% url 'marketing:social_tracking' %}" class="nav-link"><span>✓</span><b>Social Media / Google</b></a>
+      {% if current_role == 'administration' or current_role == 'manager' or request.user.is_superuser %}
+      <div class="nav-label">Gerencia / Control</div>
+      <a href="{% url 'marketing:general_audit' %}" class="nav-link"><span>✓</span><b>Auditoría General</b></a>
       {% endif %}
 
       {% if current_role == 'developer' or current_role == 'manager' or request.user.is_superuser %}

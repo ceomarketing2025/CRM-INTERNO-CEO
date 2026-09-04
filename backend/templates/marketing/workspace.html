@@ -24,6 +24,15 @@
 <div class="two-col wide-left marketing-layout">
   <form class="card form-card marketing-section-card" method="post" id="marketing-intake-form">
     {% csrf_token %}
+
+    {% if form.errors %}
+    <div class="semantic-banner is-danger" style="margin-bottom:16px;">
+      <strong>No se pudo guardar como Completo.</strong>
+      <span>Corrige los campos marcados abajo. El CRM no habilitará Google Business hasta que esta información se guarde correctamente.</span>
+    </div>
+    {{ form.non_field_errors }}
+    {% endif %}
+
     <div class="card-head"><div><h3>Datos de reunión</h3><p>Campos operativos para que Marketing pueda continuar con los tres frentes.</p></div><span class="semantic-pill {% if workspace.intake_ready %}is-success{% else %}is-danger{% endif %}">{{ workspace.get_intake_status_display }}</span></div>
 
     <div class="marketing-form-section">
@@ -51,7 +60,7 @@
       <div class="form-grid">
         <div class="field"><label>{{ form.contact_email.label }}</label>{{ form.contact_email }}{{ form.contact_email.errors }}</div>
         <div class="field"><label>{{ form.email_account_mode.label }}</label>{{ form.email_account_mode }}<small>{{ form.email_account_mode.help_text }}</small>{{ form.email_account_mode.errors }}</div>
-        <div class="field form-wide conditional-panel" data-show-when="id_email_account_mode" data-value="existing,create"><label>{{ form.gmail_email.label }}</label>{{ form.gmail_email }}<small>Correo que ya existe o que Marketing creó. No guardes contraseñas.</small>{{ form.gmail_email.errors }}</div>
+        <div class="field form-wide conditional-panel" data-show-when="id_email_account_mode" data-value="existing,create"><label>{{ form.gmail_email.label }}</label>{{ form.gmail_email }}<small>Si es el mismo del campo “Correo electrónico”, puedes dejarlo vacío y el CRM lo reutilizará automáticamente. No guardes contraseñas.</small>{{ form.gmail_email.errors }}</div>
         <div class="field"><label>{{ form.business_profile_mode.label }}</label>{{ form.business_profile_mode }}{{ form.business_profile_mode.errors }}</div>
         <div class="field"><label>{{ form.lsa_documents_available.label }}</label>{{ form.lsa_documents_available }}<small>{{ form.lsa_documents_available.help_text }}</small>{{ form.lsa_documents_available.errors }}</div>
         <div class="field form-wide"><label>{{ form.notes.label }}</label>{{ form.notes }}{{ form.notes.errors }}</div>
@@ -87,16 +96,76 @@
 
 <script>
 (function(){
+  var form = document.getElementById('marketing-intake-form');
+  var intakeStatus = document.getElementById('id_intake_status');
+  var emailMode = document.getElementById('id_email_account_mode');
+  var contactEmail = document.getElementById('id_contact_email');
+  var gmailEmail = document.getElementById('id_gmail_email');
+  var meetingSummary = document.getElementById('id_meeting_summary');
+  var businessMode = document.getElementById('id_business_profile_mode');
+  var lsaDocs = document.getElementById('id_lsa_documents_available');
+
   function refreshConditional(){
     document.querySelectorAll('[data-show-when]').forEach(function(panel){
       var source=document.getElementById(panel.dataset.showWhen);
       if(!source) return;
       var allowed=(panel.dataset.value||'').split(',');
-      panel.hidden=!allowed.includes(source.value);
+      var visible=allowed.includes(source.value);
+      panel.hidden=!visible;
+      panel.querySelectorAll('input,select,textarea').forEach(function(field){
+        field.disabled=!visible;
+      });
     });
   }
-  document.addEventListener('change', refreshConditional);
+
+  function setRequired(field, required){
+    if(!field) return;
+    if(required) field.setAttribute('aria-required','true');
+    else field.removeAttribute('aria-required');
+  }
+
+  function refreshRequirements(){
+    var completing = intakeStatus && intakeStatus.value === 'complete';
+    setRequired(meetingSummary, completing);
+    setRequired(businessMode, completing);
+    setRequired(lsaDocs, completing);
+    setRequired(emailMode, completing);
+
+    var needsEmail = completing && emailMode && ['existing','create'].includes(emailMode.value);
+    setRequired(contactEmail, needsEmail && !(gmailEmail && gmailEmail.value.trim()));
+    setRequired(gmailEmail, needsEmail && !(contactEmail && contactEmail.value.trim()));
+  }
+
+  document.addEventListener('change', function(){
+    refreshConditional();
+    refreshRequirements();
+  });
+  document.addEventListener('input', refreshRequirements);
+
+  if(form){
+    form.addEventListener('submit', function(event){
+      if(!intakeStatus || intakeStatus.value !== 'complete') return;
+
+      var missing = [];
+      if(!meetingSummary || !meetingSummary.value.trim()) missing.push('Datos recolectados de la reunión');
+      if(!emailMode || !['existing','create'].includes(emailMode.value)) missing.push('Estado del correo');
+      if(emailMode && ['existing','create'].includes(emailMode.value) &&
+         !(contactEmail && contactEmail.value.trim()) && !(gmailEmail && gmailEmail.value.trim())) {
+        missing.push('Correo electrónico');
+      }
+      if(!businessMode || !['existing','create','no'].includes(businessMode.value)) missing.push('Situación de Google Business');
+      if(!lsaDocs || !['yes','no'].includes(lsaDocs.value)) missing.push('Documentos para LSA');
+
+      if(missing.length){
+        event.preventDefault();
+        alert('Para marcar Información inicial como Completo falta:\n\n• ' + missing.join('\n• '));
+      }
+    });
+  }
+
   refreshConditional();
+  refreshRequirements();
 })();
 </script>
+{% include 'marketing/_custom_dropdowns.html' %}
 {% endblock %}

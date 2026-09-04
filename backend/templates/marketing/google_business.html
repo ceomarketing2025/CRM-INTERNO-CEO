@@ -89,9 +89,13 @@
           <p>Escanear este QR abre exactamente:</p>
           <p><a class="text-link" href="{{ workspace.review_link }}" target="_blank" rel="noopener">{{ workspace.review_link }}</a></p>
           <div class="actions">
+            <button type="button" class="btn btn-primary" id="copy-review-card" data-url="{% url 'marketing:review_qr' project.pk %}">Copiar QR + mensaje</button>
             <button type="button" class="btn btn-secondary" id="copy-review-qr" data-url="{% url 'marketing:review_qr' project.pk %}">Copiar QR</button>
-            <a class="btn btn-primary" href="{% url 'marketing:review_qr' project.pk %}?download=1">Descargar QR</a>
+            <a class="btn btn-secondary" href="{% url 'marketing:review_qr' project.pk %}?download=1">Descargar QR</a>
+            <button type="button" class="btn btn-secondary" id="download-review-card" data-url="{% url 'marketing:review_qr' project.pk %}">Descargar QR + mensaje</button>
           </div>
+          <small id="copy-review-help">“Copiar QR + mensaje” genera una sola imagen lista para pegar en WhatsApp. Si el navegador bloquea el portapapeles de imágenes, se abrirá una vista manual para copiar.</small>
+          <div id="copy-review-status" class="semantic-banner compact" style="display:none; margin-top:10px;"></div>
         </div>
       </div>
       {% else %}
@@ -113,6 +117,32 @@
       {% if workspace.review_link %}
       <div class="actions">
         <button type="button" class="btn btn-secondary" id="copy-review-message">Copiar mensaje</button>
+        <button type="button" class="btn btn-secondary" id="open-review-whatsapp">Abrir WhatsApp con mensaje</button>
+      </div>
+      {% endif %}
+
+      {% if workspace.review_link %}
+      <div id="qr-copy-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,.65); padding:24px; align-items:center; justify-content:center;">
+        <div style="width:min(560px,100%); max-height:90vh; overflow:auto; background:#fff; border-radius:18px; padding:22px; box-shadow:0 24px 70px rgba(15,23,42,.28);">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px;">
+            <div>
+              <h3 style="margin:0 0 6px;">Copiar para WhatsApp</h3>
+              <p style="margin:0; color:#64748b;">Si tu navegador bloquea el portapapeles de imágenes, usa esta vista para copiar manualmente.</p>
+            </div>
+            <button type="button" id="close-qr-copy-modal" class="btn btn-secondary">Cerrar</button>
+          </div>
+          <div style="display:flex; justify-content:center; padding:22px 0 14px;">
+            <img id="qr-copy-modal-image" src="" alt="Tarjeta QR + mensaje" style="width:min(420px,100%); height:auto; background:#fff; border:1px solid #e2e8f0; border-radius:18px;">
+          </div>
+          <div class="semantic-banner is-wait compact" style="margin-bottom:14px;">
+            <strong>Usa clic derecho sobre la imagen → Copiar imagen.</strong>
+            <span>En <b>http://localhost:8000</b> normalmente podrás copiarla directamente con el botón.</span>
+          </div>
+          <div class="actions">
+            <a class="btn btn-secondary" id="open-card-image" href="#" target="_blank" rel="noopener">Abrir imagen sola</a>
+            <button type="button" class="btn btn-primary" id="modal-copy-message">Copiar mensaje</button>
+          </div>
+        </div>
       </div>
       {% endif %}
     </div>
@@ -137,14 +167,16 @@
 (function () {
   var reviewLink = document.getElementById('id_review_link');
   var reviewMessage = document.getElementById('id_review_message');
+  var companyName = '{{ project.client.business_name|escapejs }}';
+  var qrEndpoint = '{% url 'marketing:review_qr' project.pk %}';
 
   function buildMessage(link) {
     return [
-      'Hi!',
+      'Hi there! 👋',
       '',
-      'Thank you for choosing Kristian Tree Service. We truly appreciate the opportunity to work with you.',
+      'Thank you for choosing ' + companyName + '. We truly appreciate the opportunity to work with you.',
       '',
-      'If you were happy with our service, would you mind taking a minute to leave us a 5-star Google review? ⭐ Your feedback helps our small business grow and helps other homeowners find a trusted tree service.',
+      'If you were happy with our service, would you mind taking a minute to leave us a 5-star Google review? ⭐ Your feedback helps our business grow and helps other customers feel confident choosing our services.',
       '',
       'You can leave your review by clicking the link below or simply scanning the QR code attached.',
       '',
@@ -152,9 +184,9 @@
       '',
       link || '',
       '',
-      'Thank you again for your support! We look forward to helping you with any future tree service needs. 🌳',
+      'Thank you so much for your support! 🙌',
       '',
-      'Kristian Tree Service'
+      companyName
     ].join('\n');
   }
 
@@ -173,32 +205,280 @@
     copyMessage.addEventListener('click', async function () {
       try {
         await navigator.clipboard.writeText(reviewMessage.value);
-        copyMessage.textContent = 'Mensaje copiado ✓';
       } catch (error) {
         reviewMessage.removeAttribute('readonly');
         reviewMessage.select();
         document.execCommand('copy');
         reviewMessage.setAttribute('readonly', 'readonly');
-        copyMessage.textContent = 'Mensaje copiado ✓';
+      }
+      copyMessage.textContent = 'Mensaje copiado ✓';
+      window.setTimeout(function () { copyMessage.textContent = 'Copiar mensaje'; }, 1800);
+    });
+  }
+
+  function setCopyStatus(message, kind) {
+    var status = document.getElementById('copy-review-status');
+    if (!status) return;
+    status.style.display = 'block';
+    status.classList.remove('is-danger', 'is-wait', 'is-success');
+    status.classList.add(kind === 'success' ? 'is-success' : (kind === 'danger' ? 'is-danger' : 'is-wait'));
+    status.innerHTML = message;
+  }
+
+  function openQrCopyModal(dataUrl) {
+    var modal = document.getElementById('qr-copy-modal');
+    var image = document.getElementById('qr-copy-modal-image');
+    var openCard = document.getElementById('open-card-image');
+    if (image && dataUrl) image.src = dataUrl;
+    if (openCard && dataUrl) openCard.href = dataUrl;
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function closeQrCopyModal() {
+    var modal = document.getElementById('qr-copy-modal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  async function fetchQrImage() {
+    var response = await fetch(qrEndpoint + '?v=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' });
+    if (!response.ok) throw new Error('QR_NOT_AVAILABLE');
+    var blob = await response.blob();
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      var objectUrl = URL.createObjectURL(blob);
+      img.onload = function () {
+        URL.revokeObjectURL(objectUrl);
+        resolve(img);
+      };
+      img.onerror = function (err) {
+        URL.revokeObjectURL(objectUrl);
+        reject(err);
+      };
+      img.src = objectUrl;
+    });
+  }
+
+  function wrapText(ctx, text, maxWidth) {
+    var paragraphs = (text || '').split(/\n/);
+    var lines = [];
+    paragraphs.forEach(function (paragraph, pIndex) {
+      if (!paragraph.trim()) {
+        lines.push('');
+        return;
+      }
+      var words = paragraph.split(/\s+/);
+      var current = '';
+      words.forEach(function (word) {
+        var test = current ? current + ' ' + word : word;
+        if (ctx.measureText(test).width <= maxWidth) {
+          current = test;
+        } else {
+          if (current) lines.push(current);
+          current = word;
+        }
+      });
+      if (current) lines.push(current);
+      if (pIndex !== paragraphs.length - 1) lines.push('');
+    });
+    while (lines.length && lines[lines.length - 1] === '') lines.pop();
+    return lines;
+  }
+
+  async function buildReviewCardBlob() {
+    var qrImage = await fetchQrImage();
+    var message = reviewMessage ? reviewMessage.value.trim() : '';
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    var width = 1080;
+    var padding = 56;
+    var qrSize = 360;
+    var innerWidth = width - padding * 2;
+
+    ctx.font = '32px Arial, sans-serif';
+    var lines = wrapText(ctx, message, innerWidth);
+    var lineHeight = 44;
+    var titleBlockHeight = 64;
+    var qrBlockTop = padding + titleBlockHeight;
+    var textStartY = qrBlockTop + qrSize + 48;
+    var textHeight = lines.reduce(function (acc, line) {
+      return acc + (line ? lineHeight : Math.round(lineHeight * 0.6));
+    }, 0);
+    var height = textStartY + textHeight + padding;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = '#111827';
+    ctx.font = 'bold 34px Arial, sans-serif';
+    ctx.fillText(companyName + ' · Google Review', padding, padding);
+
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 2;
+    var cardX = (width - qrSize - 40) / 2;
+    var cardY = qrBlockTop - 20;
+    var cardW = qrSize + 40;
+    var cardH = qrSize + 40;
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(cardX, cardY, cardW, cardH, 24);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cardX, cardY, cardW, cardH);
+      ctx.strokeRect(cardX, cardY, cardW, cardH);
+    }
+
+    var qrX = (width - qrSize) / 2;
+    ctx.drawImage(qrImage, qrX, qrBlockTop, qrSize, qrSize);
+
+    ctx.fillStyle = '#111827';
+    ctx.font = '32px Arial, sans-serif';
+    var y = textStartY;
+    lines.forEach(function (line) {
+      if (!line) {
+        y += Math.round(lineHeight * 0.6);
+      } else {
+        ctx.fillText(line, padding, y);
+        y += lineHeight;
       }
     });
+
+    return new Promise(function (resolve) {
+      canvas.toBlob(function (blob) { resolve(blob); }, 'image/png');
+    });
+  }
+
+  async function writeBlobToClipboard(blob) {
+    if (!window.isSecureContext || !window.ClipboardItem || !navigator.clipboard || !navigator.clipboard.write) {
+      throw new Error('IMAGE_CLIPBOARD_BLOCKED');
+    }
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise(function (resolve) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function triggerDownload(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  var copyCard = document.getElementById('copy-review-card');
+  if (copyCard) {
+    copyCard.addEventListener('click', async function () {
+      var originalText = copyCard.textContent;
+      copyCard.disabled = true;
+      copyCard.textContent = 'Copiando…';
+      try {
+        var blob = await buildReviewCardBlob();
+        await writeBlobToClipboard(blob);
+        copyCard.textContent = 'QR + mensaje copiados ✓';
+        setCopyStatus('Imagen completa copiada. Abre WhatsApp y pega con <b>Ctrl + V</b>.', 'success');
+      } catch (error) {
+        try {
+          var fallbackBlob = await buildReviewCardBlob();
+          var dataUrl = await blobToDataUrl(fallbackBlob);
+          setCopyStatus('Tu navegador bloqueó la copia automática de imágenes. Se abrió una vista manual para copiar la tarjeta completa.', 'wait');
+          openQrCopyModal(dataUrl);
+        } catch (fallbackError) {
+          setCopyStatus('No se pudo preparar la tarjeta QR + mensaje.', 'danger');
+        }
+      } finally {
+        window.setTimeout(function () {
+          copyCard.textContent = originalText;
+          copyCard.disabled = false;
+        }, 1800);
+      }
+    });
+  }
+
+  var downloadCard = document.getElementById('download-review-card');
+  if (downloadCard) {
+    downloadCard.addEventListener('click', async function () {
+      var blob = await buildReviewCardBlob();
+      triggerDownload(blob, 'review-card.png');
+    });
+  }
+
+  async function copyQrImage() {
+    var response = await fetch(qrEndpoint + '?v=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' });
+    if (!response.ok) throw new Error('QR_NOT_AVAILABLE');
+    var originalBlob = await response.blob();
+    var pngBlob = originalBlob.type === 'image/png'
+      ? originalBlob
+      : new Blob([await originalBlob.arrayBuffer()], { type: 'image/png' });
+    await writeBlobToClipboard(pngBlob);
   }
 
   var copyQr = document.getElementById('copy-review-qr');
   if (copyQr) {
     copyQr.addEventListener('click', async function () {
+      var originalText = 'Copiar QR';
+      copyQr.disabled = true;
+      copyQr.textContent = 'Copiando…';
       try {
-        var response = await fetch(copyQr.dataset.url, {cache: 'no-store'});
-        if (!response.ok) throw new Error('QR no disponible');
-        var blob = await response.blob();
-        if (!window.ClipboardItem || !navigator.clipboard || !navigator.clipboard.write) throw new Error('Clipboard de imagen no disponible');
-        await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+        await copyQrImage();
         copyQr.textContent = 'QR copiado ✓';
+        setCopyStatus('QR copiado. Ve a WhatsApp y pega con Ctrl + V.', 'success');
       } catch (error) {
-        window.location.href = copyQr.dataset.url + '?download=1';
+        try {
+          var blob = await buildReviewCardBlob();
+          var dataUrl = await blobToDataUrl(blob);
+          setCopyStatus('La copia directa del QR fue bloqueada. Se abrió una vista para copiar manualmente la tarjeta completa.', 'wait');
+          openQrCopyModal(dataUrl);
+        } catch (fallbackError) {
+          setCopyStatus('No se pudo copiar el QR.', 'danger');
+        }
+      } finally {
+        window.setTimeout(function () {
+          copyQr.textContent = originalText;
+          copyQr.disabled = false;
+        }, 1800);
       }
+    });
+  }
+
+  var closeQrModal = document.getElementById('close-qr-copy-modal');
+  if (closeQrModal) closeQrModal.addEventListener('click', closeQrCopyModal);
+
+  var qrModal = document.getElementById('qr-copy-modal');
+  if (qrModal) {
+    qrModal.addEventListener('click', function (event) {
+      if (event.target === qrModal) closeQrCopyModal();
+    });
+  }
+
+  var modalCopyMessage = document.getElementById('modal-copy-message');
+  if (modalCopyMessage) {
+    modalCopyMessage.addEventListener('click', function () {
+      if (copyMessage) copyMessage.click();
+    });
+  }
+
+  var openWhatsapp = document.getElementById('open-review-whatsapp');
+  if (openWhatsapp) {
+    openWhatsapp.addEventListener('click', function () {
+      var message = reviewMessage ? reviewMessage.value : '';
+      window.open('https://wa.me/?text=' + encodeURIComponent(message), '_blank', 'noopener');
     });
   }
 })();
 </script>
+{% include 'marketing/_custom_dropdowns.html' %}
 {% endblock %}

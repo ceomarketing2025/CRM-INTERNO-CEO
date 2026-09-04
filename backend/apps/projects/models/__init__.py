@@ -1,1 +1,1 @@
-from .entities import Project, ProjectAssignment, ProjectNote
+from .entities import Project, ProjectAssignment, ProjectNote, ProjectPlanAssignment

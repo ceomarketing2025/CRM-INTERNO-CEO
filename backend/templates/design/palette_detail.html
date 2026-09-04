@@ -1,1 +1,53 @@
-{% extends 'base.html' %}{% block page_heading %}{{ palette.name }}{% endblock %}{% block content %}<div class="page-intro"><div><span class="eyebrow">{{ palette.project.project_code }} · {{ palette.project.client.business_name }}</span><h2>{{ palette.name }}</h2><p>{{ palette.description }}</p></div><div class="actions"><a class="btn btn-secondary" href="{% url 'design:brief_edit' palette.project.pk %}">Asesoría</a><a class="btn btn-primary" href="{% url 'design:palette_pdf' palette.pk %}">Descargar PDF</a></div></div><div class="notice-card"><strong>PDF temporal:</strong> el archivo se genera desde estos datos cuando haces clic en Descargar PDF. El PDF no se guarda en la base de datos ni en media.</div><div class="two-col wide-left"><div class="card"><div class="card-head"><div><h3>Paleta</h3><p>Usa los roles Texto, Fondo, Primario, Secundario y Acento para replicar la plantilla.</p></div></div><div class="color-list">{% for c in palette.colors.all %}<div class="color-row"><span class="color-box" style="background:{{ c.hex_code }}"></span><div><strong>{{ c.get_role_display }}{% if c.label %} · {{ c.label }}{% endif %}</strong><code>{{ c.hex_code }}</code><small>{{ c.usage|default:'Sin uso definido' }}</small></div></div>{% empty %}<div class="empty">Añade los colores de la asesoría.</div>{% endfor %}</div><h3 class="section-spacer">Degradados</h3><div class="gradient-list">{% for g in palette.gradients.all %}<div class="gradient-row" style="background:linear-gradient(90deg, {{ g.start_hex }}, {{ g.end_hex }})"><strong>{{ g.name }}</strong><span>{{ g.start_hex }} → {{ g.end_hex }}</span></div>{% empty %}<div class="empty">Si no añades degradados, el PDF arma tres automáticamente desde la paleta.</div>{% endfor %}</div></div><div class="form-stack"><div class="card"><h3>Añadir color</h3><form method="post" class="form-stack">{% csrf_token %}<input type="hidden" name="action" value="add_color">{% for field in color_form %}<div class="field"><label>{{ field.label }}</label>{{ field }}{% for e in field.errors %}<span class="field-error">{{ e }}</span>{% endfor %}</div>{% endfor %}<button class="btn btn-primary">Añadir color</button></form></div><div class="card"><h3>Añadir degradado</h3><form method="post" class="form-stack">{% csrf_token %}<input type="hidden" name="action" value="add_gradient">{% for field in gradient_form %}<div class="field"><label>{{ field.label }}</label>{{ field }}{% for e in field.errors %}<span class="field-error">{{ e }}</span>{% endfor %}</div>{% endfor %}<button class="btn btn-secondary">Añadir degradado</button></form></div></div></div>{% endblock %}
+{% extends 'base.html' %}
+{% block page_heading %}Paleta de colores{% endblock %}
+{% block content %}
+<div class="page-intro"><div><span class="eyebrow">Diseño · {{ palette.project.project_code }}</span><h2>{{ palette.project.client.business_name }}</h2><p>Escoge los cinco colores base, míralos en pantalla y genera el PDF de asesoría visual cuando quieras.</p></div><div class="actions"><a class="btn btn-secondary" href="{% url 'design:list' %}">Diseño</a><a class="btn btn-secondary" href="{% url 'design:brief_edit' palette.project.pk %}">Ficha de Diseño</a><a class="btn btn-secondary" href="{% url 'resources:project' palette.project.pk %}">Links / imágenes</a><a class="btn btn-primary" href="{% url 'design:palette_pdf' palette.pk %}">Descargar PDF</a></div></div>
+<div class="notice-card"><strong>PDF temporal:</strong> se construye con estos colores y la ficha de Diseño en el momento de descargar. El PDF no se guarda en el sistema.</div>
+<form method="post" class="form-stack">{% csrf_token %}
+  <div class="card palette-simple-card">
+    <div class="card-head"><div><h3>Paleta principal</h3><p>Texto · Fondo · Primario 60% · Secundario 30% · Acento 10%.</p></div></div>
+    <div class="palette-picker-grid">
+      {% for field in form %}{% if field.name != 'general_rules' %}<label class="palette-picker-card"><span>{{ field.label }}</span>{{ field }}<code class="palette-code" data-for="id_{{ field.name }}">{{ field.value }}</code></label>{% endif %}{% endfor %}
+    </div>
+    <div class="palette-live-preview">
+      <div class="preview-hero" data-bg="primary_hex"><span>COLOR PRIMARIO</span><strong>{{ palette.project.client.business_name }}</strong><button type="button">Call to Action</button></div>
+      <div class="preview-content"><div><strong>Fondo + texto</strong><p>Vista rápida para comprobar contraste y lectura dentro del sistema.</p></div><div class="preview-accent">Acento</div></div>
+    </div>
+    <div class="gradient-live-panel">
+      <div class="gradient-live-head"><div><h3>Degradados automáticos</h3><p>Se actualizan al instante con la paleta. Son los mismos tres degradados base que utiliza el PDF.</p></div><span class="badge">Vista en vivo</span></div>
+      <div class="gradient-live-grid">
+        <div class="gradient-live-item"><div class="gradient-swatch" data-gradient="first"><span>PRIMERO</span></div><code data-gradient-code="first">Acento → Primario</code></div>
+        <div class="gradient-live-item"><div class="gradient-swatch" data-gradient="second"><span>SEGUNDO</span></div><code data-gradient-code="second">Secundario → Acento</code></div>
+        <div class="gradient-live-item"><div class="gradient-swatch" data-gradient="third"><span>TERCERO</span></div><code data-gradient-code="third">Fondo → Primario</code></div>
+      </div>
+    </div>
+    <div class="field section-spacer"><label>{{ form.general_rules.label }}</label>{{ form.general_rules }}<small>Si queda vacío se utilizan las reglas estándar de tu plantilla de asesoría.</small></div>
+  </div>
+  <div class="card production-savebar"><div><strong>¿Está lista?</strong><span>Guarda los colores y luego descarga el PDF.</span></div><button class="btn btn-primary btn-lg">Guardar paleta</button><a class="btn btn-secondary btn-lg" href="{% url 'design:palette_pdf' palette.pk %}">Descargar PDF</a></div>
+</form>
+<script>
+(function(){
+  const inputs=[...document.querySelectorAll('.palette-picker')];
+  function update(){
+    inputs.forEach(input=>{const code=document.querySelector('[data-for="'+input.id+'"]'); if(code) code.textContent=input.value.toUpperCase();});
+    const get=n=>document.getElementById('id_'+n)?.value;
+    const hero=document.querySelector('.preview-hero'); const content=document.querySelector('.preview-content'); const accent=document.querySelector('.preview-accent');
+    if(hero){hero.style.background=get('primary_hex'); hero.style.color=get('background_hex'); hero.querySelector('button').style.background=get('accent_hex'); hero.querySelector('button').style.color=get('background_hex');}
+    if(content){content.style.background=get('background_hex'); content.style.color=get('text_hex');}
+    if(accent){accent.style.background=get('accent_hex'); accent.style.color=get('background_hex');}
+    const gradients={
+      first:[get('accent_hex'),get('primary_hex')],
+      second:[get('secondary_hex'),get('accent_hex')],
+      third:[get('background_hex'),get('primary_hex')]
+    };
+    Object.entries(gradients).forEach(([key,colors])=>{
+      const swatch=document.querySelector(`[data-gradient="${key}"]`);
+      const code=document.querySelector(`[data-gradient-code="${key}"]`);
+      if(swatch) swatch.style.background=`linear-gradient(90deg, ${colors[0]}, ${colors[1]})`;
+      if(code) code.textContent=`${colors[0].toUpperCase()} → ${colors[1].toUpperCase()}`;
+    });
+  }
+  inputs.forEach(i=>i.addEventListener('input',update)); update();
+})();
+</script>
+{% endblock %}

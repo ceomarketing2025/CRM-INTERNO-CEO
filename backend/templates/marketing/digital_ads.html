@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block page_heading %}Publicidad Digital · {{ project.client.business_name }}{% endblock %}
+{% block content %}
+{% with marketing_section='ads' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
+<div class="page-intro marketing-page-intro">
+  <div><span class="eyebrow">Publicidad Digital</span><h2>Publicidad tradicional + plataformas</h2><p>Primero define Publicidad tradicional. Solo cuando esté en Sí se habilitan Meta Ads, Google Ads y TikTok Ads. Cada plataforma valida sus propios checks.</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:campaign_list' %}">Todas las campañas</a><a class="btn btn-secondary" href="{% url 'marketing:social_plans' %}">Social Media</a></div>
+</div>
+<div class="semantic-banner is-danger"><strong>Validación obligatoria</strong><span>Ninguna campaña puede lanzarse sin revisión del administrador/Gerencia. Si se modifica información crítica después de aprobar, la aprobación se invalida.</span></div>
+
+<section class="card marketing-section-card" id="traditional-controller">
+  <div class="card-head"><div><span class="eyebrow">Control principal</span><h3>Publicidad tradicional</h3><p>Esta respuesta abre o cierra toda la configuración de Meta Ads, Google Ads y TikTok Ads.</p></div><span class="semantic-pill {% if accounts.traditional.enabled == 'yes' %}is-success{% elif accounts.traditional.enabled == 'no' %}is-muted{% else %}is-danger{% endif %}">{{ accounts.traditional.get_enabled_display|default:'Pendiente' }}</span></div>
+  <form method="post" id="traditional-form">{% csrf_token %}<input type="hidden" name="_platform" value="traditional">
+    {{ forms.traditional.non_field_errors }}
+    <div class="form-grid">
+      <div class="field"><label>{{ forms.traditional.enabled.label }}</label>{{ forms.traditional.enabled }}{{ forms.traditional.enabled.errors }}</div>
+      <div class="field form-wide"><label>{{ forms.traditional.notes.label }}</label>{{ forms.traditional.notes }}{{ forms.traditional.notes.errors }}</div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary">Guardar Publicidad tradicional</button></div>
+    <small>Este control habilita el flujo de plataformas. El lanzamiento real de cada campaña sigue requiriendo validación del administrador/Gerencia.</small>
+  </form>
+</section>
+
+<div id="platforms-area" {% if not traditional_enabled %}hidden{% endif %}>
+<div class="ads-platform-grid">
+  <section class="card ad-platform-card" data-platform-card="meta">
+    <div class="ad-platform-head"><div><span class="platform-mark">M</span><div><h3>Meta Ads</h3><p>Facebook / Instagram, portafolio, cuenta publicitaria y Fanpage.</p></div></div><span class="semantic-pill {% if accounts.meta.enabled == 'yes' %}is-success{% elif accounts.meta.enabled == 'no' %}is-muted{% else %}is-danger{% endif %}">{{ accounts.meta.get_enabled_display|default:'Pendiente' }}</span></div>
+    <form method="post" class="platform-form">{% csrf_token %}<input type="hidden" name="_platform" value="meta">{{ forms.meta.non_field_errors }}
+      <div class="form-grid"><div class="field"><label>{{ forms.meta.enabled.label }}</label>{{ forms.meta.enabled }}{{ forms.meta.enabled.errors }}</div></div>
+      <div class="platform-conditional" data-enabled-field="id_meta-enabled">
+        <div class="form-grid">
+          <div class="field form-wide"><label>Link de Facebook / Meta</label>{{ forms.meta.profile_url }}{{ forms.meta.profile_url.errors }}</div>
+          <div class="field"><label>{{ forms.meta.portfolio_created.label }}</label>{{ forms.meta.portfolio_created }}{{ forms.meta.portfolio_created.errors }}</div>
+          <div class="field conditional-panel" data-show-yes="id_meta-portfolio_created"><label>{{ forms.meta.portfolio_id.label }}</label>{{ forms.meta.portfolio_id }}{{ forms.meta.portfolio_id.errors }}</div>
+          <div class="field"><label>{{ forms.meta.ad_account_created.label }}</label>{{ forms.meta.ad_account_created }}{{ forms.meta.ad_account_created.errors }}</div>
+          <div class="field conditional-panel" data-show-yes="id_meta-ad_account_created"><label>{{ forms.meta.account_id.label }}</label>{{ forms.meta.account_id }}{{ forms.meta.account_id.errors }}</div>
+          <div class="field"><label>{{ forms.meta.payment_method_ready.label }}</label>{{ forms.meta.payment_method_ready }}{{ forms.meta.payment_method_ready.errors }}</div>
+          <div class="field"><label>{{ forms.meta.account_verified.label }}</label>{{ forms.meta.account_verified }}{{ forms.meta.account_verified.errors }}</div>
+          <div class="field"><label>{{ forms.meta.fanpage_connected.label }}</label>{{ forms.meta.fanpage_connected }}{{ forms.meta.fanpage_connected.errors }}</div>
+          <div class="field"><label>{{ forms.meta.campaigns_enabled.label }}</label>{{ forms.meta.campaigns_enabled }}{{ forms.meta.campaigns_enabled.errors }}</div>
+          <div class="field form-wide"><label>{{ forms.meta.notes.label }}</label>{{ forms.meta.notes }}{{ forms.meta.notes.errors }}</div>
+        </div>
+      </div>
+      <div class="form-actions"><button class="btn btn-secondary">Guardar Meta Ads</button></div>
+    </form>
+    <div class="campaigns-conditional" data-campaign-field="id_meta-campaigns_enabled">
+      <div class="campaign-mini-head"><strong>Campañas Meta</strong><a class="btn btn-primary btn-small" href="{% url 'marketing:campaign_create' %}?project={{ project.pk }}&platform=meta">＋ Crear campaña</a></div>
+      {% for c in campaign_map.meta %}{% include 'marketing/_campaign_row.html' with c=c %}{% empty %}<div class="empty-mini">Sin campañas Meta.</div>{% endfor %}
+    </div>
+  </section>
+
+  <section class="card ad-platform-card" data-platform-card="google">
+    <div class="ad-platform-head"><div><span class="platform-mark">G</span><div><h3>Google Ads</h3><p>Cuenta, verificación, método de pago, términos y campañas.</p></div></div><span class="semantic-pill {% if accounts.google.enabled == 'yes' %}is-success{% elif accounts.google.enabled == 'no' %}is-muted{% else %}is-danger{% endif %}">{{ accounts.google.get_enabled_display|default:'Pendiente' }}</span></div>
+    <form method="post" class="platform-form">{% csrf_token %}<input type="hidden" name="_platform" value="google">{{ forms.google.non_field_errors }}
+      <div class="form-grid"><div class="field"><label>{{ forms.google.enabled.label }}</label>{{ forms.google.enabled }}{{ forms.google.enabled.errors }}</div></div>
+      <div class="platform-conditional" data-enabled-field="id_google-enabled">
+        <div class="form-grid">
+          <div class="field form-wide"><label>Link de Google Ads</label>{{ forms.google.profile_url }}{{ forms.google.profile_url.errors }}</div>
+          <div class="field"><label>{{ forms.google.account_verified.label }}</label>{{ forms.google.account_verified }}{{ forms.google.account_verified.errors }}</div>
+          <div class="field"><label>{{ forms.google.account_id.label }}</label>{{ forms.google.account_id }}{{ forms.google.account_id.errors }}</div>
+          <div class="field"><label>{{ forms.google.payment_method_ready.label }}</label>{{ forms.google.payment_method_ready }}{{ forms.google.payment_method_ready.errors }}</div>
+          <div class="field"><label>{{ forms.google.terms_accepted.label }}</label>{{ forms.google.terms_accepted }}{{ forms.google.terms_accepted.errors }}</div>
+          <div class="field"><label>{{ forms.google.campaigns_enabled.label }}</label>{{ forms.google.campaigns_enabled }}{{ forms.google.campaigns_enabled.errors }}</div>
+          <div class="field form-wide"><label>{{ forms.google.notes.label }}</label>{{ forms.google.notes }}{{ forms.google.notes.errors }}</div>
+        </div>
+      </div>
+      <div class="form-actions"><button class="btn btn-secondary">Guardar Google Ads</button></div>
+    </form>
+    <div class="campaigns-conditional" data-campaign-field="id_google-campaigns_enabled">
+      <div class="campaign-mini-head"><strong>Campañas Google Ads</strong><a class="btn btn-primary btn-small" href="{% url 'marketing:campaign_create' %}?project={{ project.pk }}&platform=google">＋ Crear campaña</a></div>
+      {% for c in campaign_map.google %}{% include 'marketing/_campaign_row.html' with c=c %}{% empty %}<div class="empty-mini">Sin campañas Google Ads.</div>{% endfor %}
+    </div>
+  </section>
+
+  <section class="card ad-platform-card" data-platform-card="tiktok">
+    <div class="ad-platform-head"><div><span class="platform-mark">T</span><div><h3>TikTok Ads</h3><p>Cuenta, verificación, método de pago, términos y campañas.</p></div></div><span class="semantic-pill {% if accounts.tiktok.enabled == 'yes' %}is-success{% elif accounts.tiktok.enabled == 'no' %}is-muted{% else %}is-danger{% endif %}">{{ accounts.tiktok.get_enabled_display|default:'Pendiente' }}</span></div>
+    <form method="post" class="platform-form">{% csrf_token %}<input type="hidden" name="_platform" value="tiktok">{{ forms.tiktok.non_field_errors }}
+      <div class="form-grid"><div class="field"><label>{{ forms.tiktok.enabled.label }}</label>{{ forms.tiktok.enabled }}{{ forms.tiktok.enabled.errors }}</div></div>
+      <div class="platform-conditional" data-enabled-field="id_tiktok-enabled">
+        <div class="form-grid">
+          <div class="field form-wide"><label>Link de TikTok Ads</label>{{ forms.tiktok.profile_url }}{{ forms.tiktok.profile_url.errors }}</div>
+          <div class="field"><label>{{ forms.tiktok.account_verified.label }}</label>{{ forms.tiktok.account_verified }}{{ forms.tiktok.account_verified.errors }}</div>
+          <div class="field"><label>{{ forms.tiktok.account_id.label }}</label>{{ forms.tiktok.account_id }}{{ forms.tiktok.account_id.errors }}</div>
+          <div class="field"><label>{{ forms.tiktok.payment_method_ready.label }}</label>{{ forms.tiktok.payment_method_ready }}{{ forms.tiktok.payment_method_ready.errors }}</div>
+          <div class="field"><label>{{ forms.tiktok.terms_accepted.label }}</label>{{ forms.tiktok.terms_accepted }}{{ forms.tiktok.terms_accepted.errors }}</div>
+          <div class="field"><label>{{ forms.tiktok.campaigns_enabled.label }}</label>{{ forms.tiktok.campaigns_enabled }}{{ forms.tiktok.campaigns_enabled.errors }}</div>
+          <div class="field form-wide"><label>{{ forms.tiktok.notes.label }}</label>{{ forms.tiktok.notes }}{{ forms.tiktok.notes.errors }}</div>
+        </div>
+      </div>
+      <div class="form-actions"><button class="btn btn-secondary">Guardar TikTok Ads</button></div>
+    </form>
+    <div class="campaigns-conditional" data-campaign-field="id_tiktok-campaigns_enabled">
+      <div class="campaign-mini-head"><strong>Campañas TikTok Ads</strong><a class="btn btn-primary btn-small" href="{% url 'marketing:campaign_create' %}?project={{ project.pk }}&platform=tiktok">＋ Crear campaña</a></div>
+      {% for c in campaign_map.tiktok %}{% include 'marketing/_campaign_row.html' with c=c %}{% empty %}<div class="empty-mini">Sin campañas TikTok Ads.</div>{% endfor %}
+    </div>
+  </section>
+</div>
+</div>
+
+<div class="card social-bridge-card">
+  <div><span class="eyebrow">Social Media</span><h3>Seguimiento y publicaciones</h3><p>Seguimiento diario y publicaciones dentro de Marketing.</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:social_tracking' %}">Seguimiento</a><a class="btn btn-primary" href="{% url 'marketing:social_plans' %}">Planes y publicaciones</a></div>
+</div>
+
+<script>
+(function(){
+  var master=document.getElementById('id_traditional-enabled');
+  var area=document.getElementById('platforms-area');
+  function disableInside(panel,disabled){panel.querySelectorAll('input,select,textarea,button').forEach(function(el){el.disabled=disabled;});}
+  function showPanel(panel,show){panel.hidden=!show;panel.querySelectorAll('input,select,textarea').forEach(function(el){el.disabled=!show;});}
+  function refresh(){
+    if(master&&area){var open=master.value==='yes';area.hidden=!open;if(!open)disableInside(area,true);else disableInside(area,false);}
+    document.querySelectorAll('[data-enabled-field]').forEach(function(panel){var s=document.getElementById(panel.dataset.enabledField);showPanel(panel,!!s&&s.value==='yes');});
+    document.querySelectorAll('[data-show-yes]').forEach(function(panel){var s=document.getElementById(panel.dataset.showYes);showPanel(panel,!!s&&s.value==='yes');});
+    document.querySelectorAll('[data-campaign-field]').forEach(function(panel){var s=document.getElementById(panel.dataset.campaignField);var card=panel.closest('[data-platform-card]');var enabled=card?card.querySelector('select[id$="-enabled"]'):null;panel.hidden=!(s&&s.value==='yes'&&enabled&&enabled.value==='yes');});
+  }
+  document.addEventListener('change',refresh);refresh();
+})();
+</script>
+{% endblock %}

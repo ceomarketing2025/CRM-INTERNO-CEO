@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block page_heading %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-intro"><div><span class="eyebrow">Publicidad Digital</span><h2>{{ title }}</h2><p>{% if project %}{{ project.client.business_name }} · {% endif %}Configura la campaña y envíala a “Esperando validación” antes del lanzamiento.</p></div>{% if project %}<a class="btn btn-secondary" href="{% url 'marketing:digital_ads' project.pk %}">← Publicidad Digital</a>{% endif %}</div>
+{% if campaign %}
+<div class="semantic-banner {% if campaign.manager_approved %}is-success{% elif campaign.status == 'changes_requested' %}is-danger{% else %}is-wait{% endif %}">
+  <strong>{% if campaign.manager_approved %}Aprobada por Gerencia{% elif campaign.status == 'changes_requested' %}Requiere correcciones{% else %}Aprobación pendiente{% endif %}</strong>
+  <span>{% if campaign.manager_approved %}{{ campaign.manager_approved_by.display_name }} · {{ campaign.manager_approved_at|date:'d/m/Y H:i' }}{% else %}No puede lanzarse hasta completar la validación.{% endif %}</span>
+</div>
+{% endif %}
+<form method="post" class="card form-card marketing-section-card" id="campaign-form">{% csrf_token %}
+  {{ form.non_field_errors }}
+  {% if form.project.is_hidden %}{{ form.project }}{% endif %}{% if form.platform.is_hidden %}{{ form.platform }}{% endif %}
+  <div class="marketing-form-section"><h4>Configuración</h4><div class="form-grid">
+    {% if not form.project.is_hidden %}<div class="field"><label>{{ form.project.label }}</label>{{ form.project }}{{ form.project.errors }}</div>{% endif %}
+    {% if not form.platform.is_hidden %}<div class="field"><label>{{ form.platform.label }}</label>{{ form.platform }}{{ form.platform.errors }}</div>{% endif %}
+    <div class="field"><label>{{ form.name.label }}</label>{{ form.name }}{{ form.name.errors }}</div>
+    <div class="field"><label>{{ form.account_id.label }}</label>{{ form.account_id }}{{ form.account_id.errors }}</div>
+    <div class="field"><label>{{ form.objective.label }}</label>{{ form.objective }}{{ form.objective.errors }}</div>
+    <div class="field"><label>{{ form.campaign_type.label }}</label>{{ form.campaign_type }}{{ form.campaign_type.errors }}</div>
+    <div class="field google-campaign-field"><label>{{ form.primary_keyword.label }}</label>{{ form.primary_keyword }}{{ form.primary_keyword.errors }}</div>
+    <div class="field form-wide google-campaign-field"><label>Keywords a usar / estudio</label>{{ form.keyword_research }}{{ form.keyword_research.errors }}</div>
+    <div class="field form-wide"><label>Artes / propuesta / brief</label>{{ form.creative_notes }}<small>Usa este campo cuando la plataforma requiera artes o una propuesta al cliente.</small>{{ form.creative_notes.errors }}</div>
+  </div></div>
+  <div class="marketing-form-section"><h4>Periodo y seguimiento</h4><div class="form-grid">
+    <div class="field"><label>{{ form.start_date.label }}</label>{{ form.start_date }}{{ form.start_date.errors }}</div>
+    <div class="field"><label>{{ form.end_date.label }}</label>{{ form.end_date }}{{ form.end_date.errors }}</div>
+    <div class="field"><label>{{ form.weekly_followup_enabled.label }}</label>{{ form.weekly_followup_enabled }}<small>Genera recordatorios semanales para Gerencia + Marketing durante el periodo.</small></div>
+    <div class="field google-campaign-field"><label>{{ form.monthly_cost.label }}</label>{{ form.monthly_cost }}{{ form.monthly_cost.errors }}</div>
+    <div class="field google-campaign-field"><label>{{ form.conversion_cost.label }}</label>{{ form.conversion_cost }}{{ form.conversion_cost.errors }}</div>
+    <div class="field google-campaign-field"><label>{{ form.conversions.label }}</label>{{ form.conversions }}{{ form.conversions.errors }}</div>
+  </div></div>
+  <div class="marketing-form-section"><h4>Estado y control</h4><div class="form-grid">
+    <div class="field"><label>{{ form.status.label }}</label>{{ form.status }}<small>Para solicitar revisión selecciona “Esperando validación”. El backend bloquea lanzamientos sin aprobación.</small>{{ form.status.errors }}</div>
+    <div class="field"><label>{{ form.assigned_to.label }}</label>{{ form.assigned_to }}{{ form.assigned_to.errors }}</div>
+    <div class="field form-wide"><label>{{ form.notes.label }}</label>{{ form.notes }}{{ form.notes.errors }}</div>
+  </div></div>
+  <div class="form-actions"><button class="btn btn-primary">Guardar campaña</button></div>
+</form>
+{% if campaign %}
+<div class="two-col marketing-layout">
+  <div class="card"><div class="card-head"><div><h3>Seguimiento semanal</h3><p>Historial real de resultados y ajustes.</p></div><a class="btn btn-secondary btn-small" href="{% url 'marketing:campaign_weekly_report' campaign.pk %}">＋ Registrar semana</a></div>
+  {% for r in weekly_reports %}<div class="campaign-mini-row"><div><strong>{{ r.review_date|date:'d/m/Y' }}</strong><small>Gasto: {{ r.spend|default:'—' }} · Leads: {{ r.leads|default:'—' }} · Conversiones: {{ r.conversions|default:'—' }}</small></div><span class="semantic-pill is-success">Revisado</span></div>{% empty %}<div class="empty">Aún no hay seguimientos registrados.</div>{% endfor %}</div>
+  <div class="card"><h3>Validación de Gerencia</h3><p class="section-help">Al seleccionar “Esperando validación”, el CRM crea alertas para Gerencia y Marketing.</p>{% if request.user.is_manager %}<a class="btn btn-primary btn-full" href="{% url 'marketing:campaign_manager_review' campaign.pk %}">Revisar / aprobar campaña</a>{% else %}<div class="semantic-banner is-wait compact"><strong>Validación externa</strong><span>Gerencia debe aprobar antes del lanzamiento.</span></div>{% endif %}</div>
+</div>
+{% endif %}
+<script>
+(function(){
+ var platform=document.getElementById('id_platform');
+ function refresh(){var value=platform?platform.value:'{{ platform|default:"" }}';document.querySelectorAll('.google-campaign-field').forEach(function(el){el.hidden=value!=='google';});}
+ if(platform)platform.addEventListener('change',refresh);refresh();
+})();
+</script>
+{% endblock %}

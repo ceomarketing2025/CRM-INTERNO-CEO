@@ -1,1 +1,28 @@
-{% extends 'base.html' %}{% block page_heading %}Proyectos{% endblock %}{% block content %}<div class="page-intro"><div><h2>Proyectos</h2><p>Seguimiento del flujo Administración → Diseño → Desarrollo → Resumen → Ejecución.</p></div>{% if current_role == 'administration' or request.user.is_manager %}<a class="btn btn-primary" href="{% url 'administration:website_intake' %}">+ Alta web</a>{% endif %}</div><div class="project-grid">{% for p in projects %}<a class="project-card" href="{% url 'projects:detail' p.pk %}"><div class="project-card-top"><span class="project-code">{{ p.project_code }}</span><span class="badge">{{ p.get_status_display }}</span></div><h3>{{ p.client.business_name }}</h3><p>{{ p.client.full_name }}{% if p.purchased_plan %} · {{ p.purchased_plan.plan.name }}{% endif %}</p><div class="progress"><i style="width:{{ p.progress }}%"></i></div><div class="project-footer"><span>{{ p.progress }}% completado</span><span>{{ p.updated_at|date:'d M Y' }}</span></div></a>{% empty %}<div class="empty card">No hay proyectos para esta área.</div>{% endfor %}</div>{% endblock %}
+{% extends 'base.html' %}
+{% block page_heading %}Proyectos{% endblock %}
+{% block content %}
+<div class="page-intro"><div><h2>Control de proyectos</h2><p>Centro de control. Desde aquí puedes abrir el proyecto o entrar directamente al resumen sincronizado de las tres fichas.</p></div>{% if current_role == 'administration' or request.user.is_manager %}<a class="btn btn-primary" href="{% url 'projects:create' %}">＋ Nuevo proyecto</a>{% endif %}</div>
+<div class="project-grid">
+{% for row in project_rows %}{% with p=row.project c=row.control %}
+<div class="project-card control-project-card">
+  <div class="project-card-top"><span class="project-code">{{ p.project_code }}</span><span class="badge">{{ p.get_status_display }}</span></div>
+  <div class="project-list-title"><div><h3>{{ p.name }}</h3><p>{{ p.client.business_name }} · {{ p.client.full_name|default:'—' }}</p></div><strong class="project-percent">{{ c.overall_percent }}%</strong></div>
+  <div class="progress slim project-progress"><i style="width:{{ c.overall_percent }}%"></i></div>
+  <div class="contracted-mini-v9">
+    {% for item in p.contracted_plans.all %}{% if item.is_active %}<span class="contract-chip dept-{{ item.plan.department }}">{{ item.plan.name }}</span>{% endif %}{% empty %}<span class="table-sub">Sin productos asignados</span>{% endfor %}
+  </div>
+  <div class="project-area-status-v122">
+    {% if c.contracted.design %}<span>Diseño <b>{{ c.design_percent }}%</b></span>{% endif %}
+    {% if c.contracted.marketing %}<span>Marketing <b>{{ c.marketing_percent }}%</b></span>{% endif %}
+    {% if c.contracted.developer %}<span>Desarrollo <b>{{ c.development_percent }}%</b></span>{% endif %}
+    <span class="{% if c.visible_credential_count %}ready{% endif %}">Credenciales visibles <b>{{ c.visible_credential_count }}</b></span>
+  </div>
+  <div class="project-card-actions-v122">
+    <a class="btn btn-secondary btn-small" href="{% url 'projects:detail' p.pk %}">Ver proyecto</a>
+    <a class="btn btn-primary btn-small" href="{% url 'handoff:summary' p.pk %}">Resumen de fichas</a>
+  </div>
+  <div class="project-footer"><span>{% if c.last_log %}{{ c.last_log.user.display_name|default:'Sistema' }} · {{ c.last_log.module }}{% else %}Sin actividad registrada{% endif %}</span><span>{% if c.last_log %}{{ c.last_log.created_at|date:'d/m/Y H:i' }}{% endif %}</span></div>
+</div>
+{% endwith %}{% empty %}<div class="empty card">No hay proyectos para esta área.</div>{% endfor %}
+</div>
+{% endblock %}

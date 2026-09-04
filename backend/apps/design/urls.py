@@ -4,6 +4,10 @@ from . import views
 app_name = "design"
 urlpatterns = [
     path("", views.design_list, name="list"),
+    path("social-media/", views.social_media_dashboard, name="social_media"),
+    path("social-media/assign/", views.social_media_assign, name="social_media_assign"),
+    path("social-media/<int:pk>/", views.social_media_detail, name="social_media_detail"),
+    path("social-media/<int:pk>/edit/", views.social_media_assignment_edit, name="social_media_assignment_edit"),
     path("project/<int:project_pk>/brief/", views.brief_edit, name="brief_edit"),
     path("project/<int:project_pk>/palette/new/", views.palette_create, name="palette_create"),
     path("palette/<int:pk>/", views.palette_detail, name="palette_detail"),

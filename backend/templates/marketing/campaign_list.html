@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block page_heading %}Campañas{% endblock %}
+{% block content %}
+<div class="page-intro"><div><span class="eyebrow">Marketing Ads</span><h2>Campañas</h2><p>Meta, Google, TikTok y pauta tradicional con validación obligatoria de Gerencia y seguimiento semanal.</p></div><a class="btn btn-primary" href="{% url 'marketing:campaign_create' %}">＋ Nueva campaña</a></div>
+<div class="card"><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Plataforma</th><th>Campaña</th><th>Objetivo</th><th>Periodo</th><th>Validación</th><th>Estado</th><th>Responsable</th><th>Acción</th></tr></thead><tbody>
+{% for r in records %}<tr>
+<td><strong>{{ r.project.client.business_name }}</strong><span class="table-sub">{{ r.project.project_code }}</span></td>
+<td>{{ r.get_platform_display }}</td>
+<td>{% if request.user.role == 'administration' %}<a class="text-link" href="{% url 'marketing:campaign_manager_review' r.pk %}">{{ r.name }}</a>{% else %}<a class="text-link" href="{% url 'marketing:campaign_edit' r.pk %}">{{ r.name }}</a>{% endif %}</td>
+<td>{{ r.objective|default:'—' }}</td>
+<td>{{ r.start_date|date:'d/m/Y'|default:'—' }} → {{ r.end_date|date:'d/m/Y'|default:'—' }}</td>
+<td>{% if r.manager_approved %}<span class="semantic-pill is-success">Aprobada</span>{% elif r.status == 'changes_requested' %}<span class="semantic-pill is-danger">Correcciones</span>{% else %}<span class="semantic-pill is-wait">Pendiente</span>{% endif %}</td>
+<td><span class="semantic-pill {% if r.status == 'completed' or r.status == 'launched' or r.status == 'approved' %}is-success{% elif r.status == 'manager_review' or r.status == 'scheduled' %}is-wait{% elif r.status == 'changes_requested' %}is-danger{% else %}is-muted{% endif %}">{{ r.get_status_display }}</span></td>
+<td>{{ r.assigned_to.display_name|default:'—' }}</td>
+<td>{% if request.user.is_manager or request.user.role == 'administration' %}<a class="text-link" href="{% url 'marketing:campaign_manager_review' r.pk %}">Validar</a>{% else %}<a class="text-link" href="{% url 'marketing:campaign_edit' r.pk %}">Abrir</a>{% endif %}</td>
+</tr>{% empty %}<tr><td colspan="9"><div class="empty">Sin campañas.</div></td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}

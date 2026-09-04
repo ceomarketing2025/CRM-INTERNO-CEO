@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block page_heading %}Marketing · {{ project.client.business_name }}{% endblock %}
+{% block content %}
+{% with marketing_section='intake' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
+
+<div class="page-intro marketing-page-intro">
+  <div>
+    <span class="eyebrow">{{ project.project_code }} · Marketing</span>
+    <h2>Información inicial de la reunión</h2>
+    <p>Esta es la primera pantalla. Registra aquí solamente la información levantada con el cliente. Las credenciales se administran fuera de Marketing.</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-secondary" href="{% url 'marketing:document_add' project.pk %}">＋ Documento de reunión</a>
+    <a class="btn btn-secondary" href="{% url 'handoff:summary' project.pk %}">Resumen general</a>
+  </div>
+</div>
+
+{% if workspace.intake_ready %}
+<div class="semantic-banner is-success"><strong>Información inicial completada.</strong><span>Ya puedes trabajar Google Business, Google LSA y Publicidad Digital.</span></div>
+{% else %}
+<div class="semantic-banner is-wait"><strong>Información inicial pendiente.</strong><span>Completa el formulario y marca “Información inicial” como Completo para cerrar esta etapa.</span></div>
+{% endif %}
+
+<div class="two-col wide-left marketing-layout">
+  <form class="card form-card marketing-section-card" method="post" id="marketing-intake-form">
+    {% csrf_token %}
+    <div class="card-head"><div><h3>Datos de reunión</h3><p>Campos operativos para que Marketing pueda continuar con los tres frentes.</p></div><span class="semantic-pill {% if workspace.intake_ready %}is-success{% else %}is-danger{% endif %}">{{ workspace.get_intake_status_display }}</span></div>
+
+    <div class="marketing-form-section">
+      <h4>Control inicial</h4>
+      <div class="form-grid">
+        <div class="field"><label>{{ form.intake_status.label }}</label>{{ form.intake_status }}<small>{{ form.intake_status.help_text }}</small>{{ form.intake_status.errors }}</div>
+        <div class="field"><label>{{ form.assigned_to.label }}</label>{{ form.assigned_to }}{{ form.assigned_to.errors }}</div>
+        <div class="field form-wide"><label>{{ form.meeting_summary.label }}</label>{{ form.meeting_summary }}{{ form.meeting_summary.errors }}</div>
+      </div>
+    </div>
+
+    <div class="marketing-form-section">
+      <h4>Empresa</h4>
+      <div class="form-grid">
+        <div class="field"><label>{{ form.owner_name.label }}</label>{{ form.owner_name }}{{ form.owner_name.errors }}</div>
+        <div class="field"><label>{{ form.legal_business_name.label }}</label>{{ form.legal_business_name }}{{ form.legal_business_name.errors }}</div>
+        <div class="field"><label>{{ form.founding_date.label }}</label>{{ form.founding_date }}{{ form.founding_date.errors }}</div>
+        <div class="field form-wide"><label>{{ form.social_links.label }}</label>{{ form.social_links }}{{ form.social_links.errors }}</div>
+        <div class="field form-wide"><label>{{ form.company_description.label }}</label>{{ form.company_description }}{{ form.company_description.errors }}</div>
+      </div>
+    </div>
+
+    <div class="marketing-form-section">
+      <h4>Checks de acceso operativo</h4>
+      <div class="form-grid">
+        <div class="field"><label>{{ form.contact_email.label }}</label>{{ form.contact_email }}{{ form.contact_email.errors }}</div>
+        <div class="field"><label>{{ form.email_account_mode.label }}</label>{{ form.email_account_mode }}<small>{{ form.email_account_mode.help_text }}</small>{{ form.email_account_mode.errors }}</div>
+        <div class="field form-wide conditional-panel" data-show-when="id_email_account_mode" data-value="existing,create"><label>{{ form.gmail_email.label }}</label>{{ form.gmail_email }}<small>Correo que ya existe o que Marketing creó. No guardes contraseñas.</small>{{ form.gmail_email.errors }}</div>
+        <div class="field"><label>{{ form.business_profile_mode.label }}</label>{{ form.business_profile_mode }}{{ form.business_profile_mode.errors }}</div>
+        <div class="field"><label>{{ form.lsa_documents_available.label }}</label>{{ form.lsa_documents_available }}<small>{{ form.lsa_documents_available.help_text }}</small>{{ form.lsa_documents_available.errors }}</div>
+        <div class="field form-wide"><label>{{ form.notes.label }}</label>{{ form.notes }}{{ form.notes.errors }}</div>
+      </div>
+    </div>
+
+    <div class="form-actions"><button class="btn btn-primary">Guardar información inicial</button></div>
+  </form>
+
+  <div class="marketing-side-stack">
+    <div class="card marketing-section-card">
+      <div class="card-head"><div><h3>Checklist automático</h3><p>Se completa conforme guardas la información.</p></div></div>
+      {% for area, label, items in groups %}{% if area == 'intake' %}{% include 'marketing/_checks.html' with checks=items %}{% endif %}{% endfor %}
+    </div>
+    <div class="card marketing-section-card">
+      <div class="card-head"><div><h3>Documentos</h3><p>PDF de reunión u otros documentos de apoyo.</p></div><a href="{% url 'marketing:document_add' project.pk %}">Agregar</a></div>
+      <div class="list-stack">
+        {% for d in workspace.documents.all %}
+        <div class="list-row"><div><strong>{{ d.title }}</strong><span>{{ d.document_type|default:'Documento' }}</span></div>{% if d.file %}<a class="text-link" href="{{ d.file.url }}" target="_blank">PDF ↗</a>{% elif d.drive_url %}<a class="text-link" href="{{ d.drive_url }}" target="_blank">Drive ↗</a>{% endif %}</div>
+        {% empty %}<div class="empty">Todavía no hay documentos de la reunión.</div>{% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if workspace.intake_ready %}
+<div class="marketing-module-grid">
+  <a class="marketing-module-card" href="{% url 'marketing:google_business' project.pk %}"><span class="module-no">01</span><h3>Google Business</h3><p>Perfil, estado de verificación, link, ID, redes, reviews, QR y mensaje.</p><b>Entrar →</b></a>
+  <a class="marketing-module-card" href="{% url 'marketing:google_lsa' project.pk %}"><span class="module-no">02</span><h3>Google LSA</h3><p>Drive de documentos, validaciones, costo semanal, leads y recordatorios.</p><b>Entrar →</b></a>
+  <a class="marketing-module-card" href="{% url 'marketing:digital_ads' project.pk %}"><span class="module-no">03</span><h3>Publicidad Digital</h3><p>Publicidad tradicional habilita Meta, Google y TikTok; toda campaña requiere aprobación previa al lanzamiento.</p><b>Entrar →</b></a>
+</div>
+{% endif %}
+
+<script>
+(function(){
+  function refreshConditional(){
+    document.querySelectorAll('[data-show-when]').forEach(function(panel){
+      var source=document.getElementById(panel.dataset.showWhen);
+      if(!source) return;
+      var allowed=(panel.dataset.value||'').split(',');
+      panel.hidden=!allowed.includes(source.value);
+    });
+  }
+  document.addEventListener('change', refreshConditional);
+  refreshConditional();
+})();
+</script>
+{% endblock %}

@@ -1,5 +1,56 @@
-{% extends 'base.html' %}{% block page_heading %}Planes{% endblock %}{% block content %}
-<div class="page-intro"><div><h2>Planes y compras</h2><p>Catálogo de servicios y planes adquiridos por cada cliente.</p></div><div class="actions">{% if request.user.is_manager %}<a class="btn btn-secondary" href="{% url 'plans:create' %}">Crear plan</a>{% endif %}{% if current_role == 'administration' or request.user.is_manager %}<a class="btn btn-primary" href="{% url 'plans:purchase_create' %}">Registrar compra</a>{% endif %}</div></div>
-<div class="plan-grid">{% for plan in plans %}<div class="plan-card"><div class="plan-type">{{ plan.get_service_type_display }}</div><h3>{{ plan.name }}</h3><p>{{ plan.description|default:'Plan preparado para parametrizar.' }}</p><div class="plan-price">{% if plan.base_price %}${{ plan.base_price }}{% else %}Por definir{% endif %}<span>{{ plan.get_billing_cycle_display }}</span></div>{% if request.user.is_manager %}<a href="{% url 'plans:edit' plan.pk %}" class="text-link">Editar plan →</a>{% endif %}</div>{% empty %}<div class="empty">No hay planes.</div>{% endfor %}</div>
-<div class="card"><div class="card-head"><div><h3>Últimas compras</h3><p>Plan asociado al cliente.</p></div></div><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Plan</th><th>Precio</th><th>Estado</th><th>Pago</th><th>Renovación</th></tr></thead><tbody>{% for item in purchases %}<tr><td>{{ item.client.business_name }}</td><td>{{ item.plan.name }}</td><td>${{ item.agreed_price }}</td><td><span class="badge">{{ item.get_status_display }}</span></td><td>{{ item.get_payment_status_display }}</td><td>{{ item.renewal_date|date:'d/m/Y'|default:'—' }}</td></tr>{% empty %}<tr><td colspan="6" class="empty">Sin compras.</td></tr>{% endfor %}</tbody></table></div></div>
+{% extends 'base.html' %}
+{% block page_heading %}Planes{% endblock %}
+{% block content %}
+<div class="page-intro">
+  <div>
+    <span class="eyebrow">Catálogo interno por área</span>
+    <h2>Planes · {{ department_label }}</h2>
+    <p>Cada departamento administra únicamente sus productos. Gerencia puede consultar y crear para cualquier área.</p>
+  </div>
+  <div class="actions">
+    {% if request.user.is_manager or request.user.is_superuser %}
+    <form method="get" class="inline-filter-form">
+      <select name="department" onchange="this.form.submit()">
+        <option value="">Todas las áreas</option>
+        {% for value,label in department_choices %}<option value="{{ value }}" {% if selected_department == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </form>
+    {% endif %}
+    {% if can_create_plan %}<a class="btn btn-primary" href="{% url 'plans:create' %}{% if selected_department %}?department={{ selected_department }}{% endif %}">+ Crear plan</a>{% endif %}
+  </div>
+</div>
+
+{% for group in grouped_plans %}
+<section class="plan-section-v9">
+  <div class="section-title-row"><div><span class="eyebrow">{{ group.label }}</span><h3>Productos disponibles</h3></div><span class="count-pill">{{ group.plans|length }}</span></div>
+  <div class="plan-grid plan-grid-v9">
+    {% for plan in group.plans %}
+    <article class="plan-card plan-card-v9 {% if not plan.is_active %}is-disabled{% endif %}">
+      <div class="plan-card-top">
+        <div><span class="plan-type">{{ plan.get_service_type_display }}</span><h3>{{ plan.name }}</h3></div>
+        <span class="status-dot {% if plan.is_active %}active{% else %}inactive{% endif %}">{% if plan.is_active %}Activo{% else %}Desactivado{% endif %}</span>
+      </div>
+      {% if plan.service_type == 'social_media' %}
+      <div class="plan-deliverables">
+        <div><span>Posts</span><strong>{{ plan.weekly_posts }}</strong></div>
+        <div><span>Videos</span><strong>{{ plan.weekly_videos }}</strong></div>
+      </div>
+      {% elif plan.department == 'developer' %}
+      <div class="plan-deliverables">
+        <div><span>Páginas</span><strong>{{ plan.website_pages|default:0 }}</strong></div>
+        <div><span>Branding</span><strong>{{ plan.branding_pages|default:0 }}</strong></div>
+      </div>
+      {% if plan.scope_range %}<p class="plan-scope-note">{{ plan.scope_range }}</p>{% endif %}
+      {% endif %}
+      <div class="plan-price-v8"><strong>${{ plan.base_price }}</strong><span>{{ plan.currency }}</span></div>
+      {% if plan.description %}<p class="plan-description-v9">{{ plan.description|truncatechars:130 }}</p>{% endif %}
+      <div class="plan-meta-v8"><span>Creado {{ plan.created_at|date:'d/m/Y' }}</span>{% if plan.created_by %}<span>por {{ plan.created_by.display_name }}</span>{% endif %}</div>
+      <div class="plan-card-actions"><a class="btn btn-secondary" href="{% url 'plans:edit' plan.pk %}">Editar</a></div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% empty %}
+<div class="card empty"><strong>No hay planes creados para esta área.</strong><span>Usa “Crear plan” para registrar el primero.</span></div>
+{% endfor %}
 {% endblock %}

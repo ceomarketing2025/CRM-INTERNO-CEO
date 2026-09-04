@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block page_heading %}Pago de suscripción{% endblock %}
+{% block content %}
+<div class="page-intro"><div><span class="eyebrow">Cobro recurrente</span><h2>{{ subscription.client.business_name }} · {{ subscription.plan.name }}</h2><p>{% if project %}{{ project.project_code }} · {{ project.name }} · {% endif %}Próxima renovación: {{ subscription.renewal_date|date:'d/m/Y'|default:'sin fecha' }}.</p></div><div class="actions"><a class="btn btn-secondary" href="{% url 'finance:dashboard' %}">← Billetera</a></div></div>
+<div class="payment-summary-v12 three"><div><span>Valor del ciclo</span><strong>${{ subscription.agreed_price|floatformat:2 }}</strong></div><div><span>Pagado hasta</span><strong>{{ subscription.paid_until|date:'d/m/Y'|default:'—' }}</strong></div><div><span>Próximo pago</span><strong>{{ subscription.renewal_date|date:'d/m/Y'|default:'—' }}</strong></div></div>
+<div class="card form-card"><form method="post" class="standard-form">{% csrf_token %}{{ form.as_p }}<div class="form-actions"><button class="btn btn-primary" type="submit">Registrar pago</button></div></form></div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block page_heading %}Social Media · Diseño{% endblock %}
+{% block content %}
+<div class="page-intro">
+  <div><span class="eyebrow">Diseño · Suscripciones</span><h2>Control Social Media</h2><p>El plan define posts/videos. La suscripción del cliente define proyecto, redes, renovación y próximo pago.</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'plans:list' %}">Planes de Diseño</a><a class="btn btn-secondary" href="{% url 'plans:create' %}?department=design">+ Crear plan</a><a class="btn btn-primary" href="{% url 'design:social_media_assign' %}">+ Configurar suscripción</a></div>
+</div>
+
+<div class="stats-grid social-stats-v9">
+  <div class="stat-card"><span>Clientes activos</span><strong>{{ active_clients }}</strong><small>{{ social_plan_count }} planes disponibles</small></div>
+  <div class="stat-card"><span>Listos</span><strong>{{ ready_clients }}</strong><small>ciclo completado</small></div>
+  <div class="stat-card"><span>En cola</span><strong>{{ queue_clients }}</strong><small>pendientes / programados</small></div>
+  <div class="stat-card"><span>Renuevan pronto</span><strong>{{ due_soon }}</strong><small>0–2 días</small></div>
+  <div class="stat-card"><span>Vencidos</span><strong>{{ overdue }}</strong><small>requieren revisión</small></div>
+  <div class="stat-card"><span>Avance general</span><strong>{{ overall_progress }}%</strong><small>{{ completed_items }}/{{ total_items }} contenidos</small></div>
+</div>
+
+<div class="card">
+  <div class="card-head"><div><h3>Suscripciones activas</h3><p>Proyecto, plan, contenido, redes, estado, pago y renovación en una sola vista.</p></div></div>
+  <div class="table-wrap">
+    <table class="social-dashboard-table-v9">
+      <thead><tr><th>Cliente / proyecto</th><th>Plan</th><th>Contenido</th><th>Redes</th><th>Avance</th><th>Pago</th><th>Se renueva</th><th></th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td><strong>{{ row.assignment.client.business_name }}</strong>{% if row.project %}<span class="table-sub">{{ row.project.project_code }} · {{ row.project.name }}</span>{% else %}<span class="table-sub warning-text">Sin proyecto vinculado</span>{% endif %}</td>
+          <td><strong>{{ row.assignment.plan.name }}</strong><span class="table-sub">{{ row.assignment.get_renewal_frequency_display }}</span></td>
+          <td><span class="content-mini">{{ row.assignment.plan.weekly_posts }} posts</span><span class="content-mini">{{ row.assignment.plan.weekly_videos }} videos</span></td>
+          <td><span class="table-sub networks-cell">{{ row.assignment.social_networks_label }}</span></td>
+          <td><div class="table-progress-cell"><b>{{ row.progress }}%</b><div class="progress slim"><i style="width:{{ row.progress }}%"></i></div><small>{{ row.done_count }}/{{ row.item_count }} · {{ row.status }}</small></div></td>
+          <td><span class="payment-badge payment-{{ row.assignment.payment_status }}">{{ row.assignment.get_payment_status_display }}</span><span class="table-sub">Pagado hasta {{ row.assignment.paid_until|date:'d/m/Y'|default:'—' }}</span></td>
+          <td><span class="renewal-badge {{ row.urgency.class }}"><b>{{ row.assignment.renewal_date|date:'d/m/Y'|default:'—' }}</b><small>{{ row.urgency.label }}</small></span></td>
+          <td class="row-actions"><a class="icon-action" title="Ver y actualizar" href="{% url 'design:social_media_detail' row.assignment.pk %}">👁</a><a class="icon-action" title="Editar suscripción" href="{% url 'design:social_media_assignment_edit' row.assignment.pk %}">✎</a></td>
+        </tr>
+      {% empty %}<tr><td colspan="8" class="empty">Todavía no hay suscripciones Social Media activas.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

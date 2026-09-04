@@ -8,16 +8,3 @@ backend/staticfiles/
 .vscode/
 .idea/
 .DS_Store
-.env
-venv/
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-db.sqlite3
-media/
-staticfiles/
-.vscode/
-.idea/
-.DS_Store

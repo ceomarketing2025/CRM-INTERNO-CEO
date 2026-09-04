@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block page_heading %}Planes{% endblock %}
+{% block content %}
+<div class="page-intro">
+  <div><span class="eyebrow">Catálogo interno por departamento</span><h2>{{ title }}</h2><p>{{ subtitle }}</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'plans:list' %}">Volver</a></div>
+</div>
+
+<form method="post" class="card compact-plan-form-v9" id="plan-form-v9">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert error">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="plan-form-heading">
+    <div><strong>Datos del plan</strong><span>Primero el área, luego únicamente aparecen categorías válidas para ese departamento.</span></div>
+    {% if created_date %}<span class="created-date-pill">Creado {{ created_date|date:'d/m/Y H:i' }}</span>{% endif %}
+  </div>
+  <div class="plan-form-grid-v9">
+    {% for field in form %}
+      <div class="form-field plan-field-{{ field.name }} {% if field.name == 'description' %}form-wide{% endif %}" data-plan-field="{{ field.name }}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+  <div class="plan-form-help-v9" id="plan-area-help"></div>
+  <div class="form-actions"><button class="btn btn-primary btn-lg" type="submit">Guardar plan</button></div>
+</form>
+{{ department_service_types|json_script:"department-service-types" }}
+<script>
+(function(){
+  const dept = document.getElementById('id_department');
+  const type = document.getElementById('id_service_type');
+  const mapEl = document.getElementById('department-service-types');
+  if (!type || !mapEl) return;
+  const map = JSON.parse(mapEl.textContent || '{}');
+  const originalValue = type.value;
+  function currentDepartment(){
+    if (dept) return dept.value;
+    const hidden = document.querySelector('input[name="department"]');
+    return hidden ? hidden.value : '';
+  }
+  function rebuildTypes(){
+    const d = currentDepartment();
+    const items = map[d] || [];
+    const keep = type.value || originalValue;
+    type.innerHTML = '';
+    items.forEach(item => {
+      const option = document.createElement('option');
+      option.value = item.value; option.textContent = item.label;
+      if (item.value === keep) option.selected = true;
+      type.appendChild(option);
+    });
+    toggleConditionalFields();
+  }
+  function show(name, visible){
+    const el = document.querySelector('[data-plan-field="'+name+'"]');
+    if (el) el.style.display = visible ? '' : 'none';
+  }
+  function toggleConditionalFields(){
+    const value = type.value;
+    const d = currentDepartment();
+    const social = value === 'social_media';
+    const web = d === 'developer';
+    show('weekly_posts', social);
+    show('weekly_videos', social);
+    show('website_pages', web);
+    show('branding_pages', web);
+    show('scope_range', web);
+    const help = document.getElementById('plan-area-help');
+    if (!help) return;
+    if (social) help.innerHTML = '<strong>Social Media:</strong> define posts y videos del producto. La renovación y las redes se configuran después al asignarlo al cliente.';
+    else if (web) help.innerHTML = '<strong>Sitios web:</strong> define costo y alcance base. La ficha técnica y producción siguen separadas.';
+    else if (d === 'marketing') help.innerHTML = '<strong>Marketing:</strong> Guarantee, Search Console, Ads, LSA, GBP y demás productos quedan en esta área.';
+    else if (d === 'design') help.innerHTML = '<strong>Diseño:</strong> Social Media, chaquetas, gorras, branding y productos gráficos.';
+    else help.innerHTML = '<strong>Administración:</strong> productos administrativos internos.';
+  }
+  if (dept) dept.addEventListener('change', rebuildTypes);
+  type.addEventListener('change', toggleConditionalFields);
+  rebuildTypes();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block page_heading %}Social Media · Diseño{% endblock %}
+{% block content %}
+<div class="page-intro">
+  <div><span class="eyebrow">Suscripción recurrente</span><h2>{{ title }}</h2><p>{{ subtitle }}</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'design:social_media' %}">Volver</a></div>
+</div>
+
+<form method="post" class="card social-assignment-form-v9">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert error">{{ form.non_field_errors }}</div>{% endif %}
+  {% if project %}<div class="linked-project-banner-v9"><span>Proyecto vinculado</span><strong>{{ project.project_code }} · {{ project.name }}</strong><small>{{ project.client.business_name }}</small></div>{% endif %}
+  <div class="assignment-form-grid">
+    {% for field in form %}
+      {% if field.is_hidden %}{{ field }}{% else %}
+      <div class="form-field {% if field.name == 'social_networks' or field.name == 'notes' %}form-wide{% endif %}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% if field.name == 'social_networks' %}<div class="network-checkbox-grid">{{ field }}</div>{% else %}{{ field }}{% endif %}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  <div class="assignment-help-v8"><strong>Renovación y pago</strong><span>La fecha “Próximo pago / renovación” se calcula desde la fecha de inicio y la frecuencia elegida. Finanzas mantiene el estado de pago y “pagado hasta”.</span></div>
+  <div class="form-actions"><button class="btn btn-primary btn-lg" type="submit">Guardar suscripción</button></div>
+</form>
+{% endblock %}

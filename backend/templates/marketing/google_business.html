@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block page_heading %}Google Business · {{ project.client.business_name }}{% endblock %}
+{% block content %}
+{% with marketing_section='business' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
+<div class="page-intro marketing-page-intro">
+  <div><span class="eyebrow">Google Business</span><h2>Perfil, verificación y reviews</h2><p>Los campos aparecen únicamente cuando corresponden. Con el perfil aprobado, pega el link directo de review y el CRM genera el QR + mensaje.</p></div>
+  <a class="btn btn-secondary" href="{% url 'marketing:workspace' project.pk %}">← Información inicial</a>
+</div>
+
+<div class="two-col wide-left marketing-layout">
+<form class="card form-card marketing-section-card" method="post" id="google-business-form">{% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="card-head"><div><h3>Google Business Profile</h3><p>Checklist e información del perfil.</p></div><span class="semantic-pill {% if workspace.business_profile_status == 'approved' %}is-success{% elif workspace.business_profile_status == 'denied' %}is-danger{% else %}is-wait{% endif %}">{{ workspace.get_business_profile_status_display }}</span></div>
+  <div class="form-grid">
+    <div class="field"><label>{{ form.business_profile_mode.label }}</label>{{ form.business_profile_mode }}{{ form.business_profile_mode.errors }}</div>
+    <div class="field conditional-panel" data-show-when="id_business_profile_mode" data-value="existing,create"><label>{{ form.business_profile_status.label }}</label>{{ form.business_profile_status }}{{ form.business_profile_status.errors }}</div>
+    <div class="field form-wide conditional-panel" data-show-when="id_business_profile_mode" data-value="existing,create"><label>{{ form.business_profile_link.label }}</label>{{ form.business_profile_link }}{{ form.business_profile_link.errors }}</div>
+    <div class="field conditional-panel" data-show-when="id_business_profile_mode" data-value="existing,create"><label>{{ form.business_profile_id.label }}</label>{{ form.business_profile_id }}{{ form.business_profile_id.errors }}</div>
+    <div class="field form-wide conditional-panel" data-show-when="id_business_profile_mode" data-value="existing,create"><label>{{ form.business_profile_social_links.label }}</label>{{ form.business_profile_social_links }}{{ form.business_profile_social_links.errors }}</div>
+    <div class="field form-wide"><label>{{ form.business_profile_notes.label }}</label>{{ form.business_profile_notes }}{{ form.business_profile_notes.errors }}</div>
+  </div>
+
+  <div class="conditional-panel review-builder" data-show-when="id_business_profile_status" data-value="approved">
+    <div class="marketing-form-section">
+      <h4>Reviews y QR</h4>
+      <p class="section-help">Pega el link directo para dejar la review. Al guardar se genera el QR y el mensaje mantiene siempre la línea <strong>Link:</strong> con el enlace asignado.</p>
+      <div class="form-grid">
+        <div class="field form-wide"><label>{{ form.review_link.label }}</label>{{ form.review_link }}{{ form.review_link.errors }}</div>
+      </div>
+
+      {% if workspace.review_link and workspace.business_profile_status == 'approved' %}
+      <div class="qr-panel" style="align-items:flex-start;">
+        <img id="review-qr-image" src="{% url 'marketing:review_qr' project.pk %}" alt="QR para reviews">
+        <div>
+          <strong>QR de reviews</strong>
+          <p>Este QR abre exactamente el link de review guardado.</p>
+          <div class="actions"><button type="button" class="btn btn-secondary" id="copy-review-qr" data-url="{% url 'marketing:review_qr' project.pk %}">Copiar QR</button><a class="btn btn-primary" href="{% url 'marketing:review_qr' project.pk %}?download=1">Descargar QR</a></div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="form-grid" style="margin-top:16px;">
+        <div class="field form-wide"><label>{{ form.review_message.label }}</label>{{ form.review_message }}<small>{{ form.review_message.help_text }}</small>{{ form.review_message.errors }}</div>
+      </div>
+      {% if workspace.review_link and workspace.business_profile_status == 'approved' %}
+      <div class="actions"><button type="button" class="btn btn-secondary" id="copy-review-message">Copiar mensaje</button></div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="form-actions"><button class="btn btn-primary">Guardar Google Business</button></div>
+</form>
+<div class="card marketing-section-card"><div class="card-head"><div><h3>Checklist Google Business</h3><p>Rojo = obligatorio pendiente. Tomate = proceso. Verde = listo.</p></div></div>{% include 'marketing/_checks.html' with checks=checks %}</div>
+</div>
+<script>
+(function(){
+ function togglePanel(panel){
+   var source=document.getElementById(panel.dataset.showWhen); if(!source)return;
+   var show=(panel.dataset.value||'').split(',').includes(source.value);
+   panel.hidden=!show;
+   panel.querySelectorAll('input,select,textarea').forEach(function(el){el.disabled=!show;});
+ }
+ function refresh(){document.querySelectorAll('[data-show-when]').forEach(togglePanel);}
+ document.addEventListener('change',refresh); refresh();
+ var link=document.getElementById('id_review_link'), message=document.getElementById('id_review_message');
+ if(link&&message){link.addEventListener('input',function(){
+   if(!link.value)return;
+   var lines=message.value.split(/\r?\n/), found=false;
+   lines=lines.map(function(line){if(line.trim().toLowerCase().startsWith('link:')){found=true;return 'Link: '+link.value;}return line;});
+   if(!found&&message.value.trim()) lines.push('', 'Link: '+link.value);
+   message.value=lines.join('\n');
+ });}
+ var msg=document.getElementById('copy-review-message');
+ if(msg){msg.addEventListener('click',async function(){var el=document.getElementById('id_review_message');try{await navigator.clipboard.writeText(el.value);msg.textContent='Mensaje copiado ✓';}catch(e){el.select();document.execCommand('copy');msg.textContent='Mensaje copiado ✓';}});}
+ var qr=document.getElementById('copy-review-qr');
+ if(qr){qr.addEventListener('click',async function(){try{var blob=await fetch(qr.dataset.url).then(function(r){return r.blob();});await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);qr.textContent='QR copiado ✓';}catch(e){window.location.href=qr.dataset.url+'?download=1';}});}
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block page_heading %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-intro">
+  <div><span class="eyebrow">Administración · Dominios y Hosting</span><h2>{{ title }}</h2><p>{{ subtitle }}</p></div>
+  <a class="btn btn-secondary" href="{% url 'operations:general_list' %}">Volver</a>
+</div>
+
+<form method="post" class="card smart-form" id="domainHostingForm">{% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert error">{{ form.non_field_errors }}</div>{% endif %}
+
+  <section class="form-section">
+    <h3>1. ¿Qué vamos a registrar?</h3>
+    <p class="muted">Elige una sola opción. El estado disponible cambia automáticamente según el tipo.</p>
+    <div class="operation-choice-grid">
+      {% for value,label,help in operation_choices %}
+      <label class="operation-choice {% if selected_operation == value %}selected{% endif %}">
+        <input type="radio" name="operation_type" value="{{ value }}" {% if selected_operation == value %}checked{% endif %} required>
+        <span class="operation-choice-copy"><strong>{{ label }}</strong><small>{{ help }}</small></span>
+        <span class="operation-choice-check">✓</span>
+      </label>
+      {% endfor %}
+    </div>
+    {{ form.operation_type.errors }}
+  </section>
+
+  <section class="form-section">
+    <h3>2. Cliente y proyecto</h3>
+    <div class="form-grid">
+      <div>{{ form.client.label_tag }}{{ form.client }}{{ form.client.errors }}<small>Se muestra Nombre del cliente · Empresa.</small></div>
+      <div>{{ form.project.label_tag }}{{ form.project }}{{ form.project.errors }}<small>Solo aparecen proyectos asociados al cliente.</small></div>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <div class="section-heading-inline"><div><h3>3. Dominio</h3><p>Datos de compra, registro o migración del dominio.</p></div><span id="domainStatusPreview" class="badge warning-soft">Pendiente</span></div>
+    <div class="form-grid three">
+      <div>{{ form.domain_name.label_tag }}{{ form.domain_name }}{{ form.domain_name.errors }}</div>
+      <div>{{ form.start_date.label_tag }}{{ form.start_date }}{{ form.start_date.errors }}</div>
+      <div>{{ form.domain_expiry_date.label_tag }}{{ form.domain_expiry_date }}{{ form.domain_expiry_date.errors }}</div>
+      <div>{{ form.domain_status.label_tag }}{{ form.domain_status }}{{ form.domain_status.errors }}</div>
+      <div>{{ form.domain_cost.label_tag }}{{ form.domain_cost }}{{ form.domain_cost.errors }}</div>
+      <div>{{ form.currency.label_tag }}{{ form.currency }}{{ form.currency.errors }}</div>
+      <div class="span-3">{{ form.domain_receipt_drive_url.label_tag }}{{ form.domain_receipt_drive_url }}{{ form.domain_receipt_drive_url.errors }}{% if form.domain_receipt_drive_url.help_text %}<small>{{ form.domain_receipt_drive_url.help_text }}</small>{% endif %}</div>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <h3>4. Servidor / Hosting</h3>
+    <p class="muted">Al guardar un proveedor, Credenciales prepara automáticamente <strong>Servidor + WordPress</strong> para este proyecto.</p>
+    <div class="form-grid three">
+      <div>{{ form.server_provider.label_tag }}{{ form.server_provider }}{{ form.server_provider.errors }}</div>
+      <div id="otherProviderWrap">{{ form.server_provider_other.label_tag }}{{ form.server_provider_other }}{{ form.server_provider_other.errors }}</div>
+      <div>{{ form.server_cost.label_tag }}{{ form.server_cost }}{{ form.server_cost.errors }}</div>
+      <div class="span-3">{{ form.server_receipt_drive_url.label_tag }}{{ form.server_receipt_drive_url }}{{ form.server_receipt_drive_url.errors }}{% if form.server_receipt_drive_url.help_text %}<small>{{ form.server_receipt_drive_url.help_text }}</small>{% endif %}</div>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <h3>5. Notas internas</h3>
+    <div>{{ form.notes }}{{ form.notes.errors }}</div>
+  </section>
+
+  <div class="form-actions"><button class="btn btn-primary" type="submit">Guardar dominio / hosting</button></div>
+</form>
+
+<script>
+(function(){
+  const client=document.getElementById('id_client');
+  const project=document.getElementById('id_project');
+  const provider=document.getElementById('id_server_provider');
+  const other=document.getElementById('otherProviderWrap');
+  const status=document.getElementById('id_domain_status');
+  const preview=document.getElementById('domainStatusPreview');
+  const operationInputs=[...document.querySelectorAll('input[name="operation_type"]')];
+  const statusMap={
+    new:[['pending_purchase','Pendiente de compra'],['purchased','Comprado y registrado']],
+    existing:[['purchased','Comprado y registrado']],
+    migration:[['pending_migration','Pendiente de migración'],['migrated','Migrado']]
+  };
+
+  async function loadProjects(){
+    const value=client.value, current=project.value;
+    project.innerHTML='<option value="">Cargando...</option>';
+    if(!value){project.innerHTML='<option value="">Selecciona un proyecto</option>';return;}
+    const r=await fetch('{% url "operations:projects_for_client" %}?client='+encodeURIComponent(value));
+    const data=await r.json();
+    project.innerHTML='<option value="">Selecciona un proyecto</option>';
+    data.projects.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.label;if(String(p.id)===String(current))o.selected=true;project.appendChild(o);});
+  }
+  function toggleOther(){other.style.display=provider.value==='other'?'block':'none';}
+  function selectedOperation(){const el=operationInputs.find(i=>i.checked);return el?el.value:'new';}
+  function refreshOperationCards(){document.querySelectorAll('.operation-choice').forEach(card=>card.classList.toggle('selected',card.querySelector('input').checked));}
+  function refreshStatuses(forceDefault=false){
+    const op=selectedOperation();
+    const current=status.value;
+    const choices=statusMap[op]||statusMap.new;
+    status.innerHTML='';
+    choices.forEach(([value,label],idx)=>{const o=document.createElement('option');o.value=value;o.textContent=label;if((!forceDefault&&value===current)||((forceDefault||!current)&&idx===0))o.selected=true;status.appendChild(o);});
+    refreshStatusPreview();
+  }
+  function refreshStatusPreview(){
+    const label=status.options[status.selectedIndex]?.text||'Pendiente';
+    preview.textContent=label;
+    const complete=['purchased','migrated'].includes(status.value);
+    preview.className='badge '+(complete?'success':'warning-soft');
+  }
+
+  client.addEventListener('change',()=>{project.value='';loadProjects();});
+  provider.addEventListener('change',toggleOther);
+  operationInputs.forEach(input=>input.addEventListener('change',()=>{refreshOperationCards();refreshStatuses(true);}));
+  status.addEventListener('change',refreshStatusPreview);
+  toggleOther(); refreshOperationCards(); refreshStatuses(false);
+})();
+</script>
+{% endblock %}

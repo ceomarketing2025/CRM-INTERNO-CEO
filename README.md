@@ -1,186 +1,179 @@
-# Gestión de Proyectos 360 · V2
+# CRM CEO Interno · V3
 
-V2 del CRM interno construido sobre **Django + PostgreSQL + Redis + Celery + Docker**. Esta versión reorganiza el sistema alrededor del flujo operativo real de una página web y conserva módulos separados para crecer después hacia software, marketing, dominios y finanzas.
+Sistema interno Django + PostgreSQL + Redis/Celery para centralizar clientes, planes, Diseño, Marketing, Desarrollo, Producción, compras/credenciales, reuniones y recordatorios.
 
-## Flujo principal V2
+## Cambio principal de V3
 
-```text
-01 Administración
-   └─ crea cliente + selecciona plan web
-       ├─ Básica: $1,200
-       ├─ Media: $2,400
-       └─ Avanzada: $4,000
-
-02 Diseño / Asesoría visual
-   └─ reunión con cliente
-       ├─ logo
-       ├─ estilo de web
-       ├─ fondo / colores
-       ├─ imágenes / stock
-       ├─ servicios
-       ├─ paleta HEX
-       ├─ degradados
-       └─ PDF generado bajo demanda (NO se guarda)
-
-03 Desarrollo
-   └─ ficha técnica tipo Excel
-       ├─ Estado: Pendiente / Confirmado / No / No aplica
-       └─ Respuesta / detalle
-
-04 Resumen de información
-   └─ reúne automáticamente
-       ├─ datos administrativos
-       ├─ plan
-       ├─ asesoría visual
-       ├─ paleta
-       ├─ ficha técnica
-       ├─ links de respaldo
-       └─ imágenes por categoría
-
-05 Ejecución
-   └─ desarrollo, dominio, revisión y entrega
-```
+V3 **elimina el flujo rígido entre áreas**. Administración crea el cliente/proyecto y Gerencia asigna responsables. Diseño, Marketing y Desarrollo pueden trabajar en paralelo sobre el mismo proyecto. El módulo **Resumen sincronizado** consolida la información de todas las áreas.
 
 ## Roles
 
-1. **Global / Gerencia**: acceso total, Finanzas y Usuarios.
-2. **Administración**: alta de clientes, selección de plan, clientes y compras de planes.
-3. **Marketing**: módulo de marketing y lectura del flujo.
-4. **Diseño**: asesoría visual, paletas, PDF, links y referencias de imágenes.
-5. **Desarrollador**: ficha técnica, dominios y handoff.
+- **Global / Gerencia**: acceso completo, usuarios, finanzas y todas las áreas.
+- **Administración**: altas de clientes, planes, Gestión General, Producción, credenciales, reuniones y control administrativo.
+- **Marketing**: workspace del cliente, Google Business, documentos PDF/Drive, Ads, LSA/Guarantee, campañas y Social Media.
+- **Diseño**: asesoría visual, paletas, degradados y generación temporal del PDF de paleta.
+- **Desarrollador**: ficha técnica, información de desarrollo, dominios y ejecución técnica de proyectos asignados.
 
-Gerencia atraviesa todos los controles por rol.
+## Administración
 
-## Alta administrativa
+### Alta de cliente
+Registra:
+- Nombre / apellido
+- ID opcional
+- Teléfono / correo
+- Empresa
+- Plan Web: Básica $1,200 / Media $2,400 / Avanzada $4,000
+- Fecha de inicio
 
-La pantalla `Administración > Crear cliente web` solicita:
+Al guardar se crean:
+- Cliente
+- Compra del plan
+- Proyecto activo
+- Recordatorio a 6 semanas
+- Recordatorio para ofrecer Social Media a las 3 semanas
 
-- Nombre
-- Apellido
-- ID / identificación opcional
-- Teléfono
-- Correo opcional
-- Nombre de la empresa
-- Plan web
-- Nota administrativa
+### Gestión General
+Replica la hoja operativa con:
+`E · Fecha · Mes · Cliente · Nombre/Detalle · Tipo Servicio · Proveedor · Costo · Moneda · Estado · Link Recibo Drive · Responsable · Notas`
 
-Al guardar se crean, en una sola transacción:
+Tipos de servicio: Dominio y Host, Dominio, Host, Mensualidades, Credenciales, Google Guarantee, Google Business Profile, Ads y Otros.
 
-- `Client`
-- `ClientPlan`
-- `Project`
+Proveedores: GoDaddy, Namecheap, Hostinger, SiteGround, Google, Meta, YouTube y Other.
 
-El proyecto queda automáticamente en **Reunión de diseño**.
+### Producción
+Campos:
+`Cliente · Referencia · Proyecto/Sitio · Inicio plan · Diseño · Estado Tec · Estado · Colaborador · Notas · Costo · Anticipo · Pendiente · Web final`
 
-## Asesoría visual y PDF
+Estado de Producción: `terminado · entregado · pendiente pago · pendiente web · iniciar`.
 
-El módulo Diseño registra la información del brief visual y una paleta estructurada por roles:
+Colaborador usa usuarios del rol Desarrollador/Global, no nombres rígidos.
 
-- Texto
-- Fondo
-- Primario
-- Secundario
-- Acento
-- Extras
+### Credenciales
+Registra la compra sin guardar contraseñas. Si no se indica otra fecha, calcula renovación a un año y crea recordatorio automático.
 
-También permite degradados. El botón **Descargar PDF** construye el PDF con ReportLab en memoria y lo devuelve directamente al navegador. No existe un `FileField` para el PDF y el archivo no se escribe en `media/`.
+## Reuniones y recordatorios
 
-## Links e imágenes
+- Reuniones con fecha, cliente, proyecto, participantes, agenda y enlace Google Meet.
+- Control a 6 semanas.
+- Renovación anual de credenciales.
+- Seguimiento 15 días después del lanzamiento para Administración + Marketing asignado.
+- Seguimiento reviews / Google Guarantee.
+- Ofrecer Social Media a las 3 semanas.
+- Informe mensual de Social Media.
+- Revisión de Gerencia antes de lanzar campañas.
+- Seguimiento semanal durante la duración de campañas.
+- Seguimiento diario para planes Social Media mediante Celery Beat.
 
-Cada proyecto puede tener links externos sin límite rígido:
+## Marketing
 
-- Drive de paleta
-- Drive de resumen / respaldo
-- Logo / identidad
-- Banco de fotos
-- Documentos
-- Otros
+Cada proyecto tiene un **Marketing Workspace** con:
+- Datos de reunión
+- Dueño y nombre legal
+- Fecha de fundación
+- Redes sociales
+- Descripción
+- Horario
+- Servicios / áreas
+- Gmail
+- Estado Google Business: no iniciado / verificación / aprobado / desaprobado
+- Link Google Business
+- Link de reviews
+- Mensaje para clientes
+- Documentos disponibles Sí/No
+- Verificación Google Ads / LSA / Google Guarantee
+- Documentos PDF o links Drive
 
-Además, se pueden registrar referencias de imágenes con estructura:
+### Checklist Marketing
+Incluye checklists para:
+- Recolección de datos y documentos
+- Google Business Profile
+- Google LSA / Guarantee
+- Meta Ads
+- Google Ads
+- Social Media
 
-```text
-Categoría: Roofing
-URL: https://...
+Los checks usan **Completo / Incompleto** y un campo opcional **Sí / No**.
 
-Categoría: Siding
-URL: https://...
-```
+Cuando Marketing marca **Crear Google Business Profile = Completo**, el sistema genera un recordatorio para Administración para comprar/registrar credenciales.
 
-Esto permite seguir agregando categorías conforme avanza el proyecto.
+Si existe un link de reviews, se puede descargar un **QR generado al vuelo**; el PNG no se guarda como archivo permanente.
 
-## Ficha técnica de Desarrollo
+### Campañas
+Meta Ads, Google Ads o Pauta tradicional. Campos de cuenta, objetivo, tipo, keywords/estudio, artes, revisión Gerencia, fechas y estado. Al lanzar una campaña se crean recordatorios semanales hasta su fecha final.
 
-La ficha web se basa en el flujo del Excel operativo y en el documento de preguntas. Cada pregunta guarda por separado:
+### Seguimiento Social Media / Google
+Tabla con estados simples:
+- Reseñas
+- Productos
+- Porcentaje de perfil
+- GB
+- Redes
+- Website en GB
+- Último Post GB
+- Notas GB
+- LSA
+- Fotos
+- Último Lead
+- Ads verificado
+- Seguimiento con Google Sí/No
+- Notas
 
-- estado de revisión;
-- respuesta o detalle;
-- usuario que actualizó;
-- fecha de actualización.
+### Plan Social Media
+Seguimiento diario de publicación + gestión y revisión/informe mensual.
 
-Al marcar la ficha como **Completa**, el proyecto pasa a `Información lista` y abre el resumen consolidado.
+## Diseño
 
-## Módulos
+Mantiene la asesoría visual, paletas por código HEX, degradados y links de respaldo. El PDF de paleta se genera en memoria para descarga y **no se guarda en la base ni en disco**.
 
-```text
-backend/apps/
-├── core
-├── accounts
-├── administration
-├── clients
-├── plans
-├── projects
-├── design
-├── questionnaires
-├── resources
-├── handoff
-├── domains
-├── marketing
-├── finance
-├── audit
-└── dashboard
-```
+## Desarrollo
+
+La ficha técnica Web conserva la lógica del Excel: Estado + Respuesta/Detalle y bloque preparado para copiar. Desarrollo puede empezar aunque Diseño o Marketing todavía no hayan terminado.
+
+## Resumen sincronizado
+
+Por proyecto reúne:
+- Administración
+- Diseño + paleta
+- Marketing + checklist
+- Desarrollo / cuestionarios
+- Producción
+- Credenciales / renovaciones (sin contraseñas/costos sensibles)
+- Campañas
+- Seguimiento Social / Google
+- Links Drive
+- Imágenes por categoría
+- Recordatorios pendientes
+
+Incluye botón **Copiar todo**.
 
 ## Levantar con Docker
 
-En PowerShell:
-
 ```powershell
+cd "C:\Users\Lenovo\Downloads\CRM-Gestion-360-V3"
 Copy-Item .env.example .env
+docker compose down
 docker compose up --build
 ```
 
-O:
+Abrir: `http://localhost:8000`
 
-```powershell
-.\start-local.ps1
-```
+Usuario bootstrap por defecto (solo desarrollo local):
+- `admin@local.test`
+- `Admin12345!`
 
-Abrir:
+Cámbialo antes de producción.
 
-```text
-http://localhost:8000
-```
+## Servicios Docker
 
-Usuario inicial de desarrollo:
+- `backend`: Django
+- `db`: PostgreSQL 16
+- `redis`: Redis 7
+- `celery`: worker
+- `beat`: recordatorios/tareas periódicas
 
-```text
-Correo: admin@local.test
-Contraseña: Admin12345!
-```
+## Seguridad
 
-Cambiar la contraseña antes de utilizar el sistema fuera de local.
-
-## Primer arranque
-
-El entrypoint ejecuta:
-
-```text
-python manage.py check
-python manage.py makemigrations ...
-python manage.py migrate
-python manage.py seed_initial_data
-python manage.py bootstrap_manager
-python manage.py runserver 0.0.0.0:8000 --noreload
-```
-
-Las migraciones siguen generándose al primer arranque porque esta entrega todavía es una **estructura V2 para validar el flujo**. Cuando el flujo quede aprobado, conviene congelar las migraciones y empezar el desarrollo de producción sobre esa base.
+- No guardar contraseñas de terceros dentro del CRM.
+- `CredentialPurchase` guarda solo correo/usuario de referencia y un link seguro opcional.
+- Documentos de Marketing deben servirse de forma privada en producción; no exponer `/media/` directamente con Nginx.
+- Cambiar `SECRET_KEY`, contraseña bootstrap y `DEBUG=False` antes de desplegar.

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block page_heading %}Social Media · {{ assignment.client.business_name }}{% endblock %}
+{% block content %}
+<div class="page-intro social-detail-intro-v8">
+  <div>
+    <span class="eyebrow">{{ assignment.client.client_code }} · Control del ciclo</span>
+    <h2>{{ assignment.client.business_name }}</h2>
+    <p>{% if project %}{{ project.project_code }} · {{ project.name }} · {% endif %}{{ assignment.plan.name }} · {{ assignment.get_renewal_frequency_display }}</p>
+  </div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'design:social_media_assignment_edit' assignment.pk %}">Editar suscripción</a><a class="btn btn-secondary" href="{% url 'design:social_media' %}">Volver</a></div>
+</div>
+
+<div class="social-detail-summary-v8">
+  <div class="card"><span>Plan</span><strong>{{ assignment.plan.name }}</strong><small>{{ assignment.plan.weekly_posts }} posts + {{ assignment.plan.weekly_videos }} videos</small></div>
+  <div class="card"><span>Próximo pago</span><strong>{{ assignment.renewal_date|date:'d/m/Y'|default:'—' }}</strong><small>{{ urgency.label }}</small></div>
+  <div class="card"><span>Estado de pago</span><strong>{{ assignment.get_payment_status_display }}</strong><small>Pagado hasta {{ assignment.paid_until|date:'d/m/Y'|default:'—' }}</small></div>
+  <div class="card"><span>Avance</span><strong>{{ cycle.progress_percent|default:0 }}%</strong><div class="progress slim"><i style="width:{{ cycle.progress_percent|default:0 }}%"></i></div></div>
+</div>
+
+<form method="post" class="card social-content-control-v8">
+  {% csrf_token %}
+  <div class="card-head"><div><h3>Contenido del ciclo</h3><p>Marca Listo y después cada red donde ya fue publicado.</p></div><button class="btn btn-primary" type="submit">Guardar cambios</button></div>
+  <div class="table-wrap"><table class="content-control-table-v8"><thead><tr><th>Contenido</th><th>Listo</th>{% for network in selected_networks %}<th>{{ network.label }}</th>{% endfor %}<th>Notas</th><th>Estado</th></tr></thead><tbody>
+  {% for item in items %}<tr class="{% if item.is_complete %}content-complete{% endif %}"><td><strong>{{ item.label }}</strong><span class="table-sub">{{ item.get_content_type_display }}</span></td><td><label class="table-check"><input type="checkbox" name="ready_{{ item.pk }}" value="1" {% if item.ready %}checked{% endif %}><span>Listo</span></label></td>{% for network in selected_networks %}<td><label class="network-check-v8"><input type="checkbox" name="network_{{ item.pk }}_{{ network.key }}" value="1" {% if network.key in item.published_networks %}checked{% endif %}><span>✓</span></label></td>{% endfor %}<td><input class="table-note-input" type="text" name="notes_{{ item.pk }}" value="{{ item.notes }}" placeholder="Nota interna..."></td><td>{% if item.is_complete %}<span class="workflow-pill done">Completo</span>{% elif item.ready %}<span class="workflow-pill queued">Falta publicar</span>{% else %}<span class="workflow-pill scheduled">En producción</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="20" class="empty">Este plan no tiene posts ni videos configurados.</td></tr>{% endfor %}
+  </tbody></table></div>
+  <div class="social-detail-savebar-v8"><div><strong>{{ cycle.progress_percent|default:0 }}% completado</strong><span>Para completar un contenido debe estar listo y publicado en todas las redes seleccionadas.</span></div><button class="btn btn-primary btn-lg" type="submit">Guardar avance</button></div>
+</form>
+{% if assignment.notes %}<div class="card social-notes-v8"><span class="eyebrow">Notas de la suscripción</span><p>{{ assignment.notes|linebreaksbr }}</p></div>{% endif %}
+{% endblock %}

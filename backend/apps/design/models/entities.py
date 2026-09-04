@@ -93,3 +93,98 @@ class PaletteGradient(TimestampedModel):
 
     def __str__(self):
         return f"{self.name} · {self.start_hex} → {self.end_hex}"
+
+
+class SocialMediaCycle(TimestampedModel):
+    """Ciclo operativo generado desde el plan Social Media asignado al cliente."""
+
+    client_plan = models.ForeignKey(
+        "plans.ClientPlan",
+        on_delete=models.CASCADE,
+        related_name="social_media_cycles",
+        verbose_name="Plan Social Media del cliente",
+    )
+    period_start = models.DateField(verbose_name="Inicio del ciclo")
+    due_date = models.DateField(null=True, blank=True, verbose_name="Próxima renovación")
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_social_media_cycles",
+    )
+
+    class Meta:
+        ordering = ["-period_start", "-id"]
+        constraints = [
+            models.UniqueConstraint(fields=["client_plan", "period_start"], name="unique_social_cycle_start")
+        ]
+
+    @property
+    def progress_percent(self):
+        items = list(self.items.all())
+        if not items:
+            return 0
+        done = sum(1 for item in items if item.is_complete)
+        return round(done * 100 / len(items))
+
+    @property
+    def completed(self):
+        items = list(self.items.all())
+        return bool(items) and all(item.is_complete for item in items)
+
+    @property
+    def total_items(self):
+        return self.items.count()
+
+    @property
+    def completed_items(self):
+        return sum(1 for item in self.items.all() if item.is_complete)
+
+    def __str__(self):
+        return f"{self.client_plan.client.business_name} · {self.period_start}"
+
+
+class SocialMediaContentItem(TimestampedModel):
+    class ContentType(models.TextChoices):
+        POST = "post", "Post"
+        VIDEO = "video", "Video"
+
+    cycle = models.ForeignKey(SocialMediaCycle, on_delete=models.CASCADE, related_name="items")
+    content_type = models.CharField(max_length=12, choices=ContentType.choices)
+    sequence = models.PositiveSmallIntegerField(default=1)
+    ready = models.BooleanField(default=False, verbose_name="Contenido listo")
+    published_networks = models.JSONField(default=list, blank=True, verbose_name="Publicado en")
+    notes = models.CharField(max_length=300, blank=True, verbose_name="Notas")
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_social_media_items",
+    )
+
+    class Meta:
+        ordering = ["content_type", "sequence", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["cycle", "content_type", "sequence"], name="unique_social_content_item")
+        ]
+
+    @property
+    def required_networks(self):
+        return list(self.cycle.client_plan.social_networks or [])
+
+    @property
+    def is_complete(self):
+        if not self.ready:
+            return False
+        required = set(self.required_networks)
+        published = set(self.published_networks or [])
+        return required.issubset(published)
+
+    @property
+    def label(self):
+        return f"{self.get_content_type_display()} {self.sequence}"
+
+    def __str__(self):
+        return f"{self.cycle} · {self.label}"

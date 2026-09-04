@@ -1,0 +1,14 @@
+<div class="marketing-flow-nav">
+  <a class="marketing-flow-step {% if marketing_section == 'intake' %}active{% endif %}" href="{% url 'marketing:workspace' project.pk %}">
+    <span>01</span><div><strong>Reunión</strong><small>Información inicial</small></div>
+  </a>
+  <a class="marketing-flow-step {% if marketing_section == 'business' %}active{% endif %} {% if not workspace.intake_ready %}locked-soft{% endif %}" href="{% url 'marketing:google_business' project.pk %}">
+    <span>02</span><div><strong>Google Business</strong><small>Perfil, reviews y QR</small></div>
+  </a>
+  <a class="marketing-flow-step {% if marketing_section == 'lsa' %}active{% endif %} {% if not workspace.intake_ready %}locked-soft{% endif %}" href="{% url 'marketing:google_lsa' project.pk %}">
+    <span>03</span><div><strong>Google LSA</strong><small>Validación y seguimiento</small></div>
+  </a>
+  <a class="marketing-flow-step {% if marketing_section == 'ads' %}active{% endif %} {% if not workspace.intake_ready %}locked-soft{% endif %}" href="{% url 'marketing:digital_ads' project.pk %}">
+    <span>04</span><div><strong>Publicidad digital</strong><small>Meta, Google, TikTok y tradicional</small></div>
+  </a>
+</div>

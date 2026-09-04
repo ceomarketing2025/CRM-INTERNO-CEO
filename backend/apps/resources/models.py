@@ -12,6 +12,7 @@ class ProjectResourceLink(TimestampedModel):
         GLOBAL = "global", "Global"
 
     class Kind(models.TextChoices):
+        INFORMATION = "information", "Información / resumen"
         PALETTE_DRIVE = "palette_drive", "Drive - paleta"
         SUMMARY_BACKUP = "summary_backup", "Drive - resumen / respaldo"
         LOGO = "logo", "Logo / identidad"

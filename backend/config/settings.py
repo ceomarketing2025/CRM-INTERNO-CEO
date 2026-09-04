@@ -32,6 +32,8 @@ INSTALLED_APPS = [
     "apps.resources.apps.ResourcesConfig",
     "apps.handoff.apps.HandoffConfig",
     "apps.marketing.apps.MarketingConfig",
+    "apps.operations.apps.OperationsConfig",
+    "apps.reminders.apps.RemindersConfig",
     "apps.finance.apps.FinanceConfig",
     "apps.audit.apps.AuditConfig",
     "apps.dashboard.apps.DashboardConfig",
@@ -107,4 +109,15 @@ CELERY_BROKER_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 CELERY_RESULT_BACKEND = CELERY_BROKER_URL
 CELERY_TASK_ALWAYS_EAGER = env_bool("CELERY_TASK_ALWAYS_EAGER", False)
 
-PROJECT_NAME = os.getenv("PROJECT_NAME", "Gestión de Proyectos 360")
+PROJECT_NAME = os.getenv("PROJECT_NAME", "CRM CEO Interno")
+
+CELERY_BEAT_SCHEDULE = {
+    "daily-social-followups": {
+        "task": "apps.marketing.tasks.create_daily_social_followups",
+        "schedule": 60 * 60 * 24,
+    },
+    "due-reminder-digest": {
+        "task": "apps.reminders.tasks.due_reminder_digest",
+        "schedule": 60 * 60,
+    },
+}

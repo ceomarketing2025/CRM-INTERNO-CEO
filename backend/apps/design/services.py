@@ -22,13 +22,8 @@ def complete_design_brief(*, brief, user):
     brief.completed_by = user
     brief.save(update_fields=["completed", "completed_at", "completed_by", "updated_at"])
     project = brief.project
-    if project.status in {"administration", "design_intake"}:
-        project.status = "development_intake"
-        project.progress = max(project.progress, 35)
-        project.summary = "Asesoría visual completada. Pendiente ficha técnica de Desarrollo."
-        project.save(update_fields=["status", "progress", "summary", "updated_at"])
-
-    # Deja preparada automáticamente la ficha que Desarrollo debe completar.
+    # V3: Diseño no cambia el estado ni bloquea a otras áreas.
+    # La ficha de Desarrollo se deja preparada por conveniencia, pero puede completarse antes o después.
     from apps.questionnaires.models import ProjectQuestionnaire, QuestionnaireTemplate
     template = QuestionnaireTemplate.objects.filter(code="website-technical-v2", is_active=True).first()
     if template and project.project_type == "website":
@@ -236,3 +231,69 @@ def build_palette_pdf(project, palette):
     c.save()
     buffer.seek(0)
     return buffer.getvalue()
+
+
+def ensure_current_social_media_cycle(client_plan, today=None):
+    """Crea/sincroniza el ciclo vigente y sus entregables del plan Social Media."""
+    from django.db import transaction
+    from django.utils import timezone
+
+    from apps.plans.models.choices import ServiceType
+    from apps.plans.services import current_cycle_bounds
+    from .models import SocialMediaContentItem, SocialMediaCycle
+
+    today = today or timezone.localdate()
+    if not client_plan.is_active or client_plan.plan.service_type != ServiceType.SOCIAL_MEDIA:
+        return None
+
+    start, due = current_cycle_bounds(client_plan.start_date or today, client_plan.renewal_frequency, today=today)
+
+    with transaction.atomic():
+        cycle, _ = SocialMediaCycle.objects.get_or_create(
+            client_plan=client_plan,
+            period_start=start,
+            defaults={"due_date": due},
+        )
+        if cycle.due_date != due:
+            cycle.due_date = due
+            cycle.save(update_fields=["due_date", "updated_at"])
+
+        if client_plan.renewal_date != due:
+            client_plan.renewal_date = due
+            client_plan.save(update_fields=["renewal_date", "updated_at"])
+
+        _sync_social_items(
+            cycle,
+            SocialMediaContentItem.ContentType.POST,
+            client_plan.plan.weekly_posts,
+        )
+        _sync_social_items(
+            cycle,
+            SocialMediaContentItem.ContentType.VIDEO,
+            client_plan.plan.weekly_videos,
+        )
+
+    return cycle
+
+
+def _sync_social_items(cycle, content_type, target):
+    from .models import SocialMediaContentItem
+
+    target = max(int(target or 0), 0)
+    existing = {item.sequence: item for item in cycle.items.filter(content_type=content_type)}
+
+    for sequence in range(1, target + 1):
+        if sequence not in existing:
+            SocialMediaContentItem.objects.create(
+                cycle=cycle,
+                content_type=content_type,
+                sequence=sequence,
+            )
+
+    # Si baja la cantidad del plan, solo se eliminan entregables todavía vacíos.
+    for sequence, item in existing.items():
+        if sequence <= target:
+            continue
+        if item.ready or item.published_networks or item.notes:
+            continue
+        item.delete()

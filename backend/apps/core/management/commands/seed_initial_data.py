@@ -6,14 +6,15 @@ from apps.questionnaires.models import Question, QuestionnaireSection, Questionn
 
 
 class Command(BaseCommand):
-    help = "Carga catálogos y plantillas V2 de forma idempotente."
+    help = "Carga catálogos y plantillas V3 de forma idempotente."
 
     def handle(self, *args, **options):
         self.seed_finance_categories()
         self.seed_plans()
+        self.backfill_project_plans()
         self.seed_website_questionnaire()
         self.seed_software_questionnaire()
-        self.stdout.write(self.style.SUCCESS("Datos base V2 verificados."))
+        self.stdout.write(self.style.SUCCESS("Datos base V3 verificados."))
 
     def seed_finance_categories(self):
         categories = [
@@ -34,22 +35,46 @@ class Command(BaseCommand):
 
     def seed_plans(self):
         plans = [
-            dict(code="website-basic", name="Página Web Básica", service_type="website", description="Plan web básico.", base_price=Decimal("1200.00"), billing_cycle="one_time", rules={"level": "basic"}),
-            dict(code="website-medium", name="Página Web Media", service_type="website", description="Plan web intermedio.", base_price=Decimal("2400.00"), billing_cycle="one_time", rules={"level": "medium"}),
-            dict(code="website-advanced", name="Página Web Avanzada", service_type="website", description="Plan web avanzado.", base_price=Decimal("4000.00"), billing_cycle="one_time", rules={"level": "advanced"}),
-            dict(code="software-custom", name="Software Personalizado", service_type="software", description="Base para cotizaciones y desarrollos de software a medida.", base_price=Decimal("0.00"), billing_cycle="custom", rules={}),
-            dict(code="social-media-custom", name="Social Media", service_type="social_media", description="Base para planes de gestión de redes sociales.", base_price=Decimal("0.00"), billing_cycle="monthly", rules={}),
+            dict(code="website-basic", name="Página Web Básica", department="developer", service_type="website", description="Plan web básico.", base_price=Decimal("1200.00"), billing_cycle="one_time", rules={"level": "basic"}),
+            dict(code="website-medium", name="Página Web Media", department="developer", service_type="website", description="Plan web intermedio.", base_price=Decimal("2400.00"), billing_cycle="one_time", rules={"level": "medium"}),
+            dict(code="website-advanced", name="Página Web Avanzada", department="developer", service_type="website", description="Plan web avanzado.", base_price=Decimal("4000.00"), billing_cycle="one_time", rules={"level": "advanced"}),
+            dict(code="software-custom", name="Software Personalizado", department="developer", service_type="software", description="Base para cotizaciones y desarrollos de software a medida.", base_price=Decimal("0.00"), billing_cycle="one_time", rules={}),
+            dict(code="social-media-custom", name="Social Media", department="design", service_type="social_media", description="Base para planes de gestión de redes sociales.", base_price=Decimal("0.00"), billing_cycle="one_time", rules={}),
         ]
         for item in plans:
             code = item.pop("code")
             ServicePlan.objects.update_or_create(code=code, defaults={**item, "currency": "USD", "is_active": True})
 
+    def backfill_project_plans(self):
+        """Conserva proyectos anteriores al nuevo esquema multi-plan."""
+        from apps.projects.models import Project, ProjectPlanAssignment
+
+        projects = Project.objects.select_related("purchased_plan__plan", "created_by").filter(
+            purchased_plan__isnull=False
+        )
+        for project in projects:
+            legacy = project.purchased_plan
+            if not legacy or not legacy.plan_id:
+                continue
+            ProjectPlanAssignment.objects.update_or_create(
+                project=project,
+                plan=legacy.plan,
+                defaults={
+                    "subscription": legacy,
+                    "agreed_price": legacy.agreed_price or legacy.plan.base_price,
+                    "is_active": True,
+                    "created_by": project.created_by,
+                },
+            )
+
     def upsert_template(self, code, name, project_type, description, sections):
+        """Actualiza una plantilla sin romper respuestas existentes cuando una pregunta cambia de sección."""
         template, _ = QuestionnaireTemplate.objects.update_or_create(
             code=code,
             defaults={"name": name, "project_type": project_type, "description": description, "is_active": True},
         )
         valid_titles = []
+        valid_question_ids = []
         for s_order, section_data in enumerate(sections, start=1):
             valid_titles.append(section_data["title"])
             section, _ = QuestionnaireSection.objects.update_or_create(
@@ -57,68 +82,71 @@ class Command(BaseCommand):
                 title=section_data["title"],
                 defaults={"description": section_data.get("description", ""), "order": s_order},
             )
-            valid_keys = []
             for q_order, q in enumerate(section_data["questions"], start=1):
-                valid_keys.append(q["key"])
-                Question.objects.update_or_create(
-                    section=section,
-                    key=q["key"],
-                    defaults={
-                        "text": q["text"],
-                        "help_text": q.get("help", ""),
-                        "question_type": q.get("type", "text"),
-                        "required": q.get("required", False),
-                        "options": q.get("options", []),
-                        "order": q_order,
-                    },
+                # La clave es estable entre versiones. Si la pregunta ya existía en otra sección,
+                # la movemos en lugar de eliminarla para conservar sus respuestas relacionadas.
+                question = (
+                    Question.objects.filter(section__template=template, key=q["key"])
+                    .order_by("id")
+                    .first()
                 )
-            section.questions.exclude(key__in=valid_keys).delete()
+                defaults = {
+                    "section": section,
+                    "text": q["text"],
+                    "help_text": q.get("help", ""),
+                    "question_type": q.get("type", "text"),
+                    "required": q.get("required", False),
+                    "options": q.get("options", []),
+                    "order": q_order,
+                }
+                if question:
+                    for field, value in defaults.items():
+                        setattr(question, field, value)
+                    question.save()
+                else:
+                    question = Question.objects.create(key=q["key"], **defaults)
+                valid_question_ids.append(question.pk)
+
+        Question.objects.filter(section__template=template).exclude(pk__in=valid_question_ids).delete()
         template.sections.exclude(title__in=valid_titles).delete()
         return template
 
     def seed_website_questionnaire(self):
-        # La estructura sigue el flujo real del Excel operativo: Estado + Respuesta/Detalle.
+        # V5: ficha técnica guiada. Los estados ya no se capturan manualmente:
+        # cada bloque se considera listo en función de la información ingresada.
         sections = [
             {"title": "1) Información general", "questions": [
                 {"key":"company_description", "text":"Breve descripción de la empresa / ¿A qué se dedica?", "type":"textarea", "required":True},
             ]},
-            {"title": "2) Identidad y visión", "questions": [
-                {"key":"slogan", "text":"¿Ya compartió slogan o frase corta?", "type":"text"},
-                {"key":"has_mission_vision", "text":"¿La empresa ya tiene misión y visión definidas?", "type":"boolean"},
-                {"key":"mission_final", "text":"Misión final", "type":"textarea"},
-                {"key":"vision_final", "text":"Visión final", "type":"textarea"},
-                {"key":"mission_origin", "text":"Si NO la tienen: ¿Por qué nació la empresa y cuál es su propósito actual?", "type":"textarea"},
-                {"key":"audience_differentiator", "text":"Si NO la tienen: ¿A qué tipo de clientes va dirigida y qué la hace diferente?", "type":"textarea"},
-                {"key":"vision_5_10_years", "text":"Si NO la tienen: ¿Cómo se imaginan en 5 a 10 años?", "type":"textarea"},
-                {"key":"legacy", "text":"Si NO la tienen: ¿Qué huella o legado quieren dejar?", "type":"textarea"},
+            {"title": "2) Identidad, misión y visión", "questions": [
+                {"key":"slogan", "text":"Slogan o frase corta", "type":"text"},
+                {"key":"has_mission_vision", "text":"Misión y visión", "type":"textarea"},
             ]},
-            {"title": "3) Team, servicios y áreas", "questions": [
-                {"key":"show_team", "text":"¿Desea incluir sección Team / About?", "type":"boolean"},
-                {"key":"team_members", "text":"Si desea Team: ¿ya compartió fotos, nombres y cargos del equipo?", "type":"textarea"},
-                {"key":"main_services", "text":"¿Ya compartió los servicios principales?", "type":"textarea", "required":True},
-                {"key":"service_areas", "text":"¿Ya compartió las áreas donde trabaja?", "type":"textarea"},
-                {"key":"coverage", "text":"¿Ya confirmó la cobertura aproximada (millas/minutos alrededor)?", "type":"textarea"},
-                {"key":"preferred_cities", "text":"¿Ya confirmó ciudades o condados principales a incluir?", "type":"textarea"},
-                {"key":"excluded_services", "text":"¿Existe algún servicio que ya no quiera ofrecer o prefiera dejar fuera?", "type":"textarea"},
-                {"key":"future_expansion", "text":"¿Tiene pensado expandirse a otras zonas?", "type":"textarea"},
+            {"title": "3) Team y servicios", "questions": [
+                {"key":"show_team", "text":"Sección Team / About", "type":"textarea"},
+                {"key":"main_services", "text":"Servicios de la empresa", "type":"textarea", "required":True},
             ]},
-            {"title": "4) Horario y contacto", "questions": [
-                {"key":"business_hours", "text":"¿Ya confirmó el horario exacto de trabajo?", "type":"text"},
-                {"key":"is_24_7", "text":"¿Ya confirmó si atienden 24/7?", "type":"boolean"},
-                {"key":"contact_numbers", "text":"¿Ya confirmó el número de contacto principal?", "type":"textarea"},
-                {"key":"has_social", "text":"¿Ya confirmó si tiene redes sociales?", "type":"boolean"},
-                {"key":"facebook", "text":"Facebook", "type":"url"},
-                {"key":"instagram", "text":"Instagram", "type":"url"},
-                {"key":"tiktok", "text":"TikTok", "type":"url"},
-                {"key":"has_webmail", "text":"¿Ya confirmó si cuenta con webmail (info@...)?", "type":"boolean"},
-                {"key":"webmail_email", "text":"Correo webmail", "type":"text", "help":"No guardar contraseñas en esta ficha."},
-                {"key":"has_gbp", "text":"¿Ya confirmó si tiene Google Business / reseñas reales?", "type":"boolean"},
-                {"key":"gbp_notes", "text":"Estado / notas de Google Business", "type":"textarea", "help":"Registrar estado o correo. Las credenciales deben gestionarse fuera de esta ficha."},
+            {"title": "4) Áreas y estrategia SEO", "questions": [
+                {"key":"service_areas", "text":"Áreas donde trabaja", "type":"textarea", "required":True},
+                {"key":"coverage", "text":"Cobertura aproximada en millas", "type":"number"},
+                {"key":"future_expansion", "text":"Expansión futura", "type":"textarea"},
+                {"key":"seo_page_strategy", "text":"Cómo definir páginas de servicios", "type":"select", "options":["study", "client_services"]},
             ]},
-            {"title": "5) Certificaciones y garantías", "questions": [
-                {"key":"certifications", "text":"¿Ya confirmó certificaciones profesionales?", "type":"textarea"},
-                {"key":"warranties", "text":"¿Ya confirmó garantía de trabajo o instalación?", "type":"textarea"},
-                {"key":"experience_years", "text":"¿Ya confirmó los años de experiencia?", "type":"text"},
+            {"title": "5) Horario, teléfonos y redes", "questions": [
+                {"key":"business_hours", "text":"Horario de trabajo", "type":"text"},
+                {"key":"is_24_7", "text":"Atención 24/7", "type":"boolean"},
+                {"key":"contact_numbers", "text":"Teléfonos de contacto", "type":"textarea", "required":True},
+                {"key":"has_social", "text":"Redes sociales", "type":"textarea"},
+            ]},
+            {"title": "6) Datos compartidos con Marketing", "questions": [
+                {"key":"has_webmail", "text":"Webmail", "type":"textarea"},
+                {"key":"has_gbp", "text":"Google Business Profile", "type":"textarea"},
+                {"key":"has_website", "text":"Sitio web actual", "type":"textarea"},
+            ]},
+            {"title": "7) Certificaciones y garantías", "questions": [
+                {"key":"certifications", "text":"Certificaciones profesionales", "type":"textarea"},
+                {"key":"warranties", "text":"Garantías", "type":"textarea"},
+                {"key":"experience_years", "text":"Años de experiencia", "type":"number"},
                 {"key":"internal_meeting_notes", "text":"Notas internas de la reunión", "type":"textarea"},
             ]},
         ]
@@ -126,7 +154,7 @@ class Command(BaseCommand):
             "website-technical-v2",
             "Ficha técnica web · Desarrollo",
             "website",
-            "Formulario operativo basado en la ficha técnica y el Excel de trabajo. Cada pregunta permite marcar estado y guardar detalle.",
+            "Levantamiento guiado del cliente. Los checks verdes se completan automáticamente al llenar cada bloque.",
             sections,
         )
 
@@ -160,7 +188,7 @@ class Command(BaseCommand):
         ]
         self.upsert_template(
             "software-discovery-v2",
-            "Ficha técnica · Software V2",
+            "Ficha técnica · Software V3",
             "software",
             "Plantilla inicial y escalable para levantamiento de proyectos de software.",
             sections,

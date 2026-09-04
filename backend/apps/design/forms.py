@@ -44,3 +44,12 @@ class PaletteGradientForm(forms.ModelForm):
             "start_hex": forms.TextInput(attrs={"type": "color", "class": "color-input"}),
             "end_hex": forms.TextInput(attrs={"type": "color", "class": "color-input"}),
         }
+
+
+class PaletteQuickForm(forms.Form):
+    text_hex = forms.CharField(label="Texto", initial="#000000", widget=forms.TextInput(attrs={"type": "color", "class": "palette-picker"}))
+    background_hex = forms.CharField(label="Fondo", initial="#FFFFFF", widget=forms.TextInput(attrs={"type": "color", "class": "palette-picker"}))
+    primary_hex = forms.CharField(label="Primario", initial="#0C3168", widget=forms.TextInput(attrs={"type": "color", "class": "palette-picker"}))
+    secondary_hex = forms.CharField(label="Secundario", initial="#C9CBD1", widget=forms.TextInput(attrs={"type": "color", "class": "palette-picker"}))
+    accent_hex = forms.CharField(label="Acento", initial="#2571B7", widget=forms.TextInput(attrs={"type": "color", "class": "palette-picker"}))
+    general_rules = forms.CharField(label="Reglas generales", required=False, widget=forms.Textarea(attrs={"rows": 6, "placeholder": "Una regla por línea. Si lo dejas vacío, el PDF usa las reglas estándar."}))

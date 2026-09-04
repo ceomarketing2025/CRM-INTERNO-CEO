@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block page_heading %}Dominios y Hosting{% endblock %}
+{% block content %}
+<div class="page-intro">
+  <div><span class="eyebrow">Administración</span><h2>Dominios y Hosting</h2><p>Compra, dominio existente o migración. Estado, costos y comprobantes separados para dominio y servidor.</p></div>
+  <a class="btn btn-primary" href="{% url 'operations:general_create' %}">＋ Registrar dominio / hosting</a>
+</div>
+
+<div class="metric-grid compact-metrics">
+  <div class="metric-card"><span>Registros</span><strong>{{ stats.total }}</strong><small>Total visible</small></div>
+  <div class="metric-card success-card"><span>En orden</span><strong>{{ stats.complete }}</strong><small>Comprados / migrados</small></div>
+  <div class="metric-card warning-card"><span>Pendiente compra</span><strong>{{ stats.pending_purchase }}</strong><small>Dominios por comprar</small></div>
+  <div class="metric-card warning-card"><span>Pendiente migración</span><strong>{{ stats.pending_migration }}</strong><small>Migraciones abiertas</small></div>
+  <div class="metric-card"><span>Avance</span><strong>{{ stats.percent }}%</strong><div class="mini-progress"><i style="width:{{ stats.percent }}%"></i></div></div>
+</div>
+
+<form class="card compact-filter" method="get"><input type="search" name="q" value="{{ q }}" placeholder="Buscar cliente, proyecto o dominio"><button class="btn btn-secondary">Buscar</button></form>
+
+<div class="card"><div class="table-wrap"><table>
+<thead><tr><th>Cliente / Proyecto</th><th>Tipo</th><th>Dominio</th><th>Estado</th><th>Hosting</th><th>Costos</th><th>Comprobantes</th><th>Última edición</th><th></th></tr></thead>
+<tbody>{% for r in records %}<tr>
+<td><strong>{{ r.client.full_name|default:'Sin nombre' }}</strong><span class="table-sub">{{ r.client.business_name }}</span><span class="table-sub">{{ r.project.project_code }} · {{ r.project.name }}</span></td>
+<td><span class="badge neutral">{{ r.get_operation_type_display }}</span></td>
+<td><strong>{{ r.domain_name|default:'—' }}</strong><span class="table-sub">Inicio {{ r.start_date|date:'d/m/Y' }}</span>{% if r.domain_expiry_date %}<span class="table-sub">Caduca {{ r.domain_expiry_date|date:'d/m/Y' }}</span>{% endif %}</td>
+<td>
+  <form method="post" action="{% url 'operations:general_quick_status' r.pk %}" class="quick-status-form">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <select name="domain_status" class="quick-status-select {{ r.status_badge_class }}" onchange="this.form.submit()" aria-label="Cambiar estado de {{ r.domain_name|default:r.project.name }}">
+      {% if r.operation_type == 'migration' %}
+        <option value="pending_migration" {% if r.domain_status == 'pending_migration' or r.domain_status == 'pending' %}selected{% endif %}>Pendiente migración</option>
+        <option value="migrated" {% if r.domain_status == 'migrated' or r.domain_status == 'ready' %}selected{% endif %}>Migrado</option>
+      {% elif r.operation_type == 'existing' %}
+        <option value="purchased" selected>Comprado y registrado</option>
+      {% else %}
+        <option value="pending_purchase" {% if r.domain_status == 'pending_purchase' or r.domain_status == 'pending' %}selected{% endif %}>Pendiente compra</option>
+        <option value="purchased" {% if r.domain_status == 'purchased' or r.domain_status == 'ready' %}selected{% endif %}>Comprado y registrado</option>
+      {% endif %}
+    </select>
+  </form>
+</td>
+<td><strong>{{ r.provider_label }}</strong><span class="table-sub">Servidor / hosting</span></td>
+<td><span class="money-line">Dominio: ${{ r.domain_cost }} {{ r.currency }}</span><span class="table-sub">Host: ${{ r.server_cost }} {{ r.currency }}</span></td>
+<td><div class="receipt-links">{% if r.domain_receipt_drive_url %}<a class="text-link" target="_blank" href="{{ r.domain_receipt_drive_url }}">Dominio ↗</a>{% endif %}{% if r.server_receipt_drive_url %}<a class="text-link" target="_blank" href="{{ r.server_receipt_drive_url }}">Hosting ↗</a>{% elif r.receipt_drive_url %}<a class="text-link" target="_blank" href="{{ r.receipt_drive_url }}">Hosting ↗</a>{% endif %}{% if not r.domain_receipt_drive_url and not r.server_receipt_drive_url and not r.receipt_drive_url %}—{% endif %}</div></td>
+<td>{{ r.updated_by.display_name|default:'Sistema' }}<span class="table-sub">{{ r.updated_at|date:'d/m/Y H:i' }}</span></td>
+<td class="table-actions"><a title="Ver" href="{% url 'operations:general_detail' r.pk %}">👁</a><a title="Editar" href="{% url 'operations:general_edit' r.pk %}">✎</a>{% if request.user.is_manager %}<form method="post" action="{% url 'operations:general_delete' r.pk %}" onsubmit="return confirm('¿Eliminar este registro?')">{% csrf_token %}<button title="Eliminar" class="icon-danger">⌫</button></form>{% endif %}</td>
+</tr>{% empty %}<tr><td colspan="9"><div class="empty">Todavía no hay dominios / hosting registrados.</div></td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

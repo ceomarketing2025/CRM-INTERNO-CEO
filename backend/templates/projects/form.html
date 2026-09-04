@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block page_heading %}Proyectos{% endblock %}
+{% block content %}
+<div class="page-intro">
+  <div><span class="eyebrow">Administración</span><h2>{{ title }}</h2><p>{{ subtitle }}</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'projects:list' %}">Volver</a></div>
+</div>
+<form method="post" class="project-contract-form-v9">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert error">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="card">
+    <div class="card-head"><div><h3>1. Datos del proyecto</h3><p>El cliente mantiene únicamente sus datos. Aquí se registra lo que realmente contrató.</p></div></div>
+    <div class="project-base-grid-v9">
+      {% for field in form %}
+        {% if field.name != 'administration_plans' and field.name != 'design_plans' and field.name != 'marketing_plans' and field.name != 'development_plans' %}
+        <div class="form-field {% if field.name == 'summary' or field.name == 'internal_notes' %}form-wide{% endif %}">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+          {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card project-products-card-v9">
+    <div class="card-head"><div><h3>2. Productos contratados por área</h3><p>Puedes seleccionar uno, varios o ninguno en cada departamento. Los planes nuevos aparecerán aquí automáticamente.</p></div></div>
+    <div class="department-plan-selector-v9">
+      <section class="dept-plan-block administration"><div class="dept-plan-title"><b>A</b><div><strong>Administración</strong><span>Dominio, host, credenciales y productos administrativos.</span></div></div><div class="plan-check-list-v9">{{ form.administration_plans }}</div></section>
+      <section class="dept-plan-block design"><div class="dept-plan-title"><b>D</b><div><strong>Diseño</strong><span>Social Media, chaquetas, gorras, branding y otros productos de Diseño.</span></div></div><div class="plan-check-list-v9">{{ form.design_plans }}</div></section>
+      <section class="dept-plan-block marketing"><div class="dept-plan-title"><b>M</b><div><strong>Marketing</strong><span>Guarantee, Search Console, Google Ads, LSA, Meta Ads, GBP, etc.</span></div></div><div class="plan-check-list-v9">{{ form.marketing_plans }}</div></section>
+      <section class="dept-plan-block development"><div class="dept-plan-title"><b>WEB</b><div><strong>Sitios web / Desarrollo</strong><span>Web, landing, e-commerce, SEO, software y mantenimiento.</span></div></div><div class="plan-check-list-v9">{{ form.development_plans }}</div></section>
+    </div>
+  </div>
+  <div class="form-actions"><button class="btn btn-primary btn-lg" type="submit">Guardar proyecto</button></div>
+</form>
+{% endblock %}

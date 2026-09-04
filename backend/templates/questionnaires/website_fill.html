@@ -1,0 +1,164 @@
+{% extends 'base.html' %}{% load questionnaire_tags %}
+{% block page_heading %}Ficha técnica · Desarrollo{% endblock %}
+{% block content %}
+<div class="page-intro technical-intro">
+  <div><span class="eyebrow">Desarrollo · {{ questionnaire.project.project_code }}</span><h2>{{ questionnaire.project.client.business_name }}</h2><p>Formulario guiado. No hay estados manuales: cada bloque se marca en verde automáticamente cuando tiene la información necesaria.</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'questionnaires:development_dashboard' %}">Desarrollo</a><a class="btn btn-secondary" href="{% url 'projects:detail' questionnaire.project.pk %}">Proyecto</a><a class="btn btn-primary" href="{% url 'handoff:summary' questionnaire.project.pk %}">Resumen</a></div>
+</div>
+
+<div class="technical-progress-card card">
+  <div><span class="eyebrow">Avance de ficha</span><strong id="technical-percent">{{ progress.percent }}%</strong><small id="technical-count">{{ progress.complete }} de {{ progress.total }} bloques listos</small></div>
+  <div class="progress technical-progress"><i id="technical-progress-bar" style="width:{{ progress.percent }}%"></i></div>
+  <div class="sync-note">Google Business, webmail y sitio web están sincronizados con Marketing.</div>
+</div>
+
+<form method="post" id="technical-form" class="technical-form">{% csrf_token %}
+
+<section class="technical-section">
+  <div class="technical-section-title"><span>01</span><div><h3>Información general</h3><p>Primero entendemos qué hace la empresa.</p></div></div>
+  <div class="tech-card {% if data.company_description.complete %}complete{% endif %}" id="block-company">
+    <div class="tech-head"><div><strong>Breve descripción de la empresa / ¿A qué se dedica?</strong><small>Explícalo como lo diría el cliente, sin términos complicados.</small></div><span class="auto-check">✓</span></div>
+    <textarea name="company_description" rows="4" placeholder="Ej.: Empresa familiar especializada en roofing residencial, reparaciones y reemplazo de techos...">{{ data.company_description.text }}</textarea>
+    <div class="edited-stamp">{% if data.company_description.updated_by %}Última modificación: {{ data.company_description.updated_by.display_name }} · {{ data.company_description.updated_at|date:'d/m/Y H:i' }}{% endif %}</div>
+  </div>
+</section>
+
+<section class="technical-section">
+  <div class="technical-section-title"><span>02</span><div><h3>Identidad, misión y visión</h3><p>Solo se muestran los campos que realmente necesitas llenar.</p></div></div>
+  <div class="tech-grid two">
+    <div class="tech-card {% if data.slogan.complete %}complete{% endif %}" id="block-slogan">
+      <div class="tech-head"><div><strong>Slogan o frase corta</strong><small>Selecciona qué se hará con el slogan.</small></div><span class="auto-check">✓</span></div>
+      <div class="choice-pills" data-toggle-target="slogan-detail">
+        <label><input type="radio" name="slogan_mode" value="existing" {% if data.slogan.json.mode == 'existing' %}checked{% endif %}> Ya tiene</label>
+        <label><input type="radio" name="slogan_mode" value="create" {% if data.slogan.json.mode == 'create' %}checked{% endif %}> Crear uno</label>
+        <label><input type="radio" name="slogan_mode" value="none" {% if data.slogan.json.mode == 'none' %}checked{% endif %}> No crear</label>
+      </div>
+      <div id="slogan-detail" class="conditional-panel"><label>Slogan / propuesta</label><input type="text" name="slogan_text" value="{{ data.slogan.json.text|default:'' }}" placeholder="Escribe el slogan"></div>
+    </div>
+
+    <div class="tech-card {% if data.has_mission_vision.complete %}complete{% endif %}" id="block-mission">
+      <div class="tech-head"><div><strong>¿La empresa ya tiene misión y visión?</strong><small>Si no las tiene, hacemos cuatro preguntas fáciles para poder crearlas.</small></div><span class="auto-check">✓</span></div>
+      <div class="choice-pills"><label><input type="radio" name="mission_has" value="yes" {% if data.has_mission_vision.json.has == 'yes' %}checked{% endif %}> Sí</label><label><input type="radio" name="mission_has" value="no" {% if data.has_mission_vision.json.has == 'no' %}checked{% endif %}> No</label></div>
+      <div class="conditional-panel" data-show-when="mission_has:yes">
+        <label>Misión</label><textarea name="mission_text" rows="3" placeholder="Ingrese la misión actual">{{ data.has_mission_vision.json.mission|default:'' }}</textarea>
+        <label>Visión</label><textarea name="vision_text" rows="3" placeholder="Ingrese la visión actual">{{ data.has_mission_vision.json.vision|default:'' }}</textarea>
+      </div>
+      <div class="conditional-panel guided-questions" data-show-when="mission_has:no">
+        <label>1. ¿Por qué empezó la empresa y qué busca resolver hoy?</label><textarea name="mission_origin" rows="2" placeholder="Respuesta sencilla del cliente">{{ data.has_mission_vision.json.mission_origin|default:'' }}</textarea>
+        <label>2. ¿A quién ayuda y qué hace diferente a la empresa?</label><textarea name="mission_clients" rows="2" placeholder="Clientes ideales, garantía, atención, experiencia, etc.">{{ data.has_mission_vision.json.mission_clients|default:'' }}</textarea>
+        <label>3. ¿Cómo le gustaría ver la empresa en 5 a 10 años?</label><textarea name="vision_future" rows="2" placeholder="Más ciudades, equipo, servicios, reconocimiento...">{{ data.has_mission_vision.json.vision_future|default:'' }}</textarea>
+        <label>4. ¿Qué quiere que la gente recuerde de la empresa?</label><textarea name="vision_legacy" rows="2" placeholder="Confianza, calidad, servicio, legado...">{{ data.has_mission_vision.json.vision_legacy|default:'' }}</textarea>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="technical-section">
+  <div class="technical-section-title"><span>03</span><div><h3>Team y servicios</h3><p>Los servicios se guardan como una lista reutilizable por la Ficha de Producción.</p></div></div>
+  <div class="tech-card {% if data.show_team.complete %}complete{% endif %}" id="block-team">
+    <div class="tech-head"><div><strong>¿Desea incluir una sección Team en About?</strong><small>Si responde sí, define rápidamente a quién mostrar.</small></div><span class="auto-check">✓</span></div>
+    <div class="choice-pills"><label><input type="radio" name="team_include" value="yes" {% if data.show_team.json.include == 'yes' %}checked{% endif %}> Sí</label><label><input type="radio" name="team_include" value="no" {% if data.show_team.json.include == 'no' %}checked{% endif %}> No</label></div>
+    <div class="conditional-panel" data-show-when="team_include:yes">
+      <div class="choice-pills compact"><label><input type="radio" name="team_scope" value="Solo fundador" {% if data.show_team.json.scope == 'Solo fundador' %}checked{% endif %}> Solo fundador</label><label><input type="radio" name="team_scope" value="Todo el equipo" {% if data.show_team.json.scope == 'Todo el equipo' %}checked{% endif %}> Todo el equipo</label><label><input type="radio" name="team_scope" value="Selección" {% if data.show_team.json.scope == 'Selección' %}checked{% endif %}> Selección</label></div>
+      <label>Nombres / cargos / información</label><textarea name="team_details" rows="3" placeholder="Ej.: Juan Pérez · Founder / Owner">{{ data.show_team.json.details|default:'' }}</textarea>
+    </div>
+  </div>
+
+  <div class="tech-card important-card {% if data.main_services.complete %}complete{% endif %}" id="block-services">
+    <div class="tech-head"><div><strong>Servicios de la empresa</strong><small>Agrega cuantos necesites. Solo puede existir un servicio principal; puedes marcar varios para dejar fuera.</small></div><span class="auto-check">✓</span></div>
+    {% if data.main_services.complete %}<div class="saved-service-summary" id="services-saved-view"><div class="saved-service-chips">{% for item in data.main_services.json.items %}<span class="saved-service-chip {% if item.primary %}primary{% endif %} {% if item.excluded %}excluded{% endif %}">{{ item.name }}{% if item.primary %} ★{% endif %}{% if item.excluded %} · Fuera{% endif %}</span>{% endfor %}</div><button type="button" class="btn btn-secondary btn-sm" id="edit-services">Editar servicios</button></div>{% endif %}
+    <div id="services-editor" {% if data.main_services.complete %}class="services-editor collapsed"{% else %}class="services-editor"{% endif %}>
+      <div class="dynamic-list" id="services-list">
+        {% for item in data.main_services.json.items %}
+        <div class="dynamic-row service-row">
+          <input type="text" name="service_name" value="{{ item.name }}" placeholder="Ej.: Roofing">
+          <label class="mini-choice star-choice"><input type="radio" name="service_primary" value="{{ forloop.counter0 }}" {% if item.primary %}checked{% endif %}> ★ Principal</label>
+          <label class="mini-choice"><input type="checkbox" name="service_excluded" value="{{ forloop.counter0 }}" {% if item.excluded %}checked{% endif %}> Dejar fuera</label>
+          <button type="button" class="row-remove" title="Eliminar">×</button>
+        </div>
+        {% empty %}
+        <div class="dynamic-row service-row"><input type="text" name="service_name" placeholder="Ej.: Roofing"><label class="mini-choice star-choice"><input type="radio" name="service_primary" value="0"> ★ Principal</label><label class="mini-choice"><input type="checkbox" name="service_excluded" value="0"> Dejar fuera</label><button type="button" class="row-remove" title="Eliminar">×</button></div>
+        {% endfor %}
+      </div>
+      <div class="inline-actions"><button type="button" class="btn btn-secondary btn-sm" data-add-row="service">＋ Añadir servicio</button><button type="submit" class="btn btn-primary btn-sm" name="section_focus" value="services">Guardar servicios</button><span class="save-hint">Al guardar quedan disponibles automáticamente en Producción.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="technical-section">
+  <div class="technical-section-title"><span>04</span><div><h3>Áreas y estrategia SEO</h3><p>Estados, condados y ciudades quedan separados para reutilizarlos después.</p></div></div>
+  <div class="tech-card {% if data.service_areas.complete %}complete{% endif %}" id="block-areas">
+    <div class="tech-head"><div><strong>Áreas donde trabaja</strong><small>Selecciona el tipo y escribe el nombre.</small></div><span class="auto-check">✓</span></div>
+    <div class="dynamic-list" id="areas-list">
+      {% for item in data.service_areas.json.items %}<div class="dynamic-row area-row"><select name="area_type"><option value="state" {% if item.type == 'state' %}selected{% endif %}>Estado</option><option value="county" {% if item.type == 'county' %}selected{% endif %}>Condado</option><option value="city" {% if item.type == 'city' %}selected{% endif %}>Ciudad</option></select><input type="text" name="area_name" value="{{ item.name }}" placeholder="Ej.: Bergen County"><button type="button" class="row-remove">×</button></div>{% empty %}<div class="dynamic-row area-row"><select name="area_type"><option value="state">Estado</option><option value="county">Condado</option><option value="city">Ciudad</option></select><input type="text" name="area_name" placeholder="Ej.: Bergen County"><button type="button" class="row-remove">×</button></div>{% endfor %}
+    </div><button type="button" class="btn btn-secondary btn-sm" data-add-row="area">＋ Añadir área</button>
+  </div>
+  <div class="tech-grid three">
+    <div class="tech-card {% if data.coverage.complete %}complete{% endif %}" id="block-coverage"><div class="tech-head"><div><strong>Cobertura alrededor</strong><small>Solo ingresa el número.</small></div><span class="auto-check">✓</span></div><div class="input-suffix"><input type="number" min="0" name="coverage_miles" value="{{ data.coverage.json.miles|default:'' }}" placeholder="15"><span>millas</span></div></div>
+    <div class="tech-card {% if data.future_expansion.complete %}complete{% endif %}" id="block-expansion"><div class="tech-head"><div><strong>¿Piensa expandirse a otras zonas?</strong></div><span class="auto-check">✓</span></div><div class="choice-pills"><label><input type="radio" name="expansion_answer" value="yes" {% if data.future_expansion.json.answer == 'yes' %}checked{% endif %}> Sí</label><label><input type="radio" name="expansion_answer" value="no" {% if data.future_expansion.json.answer == 'no' %}checked{% endif %}> No</label></div><div class="conditional-panel" data-show-when="expansion_answer:yes"><div class="dynamic-list" id="expansion-list">{% for item in data.future_expansion.json.areas %}<div class="dynamic-row area-row"><select name="expansion_type"><option value="state" {% if item.type == 'state' %}selected{% endif %}>Estado</option><option value="county" {% if item.type == 'county' %}selected{% endif %}>Condado</option><option value="city" {% if item.type == 'city' %}selected{% endif %}>Ciudad</option></select><input name="expansion_name" value="{{ item.name }}"><button type="button" class="row-remove">×</button></div>{% empty %}<div class="dynamic-row area-row"><select name="expansion_type"><option value="state">Estado</option><option value="county">Condado</option><option value="city">Ciudad</option></select><input name="expansion_name" placeholder="Nueva zona"><button type="button" class="row-remove">×</button></div>{% endfor %}</div><button type="button" class="btn btn-secondary btn-sm" data-add-row="expansion">＋ Añadir zona</button></div></div>
+    <div class="tech-card {% if data.seo_page_strategy.complete %}complete{% endif %}" id="block-seo-strategy"><div class="tech-head"><div><strong>¿Cómo definimos las páginas de servicios?</strong><small>Explicado de forma simple para el cliente.</small></div><span class="auto-check">✓</span></div><div class="choice-cards vertical"><label><input type="radio" name="seo_page_strategy" value="study" {% if data.seo_page_strategy.json.strategy == 'study' %}checked{% endif %}><span><b>Hacer estudio</b><small>Analizamos búsquedas y creamos las páginas con mejor oportunidad/tendencia.</small></span></label><label><input type="radio" name="seo_page_strategy" value="client_services" {% if data.seo_page_strategy.json.strategy == 'client_services' %}checked{% endif %}><span><b>Usar servicios indicados</b><small>Creamos páginas con los servicios que el cliente quiere, aunque no sean los de mayor tendencia.</small></span></label></div></div>
+  </div>
+</section>
+
+<section class="technical-section">
+  <div class="technical-section-title"><span>05</span><div><h3>Horario, teléfonos y redes</h3><p>Campos rápidos para usar durante la reunión.</p></div></div>
+  <div class="tech-grid two">
+    <div class="tech-card {% if data.business_hours.complete %}complete{% endif %}" id="block-hours"><div class="tech-head"><div><strong>Horario de trabajo</strong></div><span class="auto-check">✓</span></div><div class="time-range"><div><label>Desde</label><div><input type="text" name="hours_start" value="{{ data.business_hours.json.start|default:'' }}" placeholder="7:20"><select name="hours_start_period"><option {% if data.business_hours.json.start_period != 'PM' %}selected{% endif %}>AM</option><option {% if data.business_hours.json.start_period == 'PM' %}selected{% endif %}>PM</option></select></div></div><div><label>Hasta</label><div><input type="text" name="hours_end" value="{{ data.business_hours.json.end|default:'' }}" placeholder="5:00"><select name="hours_end_period"><option {% if data.business_hours.json.end_period == 'AM' %}selected{% endif %}>AM</option><option {% if data.business_hours.json.end_period != 'AM' %}selected{% endif %}>PM</option></select></div></div></div></div>
+    <div class="tech-card {% if data.is_24_7.complete %}complete{% endif %}" id="block-247"><div class="tech-head"><div><strong>¿Trabaja 24/7?</strong></div><span class="auto-check">✓</span></div><div class="choice-pills large"><label><input type="radio" name="is_24_7" value="yes" {% if data.is_24_7.json.answer == 'yes' %}checked{% endif %}> Sí</label><label><input type="radio" name="is_24_7" value="no" {% if data.is_24_7.json.answer == 'no' %}checked{% endif %}> No</label></div></div>
+  </div>
+  <div class="tech-card {% if data.contact_numbers.complete %}complete{% endif %}" id="block-phones"><div class="tech-head"><div><strong>Teléfonos</strong><small>Agrega los que necesites y marca uno como principal.</small></div><span class="auto-check">✓</span></div><div class="dynamic-list" id="phones-list">{% for item in data.contact_numbers.json.numbers %}<div class="dynamic-row phone-row"><input type="tel" name="phone_number" value="{{ item.number }}" placeholder="(845) 000-0000"><label class="mini-choice"><input type="radio" name="phone_primary" value="{{ forloop.counter0 }}" {% if item.primary %}checked{% endif %}> Principal</label><button type="button" class="row-remove">×</button></div>{% empty %}<div class="dynamic-row phone-row"><input type="tel" name="phone_number" placeholder="(845) 000-0000"><label class="mini-choice"><input type="radio" name="phone_primary" value="0" checked> Principal</label><button type="button" class="row-remove">×</button></div>{% endfor %}</div><button type="button" class="btn btn-secondary btn-sm" data-add-row="phone">＋ Añadir teléfono</button></div>
+  <div class="tech-card {% if data.has_social.complete %}complete{% endif %}" id="block-social"><div class="tech-head"><div><strong>¿Tiene redes sociales?</strong><small>Marca las redes que tenga y aparecerá únicamente el campo del enlace.</small></div><span class="auto-check">✓</span></div><div class="choice-pills"><label><input type="radio" name="social_has" value="yes" {% if data.has_social.json.has == 'yes' %}checked{% endif %}> Sí</label><label><input type="radio" name="social_has" value="no" {% if data.has_social.json.has == 'no' %}checked{% endif %}> No</label></div><div class="conditional-panel" data-show-when="social_has:yes"><div class="social-network-grid">{% for key,label in social_networks %}{% with url=data.has_social.json.networks|get_item:key %}<div class="social-network-item"><label class="network-check"><input type="checkbox" name="social_enabled_{{ key }}" value="1" {% if url %}checked{% endif %}> {{ label }}</label><input class="social-url" type="url" name="social_url_{{ key }}" value="{{ url|default:'' }}" placeholder="https://..."></div>{% endwith %}{% endfor %}</div><div class="dynamic-list" id="social-custom-list">{% for item in data.has_social.json.custom %}<div class="dynamic-row custom-social-row"><input name="social_custom_name" value="{{ item.name }}" placeholder="Otra red"><input type="url" name="social_custom_url" value="{{ item.url }}" placeholder="https://..."><button type="button" class="row-remove">×</button></div>{% endfor %}</div><button type="button" class="btn btn-secondary btn-sm" data-add-row="social-custom">＋ Añadir otra red</button></div></div>
+</section>
+
+<section class="technical-section shared-marketing-section">
+  <div class="technical-section-title"><span>06</span><div><h3>Google, webmail y sitio web</h3><p>Información compartida con Marketing. Si Marketing cambia estos datos, aquí también se actualizan.</p></div></div>
+  <div class="tech-grid three">
+    <div class="tech-card shared-card {% if data.has_webmail.complete %}complete{% endif %}" id="block-webmail"><div class="tech-head"><div><strong>¿Tiene webmail?</strong><small>Ej.: info@empresa.com</small></div><span class="auto-check">✓</span></div><div class="choice-pills"><label><input type="radio" name="webmail_has" value="yes" {% if data.has_webmail.json.has == 'yes' %}checked{% endif %}> Sí</label><label><input type="radio" name="webmail_has" value="no" {% if data.has_webmail.json.has == 'no' %}checked{% endif %}> No</label></div><div class="conditional-panel" data-show-when="webmail_has:yes"><label>Correo / usuario</label><input type="email" name="webmail_email" value="{{ data.has_webmail.json.email|default:'' }}" placeholder="info@empresa.com"><label>Link seguro de credenciales</label><input type="url" name="webmail_secure_reference_url" value="{{ data.has_webmail.json.secure_reference_url|default:'' }}" placeholder="Drive / gestor seguro"><small>No se recomienda guardar contraseñas directamente en el CRM.</small></div>{% if data.has_webmail.updated_by %}<div class="edited-stamp">{{ data.has_webmail.updated_by.display_name }} · {{ data.has_webmail.updated_at|date:'d/m/Y H:i' }}</div>{% endif %}</div>
+    <div class="tech-card shared-card {% if data.has_gbp.complete %}complete{% endif %}" id="block-gbp"><div class="tech-head"><div><strong>Google Business Profile</strong></div><span class="auto-check">✓</span></div><div class="choice-pills vertical-pills"><label><input type="radio" name="gbp_mode" value="existing" {% if data.has_gbp.json.mode == 'existing' %}checked{% endif %}> Ya tiene</label><label><input type="radio" name="gbp_mode" value="create" {% if data.has_gbp.json.mode == 'create' %}checked{% endif %}> Crear</label><label><input type="radio" name="gbp_mode" value="no" {% if data.has_gbp.json.mode == 'no' %}checked{% endif %}> No / no crear</label></div><div class="conditional-panel" data-show-when="gbp_mode:existing"><label>Link del perfil</label><input type="url" name="gbp_link" value="{{ data.has_gbp.json.link|default:'' }}" placeholder="https://..."><label>Nota</label><input name="gbp_notes" value="{{ data.has_gbp.json.notes|default:'' }}" placeholder="Estado o detalle"></div>{% if data.has_gbp.updated_by %}<div class="edited-stamp">{{ data.has_gbp.updated_by.display_name }} · {{ data.has_gbp.updated_at|date:'d/m/Y H:i' }}</div>{% endif %}</div>
+    <div class="tech-card shared-card {% if data.has_website.complete %}complete{% endif %}" id="block-website"><div class="tech-head"><div><strong>¿Tiene sitio web?</strong></div><span class="auto-check">✓</span></div><div class="choice-pills"><label><input type="radio" name="website_has" value="yes" {% if data.has_website.json.has == 'yes' %}checked{% endif %}> Sí</label><label><input type="radio" name="website_has" value="no" {% if data.has_website.json.has == 'no' %}checked{% endif %}> No</label></div><div class="conditional-panel" data-show-when="website_has:yes"><label>URL actual</label><input type="url" name="website_url" value="{{ data.has_website.json.url|default:'' }}" placeholder="https://..."></div>{% if data.has_website.updated_by %}<div class="edited-stamp">{{ data.has_website.updated_by.display_name }} · {{ data.has_website.updated_at|date:'d/m/Y H:i' }}</div>{% endif %}</div>
+  </div>
+</section>
+
+<section class="technical-section">
+  <div class="technical-section-title"><span>07</span><div><h3>Certificaciones y garantías</h3><p>Cierre de la reunión técnica.</p></div></div>
+  <div class="tech-grid three">
+    <div class="tech-card {% if data.certifications.complete %}complete{% endif %}" id="block-certifications"><div class="tech-head"><div><strong>¿Tiene certificaciones profesionales?</strong></div><span class="auto-check">✓</span></div><div class="choice-pills"><label><input type="radio" name="certifications_has" value="yes" {% if data.certifications.json.has == 'yes' %}checked{% endif %}> Sí</label><label><input type="radio" name="certifications_has" value="no" {% if data.certifications.json.has == 'no' %}checked{% endif %}> No</label></div><div class="conditional-panel" data-show-when="certifications_has:yes"><textarea name="certifications_detail" rows="3" placeholder="¿Cuáles?">{{ data.certifications.json.detail|default:'' }}</textarea></div></div>
+    <div class="tech-card {% if data.warranties.complete %}complete{% endif %}" id="block-warranties"><div class="tech-head"><div><strong>¿Ofrece garantía?</strong></div><span class="auto-check">✓</span></div><div class="choice-pills"><label><input type="radio" name="warranties_has" value="yes" {% if data.warranties.json.has == 'yes' %}checked{% endif %}> Sí</label><label><input type="radio" name="warranties_has" value="no" {% if data.warranties.json.has == 'no' %}checked{% endif %}> No</label></div><div class="conditional-panel" data-show-when="warranties_has:yes"><textarea name="warranties_detail" rows="3" placeholder="Ej.: 10 años de instalación / garantía del fabricante">{{ data.warranties.json.detail|default:'' }}</textarea></div></div>
+    <div class="tech-card {% if data.experience_years.complete %}complete{% endif %}" id="block-experience"><div class="tech-head"><div><strong>Años de experiencia</strong></div><span class="auto-check">✓</span></div><input type="number" min="0" name="experience_years" value="{{ data.experience_years.text|default:'' }}" placeholder="10"></div>
+  </div>
+  <div class="tech-card optional-card"><div class="tech-head"><div><strong>Notas internas</strong><small>No afecta el porcentaje de avance.</small></div></div><textarea name="internal_meeting_notes" rows="4" placeholder="Notas para el equipo...">{{ data.internal_meeting_notes.text }}</textarea></div>
+</section>
+
+<div class="technical-savebar card"><div><strong>Ficha técnica · <span id="technical-percent-bottom">{{ progress.percent }}%</span></strong><span>Los checks verdes y el porcentaje cambian mientras llenas la ficha.</span></div><button class="btn btn-primary btn-lg" type="submit">Guardar ficha técnica</button></div>
+</form>
+
+<script>
+(function(){
+  const form=document.getElementById('technical-form');
+  const q=(name)=>form.querySelector(`[name="${name}"]`);
+  const qa=(name)=>[...form.querySelectorAll(`[name="${name}"]`)];
+  const radio=(name)=>{const el=form.querySelector(`[name="${name}"]:checked`);return el?el.value:''};
+  const val=(name)=>(q(name)?.value||'').trim();
+  const setDone=(id,done)=>document.getElementById(id)?.classList.toggle('complete',!!done);
+  function updateConditionals(){document.querySelectorAll('[data-show-when]').forEach(el=>{const [name,value]=el.dataset.showWhen.split(':');el.classList.toggle('visible',radio(name)===value)}); const mode=radio('slogan_mode');document.getElementById('slogan-detail')?.classList.toggle('visible',mode==='existing'||mode==='create');document.querySelectorAll('.social-network-item').forEach(item=>{const cb=item.querySelector('input[type=checkbox]'),url=item.querySelector('.social-url');if(url)url.style.display=cb?.checked?'block':'none'})}
+  function updateChecks(){
+    setDone('block-company',!!val('company_description'));
+    const sm=radio('slogan_mode');setDone('block-slogan',sm==='none'||((sm==='existing'||sm==='create')&&!!val('slogan_text')));
+    const mh=radio('mission_has');setDone('block-mission',(mh==='yes'&&!!val('mission_text')&&!!val('vision_text'))||(mh==='no'&&['mission_origin','mission_clients','vision_future','vision_legacy'].every(n=>!!val(n))));
+    const ti=radio('team_include');setDone('block-team',ti==='no'||(ti==='yes'&&!!radio('team_scope')&&!!val('team_details')));
+    setDone('block-services',qa('service_name').some(el=>el.value.trim()));setDone('block-areas',qa('area_name').some(el=>el.value.trim()));setDone('block-coverage',!!val('coverage_miles'));
+    const ex=radio('expansion_answer');setDone('block-expansion',ex==='no'||(ex==='yes'&&qa('expansion_name').some(el=>el.value.trim())));setDone('block-seo-strategy',!!radio('seo_page_strategy'));
+    const all247=radio('is_24_7');setDone('block-hours',all247==='yes'||(!!val('hours_start')&&!!val('hours_end')));setDone('block-247',!!all247);setDone('block-phones',qa('phone_number').some(el=>el.value.trim()));
+    const sh=radio('social_has');const socialUrls=[...form.querySelectorAll('.social-url')].some(el=>el.offsetParent!==null&&el.value.trim())||qa('social_custom_url').some(el=>el.value.trim());setDone('block-social',sh==='no'||(sh==='yes'&&socialUrls));
+    const wh=radio('webmail_has');setDone('block-webmail',wh==='no'||(wh==='yes'&&!!val('webmail_email')));const gm=radio('gbp_mode');setDone('block-gbp',gm==='create'||gm==='no'||(gm==='existing'&&!!val('gbp_link')));const web=radio('website_has');setDone('block-website',web==='no'||(web==='yes'&&!!val('website_url')));
+    const ch=radio('certifications_has');setDone('block-certifications',ch==='no'||(ch==='yes'&&!!val('certifications_detail')));const wa=radio('warranties_has');setDone('block-warranties',wa==='no'||(wa==='yes'&&!!val('warranties_detail')));setDone('block-experience',!!val('experience_years'));
+    const blocks=[...form.querySelectorAll('.tech-card[id^="block-"]')];const done=blocks.filter(b=>b.classList.contains('complete')).length;const pct=blocks.length?Math.round(done/blocks.length*100):0;const pctTop=document.getElementById('technical-percent'),pctBottom=document.getElementById('technical-percent-bottom'),count=document.getElementById('technical-count'),bar=document.getElementById('technical-progress-bar');if(pctTop)pctTop.textContent=pct+'%';if(pctBottom)pctBottom.textContent=pct+'%';if(count)count.textContent=`${done} de ${blocks.length} bloques listos`;if(bar)bar.style.width=pct+'%';
+  }
+  function normalizeIndexed(container, rowSelector, radioName, checkboxName){const rows=[...container.querySelectorAll(rowSelector)];rows.forEach((row,i)=>{if(radioName){const r=row.querySelector(`input[name="${radioName}"]`);if(r)r.value=i}if(checkboxName){const c=row.querySelector(`input[name="${checkboxName}"]`);if(c)c.value=i}})}
+  function wireRemove(root){root.querySelectorAll('.row-remove').forEach(btn=>btn.onclick=()=>{const row=btn.closest('.dynamic-row');const list=row.parentElement;if(list.children.length>1||row.querySelectorAll('input').some(i=>i.value)){row.remove()}normalizeIndexed(document.getElementById('services-list'),'.service-row','service_primary','service_excluded');normalizeIndexed(document.getElementById('phones-list'),'.phone-row','phone_primary');updateChecks()})}
+  document.querySelectorAll('[data-add-row]').forEach(btn=>btn.addEventListener('click',()=>{const type=btn.dataset.addRow;let list,html='';if(type==='service'){list=document.getElementById('services-list');const i=list.children.length;html=`<div class="dynamic-row service-row"><input type="text" name="service_name" placeholder="Ej.: Siding"><label class="mini-choice star-choice"><input type="radio" name="service_primary" value="${i}"> ★ Principal</label><label class="mini-choice"><input type="checkbox" name="service_excluded" value="${i}"> Dejar fuera</label><button type="button" class="row-remove">×</button></div>`}else if(type==='area'||type==='expansion'){list=document.getElementById(type==='area'?'areas-list':'expansion-list');const pre=type==='area'?'area':'expansion';html=`<div class="dynamic-row area-row"><select name="${pre}_type"><option value="state">Estado</option><option value="county">Condado</option><option value="city">Ciudad</option></select><input name="${pre}_name" placeholder="Nombre"><button type="button" class="row-remove">×</button></div>`}else if(type==='phone'){list=document.getElementById('phones-list');const i=list.children.length;html=`<div class="dynamic-row phone-row"><input type="tel" name="phone_number" placeholder="(845) 000-0000"><label class="mini-choice"><input type="radio" name="phone_primary" value="${i}"> Principal</label><button type="button" class="row-remove">×</button></div>`}else if(type==='social-custom'){list=document.getElementById('social-custom-list');html=`<div class="dynamic-row custom-social-row"><input name="social_custom_name" placeholder="Otra red"><input type="url" name="social_custom_url" placeholder="https://..."><button type="button" class="row-remove">×</button></div>`}if(list&&html){list.insertAdjacentHTML('beforeend',html);wireRemove(list);updateChecks()}}));
+  document.getElementById('edit-services')?.addEventListener('click',()=>{document.getElementById('services-editor')?.classList.remove('collapsed');document.getElementById('services-saved-view')?.classList.add('editing')});
+  form.addEventListener('input',()=>{updateConditionals();updateChecks()});form.addEventListener('change',()=>{updateConditionals();updateChecks()});wireRemove(form);updateConditionals();updateChecks();
+})();
+</script>
+{% endblock %}

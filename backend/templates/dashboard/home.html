@@ -1,1 +1,52 @@
-{% extends 'base.html' %}{% block page_heading %}Dashboard{% endblock %}{% block content %}<div class="hero-card"><div><span class="eyebrow light">{{ request.user.get_role_display }}</span><h2>Hola, {{ request.user.first_name|default:'equipo' }}.</h2><p>El sistema ahora sigue el flujo real de alta, asesoría visual, levantamiento técnico y handoff.</p></div>{% if current_role == 'administration' or request.user.is_manager %}<a class="btn btn-light" href="{% url 'administration:website_intake' %}">+ Nuevo cliente</a>{% else %}<a class="btn btn-light" href="{% url 'projects:list' %}">Ver mi flujo</a>{% endif %}</div><div class="stats-grid"><div class="stat-card"><span>Clientes activos</span><strong>{{ client_count }}</strong><small>Base administrativa</small></div><div class="stat-card"><span>Esperando Diseño</span><strong>{{ design_pending }}</strong><small>Reunión visual</small></div><div class="stat-card"><span>Esperando Desarrollo</span><strong>{{ development_pending }}</strong><small>Ficha técnica</small></div><div class="stat-card"><span>Información lista</span><strong>{{ information_ready }}</strong><small>Handoff disponible</small></div>{% if request.user.is_manager %}<div class="stat-card finance"><span>Ingresos del mes</span><strong>${{ month_income|floatformat:2 }}</strong><small>Pagados</small></div><div class="stat-card finance"><span>Egresos del mes</span><strong>${{ month_expenses|floatformat:2 }}</strong><small>Pagados</small></div>{% endif %}</div><div class="card"><div class="card-head"><div><h3>Proyectos de tu área</h3><p>Abre uno para continuar exactamente donde quedó.</p></div><a href="{% url 'projects:list' %}">Todos</a></div><div class="list-stack">{% for project in recent_projects %}<a class="list-row" href="{% url 'projects:detail' project.pk %}"><div><strong>{{ project.client.business_name }}</strong><span>{{ project.client.full_name }}{% if project.purchased_plan %} · {{ project.purchased_plan.plan.name }}{% endif %}</span></div><span class="badge">{{ project.get_status_display }}</span></a>{% empty %}<div class="empty">No hay proyectos pendientes en esta área.</div>{% endfor %}</div></div>{% endblock %}
+{% extends 'base.html' %}{% block page_heading %}Dashboard{% endblock %}{% block content %}
+<div class="hero-card dashboard-hero"><div><span class="eyebrow light">{{ request.user.get_role_display }}</span><h2>Control general del sistema</h2><p>Resumen sincronizado de Administración, Diseño, Marketing y Desarrollo. Los porcentajes salen del avance real de cada módulo.</p></div>{% if current_role == 'administration' or request.user.is_manager %}<a class="btn btn-light" href="{% url 'clients:list' %}">Clientes</a>{% else %}<a class="btn btn-light" href="{% url 'projects:list' %}">Mis proyectos</a>{% endif %}</div>
+
+<div class="stats-grid executive-stats">
+  <div class="stat-card"><span>Clientes activos</span><strong>{{ client_count }}</strong><small>Base central</small></div>
+  <div class="stat-card"><span>Proyectos activos</span><strong>{{ project_count }}</strong><small>{{ project_total }} visibles en total</small></div>
+  <div class="stat-card status-queue"><span>En cola</span><strong>{{ queue_count }}</strong><small>Menos de 25%</small></div>
+  <div class="stat-card warning"><span>Incompletos</span><strong>{{ incomplete_count }}</strong><small>25% a 89%</small></div>
+  <div class="stat-card success-soft"><span>Listos por entrega</span><strong>{{ ready_count }}</strong><small>90% o más</small></div>
+  <div class="stat-card"><span>Entregados</span><strong>{{ delivered_count }}</strong><small>Completados / entregados</small></div>
+  <div class="stat-card danger-soft-card"><span>Retrasados</span><strong>{{ delayed_count }}</strong><small>Fecha vencida</small></div>
+  <div class="stat-card"><span>Recordatorios próximos</span><strong>{{ reminder_count }}</strong><small>Próximos 7 días</small></div>
+</div>
+
+<div class="dashboard-analytics-grid">
+  <div class="card area-performance-card">
+    <div class="card-head"><div><h3>Avance por área</h3><p>Promedio de todos los proyectos visibles.</p></div><strong class="big-percent">{{ area_stats.overall }}%</strong></div>
+    <div class="area-progress-list">
+      <div><div><span>Administración</span><b>{{ area_stats.administration }}%</b></div><div class="progress"><i style="width:{{ area_stats.administration }}%"></i></div></div>
+      <div><div><span>Diseño</span><b>{{ area_stats.design }}%</b></div><div class="progress design-bar"><i style="width:{{ area_stats.design }}%"></i></div></div>
+      <div><div><span>Marketing</span><b>{{ area_stats.marketing }}%</b></div><div class="progress marketing-bar"><i style="width:{{ area_stats.marketing }}%"></i></div></div>
+      <div><div><span>Desarrollo</span><b>{{ area_stats.development }}%</b></div><div class="progress development-bar"><i style="width:{{ area_stats.development }}%"></i></div></div>
+    </div>
+  </div>
+  <div class="card distribution-card">
+    <div class="card-head"><div><h3>Estado de proyectos</h3><p>Distribución operacional actual.</p></div></div>
+    <div class="distribution-bars">
+      <div><span>En cola</span><i style="--value:{{ queue_count }}"></i><b>{{ queue_count }}</b></div>
+      <div><span>Incompletos</span><i style="--value:{{ incomplete_count }}"></i><b>{{ incomplete_count }}</b></div>
+      <div><span>Listos</span><i style="--value:{{ ready_count }}"></i><b>{{ ready_count }}</b></div>
+      <div><span>Entregados</span><i style="--value:{{ delivered_count }}"></i><b>{{ delivered_count }}</b></div>
+      <div><span>Retrasados</span><i style="--value:{{ delayed_count }}"></i><b>{{ delayed_count }}</b></div>
+    </div>
+  </div>
+</div>
+
+{% if request.user.is_manager or current_role == 'administration' %}
+<div class="stats-grid compact-management-stats">
+  <div class="stat-card"><span>Producción comercial pendiente</span><strong>{{ production_pending|default:0 }}</strong><small>Hoja administrativa</small></div>
+  <div class="stat-card"><span>Seguimientos Social incompletos</span><strong>{{ social_incomplete|default:0 }}</strong><small>Google / redes</small></div>
+  <div class="stat-card"><span>Renovaciones credenciales</span><strong>{{ credential_due_count }}</strong><small>Próximos 45 días</small></div>
+  {% if request.user.is_manager %}<div class="stat-card finance"><span>Ingresos del mes</span><strong>${{ month_income|floatformat:2 }}</strong><small>Pagados</small></div><div class="stat-card finance"><span>Gastos del mes</span><strong>${{ month_expenses|floatformat:2 }}</strong><small>Pagados</small></div><div class="stat-card warning"><span>Pagos personal pendientes</span><strong>{{ payroll_pending }}</strong><small>Nómina</small></div>{% endif %}
+</div>
+{% endif %}
+
+<div class="two-col wide-left">
+  <div class="card"><div class="card-head"><div><h3>Proyectos · control rápido</h3><p>Avance completo por áreas.</p></div><a href="{% url 'projects:list' %}">Ver todos</a></div><div class="list-stack dashboard-project-list">{% for row in recent_project_rows %}{% with p=row.project c=row.control %}<a class="list-row dashboard-project-row" href="{% url 'projects:detail' p.pk %}"><div class="project-main"><strong>{{ p.client.business_name }}</strong><span>{{ p.project_code }}{% if p.purchased_plan %} · {{ p.purchased_plan.plan.name }}{% endif %}</span><div class="mini-area-pills"><i>Adm {{ c.admin_percent }}%</i><i>Dis {{ c.design_percent }}%</i><i>Mkt {{ c.marketing_percent }}%</i><i>Dev {{ c.development_percent }}%</i></div></div><div class="project-row-progress"><b>{{ c.overall_percent }}%</b><div class="progress slim"><i style="width:{{ c.overall_percent }}%"></i></div></div></a>{% endwith %}{% empty %}<div class="empty">No hay proyectos.</div>{% endfor %}</div></div>
+  <div class="card"><div class="card-head"><div><h3>Agenda próxima</h3><p>Reuniones, seguimientos y renovaciones.</p></div><a href="{% url 'reminders:list' %}">Abrir agenda</a></div><div class="list-stack">{% for r in upcoming_reminders %}<a class="list-row" href="{% url 'reminders:list' %}"><div><strong>{{ r.title }}</strong><span>{{ r.client.business_name|default:'General' }}</span></div><b>{{ r.due_at|date:'d M' }}</b></a>{% empty %}<div class="empty">Sin recordatorios próximos.</div>{% endfor %}</div></div>
+</div>
+
+{% if request.user.is_manager %}<div class="card"><div class="card-head"><div><h3>Última actividad</h3><p>Quién modificó qué y cuándo.</p></div></div><div class="activity-timeline">{% for log in recent_activity %}<div><i></i><div><strong>{{ log.user.display_name|default:'Sistema' }}</strong><span>{{ log.module }} · {{ log.action }}{% if log.description %} · {{ log.description|truncatechars:90 }}{% endif %}</span></div><time>{{ log.created_at|date:'d/m/Y H:i' }}</time></div>{% empty %}<div class="empty">Sin actividad.</div>{% endfor %}</div></div>{% endif %}
+{% endblock %}

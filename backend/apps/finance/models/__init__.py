@@ -1,1 +1,8 @@
-from .entities import FinanceCategory, FinancialTransaction
+from .entities import (
+    FinanceCategory,
+    FinancialTransaction,
+    OperatingExpense,
+    PersonnelPayment,
+    ProjectPayment,
+    SubscriptionPayment,
+)

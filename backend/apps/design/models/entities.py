@@ -354,15 +354,50 @@ class DesignTaskCycle(TimestampedModel):
         indexes = [models.Index(fields=["task", "period_start"], name="design_desi_task_id_0b1698_idx")]
 
     @property
+    def delivery_items_list(self):
+        cache = getattr(self, "_prefetched_objects_cache", {})
+        if "delivery_items" in cache:
+            return list(cache["delivery_items"])
+        return list(self.delivery_items.all())
+
+    @property
+    def total_items(self):
+        return len(self.delivery_items_list)
+
+    @property
+    def created_items(self):
+        return sum(1 for item in self.delivery_items_list if item.content_created)
+
+    @property
+    def published_items(self):
+        return sum(1 for item in self.delivery_items_list if item.content_published)
+
+    @property
     def progress_percent(self):
+        items = self.delivery_items_list
+        if items:
+            # Crear una pieza representa el 50% y publicarla el 100%. Esto permite
+            # ver amarillo cuando el contenido ya existe pero todavía no salió.
+            earned = sum(100 if item.content_published else (50 if item.content_created else 0) for item in items)
+            return round(earned / len(items))
         if self.content_published:
             return 100
         if self.content_created:
-            return 60
+            return 50
         return 0
 
     @property
     def state_label(self):
+        items = self.delivery_items_list
+        if items:
+            published = sum(1 for item in items if item.content_published)
+            created = sum(1 for item in items if item.content_created)
+            total = len(items)
+            if published >= total:
+                return f"Publicado · {published}/{total}"
+            if created or published:
+                return f"{published}/{total} publicados · {created}/{total} creados"
+            return f"Pendiente · 0/{total}"
         if self.content_published:
             return "Publicado"
         if self.content_created:
@@ -371,14 +406,18 @@ class DesignTaskCycle(TimestampedModel):
 
     @property
     def state_code(self):
-        if self.content_published:
+        progress = self.progress_percent
+        if progress >= 100:
             return "green"
-        if self.content_created:
+        if progress > 0:
             return "yellow"
         return "red"
 
     @property
     def is_complete(self):
+        items = self.delivery_items_list
+        if items:
+            return all(item.content_published for item in items)
         return self.content_published
 
     def save(self, *args, **kwargs):
@@ -388,3 +427,64 @@ class DesignTaskCycle(TimestampedModel):
 
     def __str__(self):
         return f"{self.task} · {self.label}"
+
+
+class DesignTaskCycleItem(TimestampedModel):
+    """Entregable individual dentro de un ciclo recurrente de Diseño.
+
+    Para Social Media permite controlar, por semana, cada post/video como
+    `Creado` y `Publicado` hasta completar la cantidad contratada del plan.
+    """
+
+    class ContentType(models.TextChoices):
+        POST = "post", "Post"
+        VIDEO = "video", "Video"
+
+    cycle = models.ForeignKey(
+        DesignTaskCycle,
+        on_delete=models.CASCADE,
+        related_name="delivery_items",
+    )
+    content_type = models.CharField(max_length=12, choices=ContentType.choices, default=ContentType.POST)
+    sequence = models.PositiveSmallIntegerField(default=1)
+    week_number = models.PositiveSmallIntegerField(default=1, verbose_name="Semana")
+    content_created = models.BooleanField(default=False, verbose_name="Creado")
+    content_published = models.BooleanField(default=False, verbose_name="Publicado")
+    notes = models.CharField(max_length=300, blank=True, verbose_name="Notas")
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_design_delivery_items",
+    )
+
+    class Meta:
+        ordering = ["week_number", "content_type", "sequence", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cycle", "content_type", "sequence"],
+                name="unique_design_cycle_delivery_item",
+            )
+        ]
+        indexes = [models.Index(fields=["cycle", "week_number"])]
+
+    @property
+    def is_complete(self):
+        return self.content_published
+
+    @property
+    def state_code(self):
+        if self.content_published:
+            return "green"
+        if self.content_created:
+            return "yellow"
+        return "red"
+
+    def save(self, *args, **kwargs):
+        if self.content_published:
+            self.content_created = True
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.cycle} · {self.get_content_type_display()} {self.sequence}"

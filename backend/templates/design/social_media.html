@@ -2,93 +2,70 @@
 {% block page_heading %}Tareas de Diseño{% endblock %}
 {% block content %}
 <style>
-.dt-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-bottom:18px}.dt-head h2{margin:4px 0}.dt-head p{margin:0;max-width:900px}
-.dt-kpis{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:11px;margin-bottom:15px}.dt-kpi{padding:15px}.dt-kpi span{display:block;font-size:11px;opacity:.68}.dt-kpi strong{display:block;font-size:25px;margin-top:4px}.dt-kpi small{display:block;margin-top:4px;opacity:.62}
-.dt-filter{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;margin-bottom:15px}.dt-filter input{flex:1;min-width:240px}.dt-filter input,.dt-filter select{min-height:42px}
-.dt-product{padding:0;overflow:hidden;margin-bottom:14px}.dt-product-head{display:grid;grid-template-columns:minmax(230px,1.4fr) minmax(210px,1fr) minmax(160px,.65fr) auto;gap:16px;align-items:center;padding:16px 18px;border-bottom:1px solid rgba(127,127,127,.12)}.dt-product-head h3{margin:2px 0 4px}.dt-product-head small{display:block;opacity:.66}.dt-progress strong{font-size:19px}.dt-bar{height:7px;border-radius:999px;background:rgba(127,127,127,.12);overflow:hidden;margin:6px 0}.dt-bar i{height:100%;display:block;border-radius:999px}.dt-bar.red i{background:#d94b4b}.dt-bar.yellow i{background:#d8a125}.dt-bar.green i{background:#2b9c66}
-.dt-task{padding:15px 18px;border-bottom:1px solid rgba(127,127,127,.1)}.dt-task:last-child{border-bottom:0}.dt-task-top{display:grid;grid-template-columns:minmax(250px,1.5fr) minmax(150px,.6fr) minmax(170px,.7fr) auto;gap:15px;align-items:center}.dt-task-title strong{display:block;font-size:15px}.dt-task-title small{display:block;margin-top:4px;opacity:.64;max-width:650px}.dt-state{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800;width:max-content}.dt-state.red{background:rgba(217,75,75,.12);color:#a53a3a}.dt-state.yellow{background:rgba(216,161,37,.14);color:#8d680c}.dt-state.green{background:rgba(43,156,102,.13);color:#21754e}.dt-alert{margin-top:11px;border:1px solid rgba(217,75,75,.2);background:rgba(217,75,75,.06);padding:11px 12px;border-radius:11px;font-size:12px}.dt-alert strong{display:block;margin-bottom:3px}
-.dt-cycles{margin-top:12px;border:1px solid rgba(127,127,127,.13);border-radius:12px;overflow:hidden}.dt-cycle{display:grid;grid-template-columns:minmax(170px,1fr) 130px 130px minmax(150px,.7fr);gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid rgba(127,127,127,.09)}.dt-cycle:last-child{border-bottom:0}.dt-cycle.current{background:rgba(39,104,232,.045)}.dt-cycle-label strong{display:block}.dt-cycle-label small{opacity:.62}.dt-check-form{display:inline}.dt-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(127,127,127,.18);background:transparent;border-radius:9px;padding:7px 9px;cursor:pointer;font-size:11px;font-weight:800}.dt-toggle.on{background:rgba(43,156,102,.12);border-color:rgba(43,156,102,.24)}.dt-empty{padding:18px;opacity:.68}
-@media(max-width:1050px){.dt-kpis{grid-template-columns:repeat(3,minmax(130px,1fr))}.dt-product-head,.dt-task-top{grid-template-columns:1fr 1fr}.dt-cycles{overflow:auto}.dt-cycle{min-width:720px}}@media(max-width:650px){.dt-kpis{grid-template-columns:repeat(2,minmax(120px,1fr))}.dt-product-head,.dt-task-top{grid-template-columns:1fr}}
+.design-board-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-bottom:18px}.design-board-head h2{margin:4px 0}.design-board-head p{margin:0;max-width:820px}.design-kpis{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:12px;margin-bottom:15px}.design-kpi{padding:16px}.design-kpi span{display:block;font-size:11px;opacity:.62;text-transform:uppercase;letter-spacing:.06em}.design-kpi strong{display:block;font-size:26px;margin-top:4px}.design-kpi small{opacity:.6}.design-filter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;margin-bottom:15px}.design-filter input{flex:1;min-width:250px}.design-filter input,.design-filter select{min-height:42px}.project-task-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.design-project-summary{padding:18px;position:relative;overflow:hidden}.design-project-summary:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:rgba(127,127,127,.2)}.design-project-summary.state-red:before{background:#d94b4b}.design-project-summary.state-yellow:before{background:#d8a125}.design-project-summary.state-green:before{background:#2b9c66}.dps-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.dps-title h3{margin:4px 0 3px;font-size:19px}.dps-title p{margin:0;opacity:.65;font-size:12px}.eye-btn{width:42px;height:42px;display:grid;place-items:center;border-radius:12px;font-size:18px}.dps-stats{display:grid;grid-template-columns:1fr auto;align-items:end;gap:16px;margin:16px 0 12px}.dps-progress strong{font-size:28px;line-height:1}.dps-progress span{display:block;font-size:11px;opacity:.6;margin-top:4px}.dps-service-count{text-align:right}.dps-service-count strong{font-size:18px}.dps-service-count small{display:block;opacity:.6}.dps-bar{height:8px;border-radius:999px;background:rgba(127,127,127,.12);overflow:hidden;margin-bottom:14px}.dps-bar i{display:block;height:100%;border-radius:999px}.state-red .dps-bar i{background:#d94b4b}.state-yellow .dps-bar i{background:#d8a125}.state-green .dps-bar i{background:#2b9c66}.service-dots{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.service-dot{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:rgba(127,127,127,.07);font-size:11px;font-weight:700;max-width:190px}.service-dot i{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:#d94b4b}.service-dot.green i{background:#2b9c66}.service-dot.blue i{background:#2f6fe4}.service-dot span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dps-foot{display:flex;justify-content:space-between;gap:10px;margin-top:15px;padding-top:12px;border-top:1px solid rgba(127,127,127,.1);font-size:11px;opacity:.65}.legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:0 0 14px;font-size:11px;opacity:.72}.legend span{display:flex;gap:6px;align-items:center}.legend i{width:9px;height:9px;border-radius:50%;display:block}.legend .g{background:#2b9c66}.legend .r{background:#d94b4b}.legend .b{background:#2f6fe4}
+@media(max-width:980px){.design-kpis{grid-template-columns:repeat(3,1fr)}.project-task-grid{grid-template-columns:1fr}}@media(max-width:640px){.design-kpis{grid-template-columns:repeat(2,1fr)}.dps-foot{flex-direction:column}}
 </style>
 
-<div class="dt-head">
+<div class="design-board-head">
   <div>
-    <span class="eyebrow">Diseño · operación automática por servicio</span>
+    <span class="eyebrow">Diseño · gestión rápida por proyecto</span>
     <h2>Tareas de Diseño</h2>
-    <p>Los productos de Diseño contratados generan una actividad base automáticamente. Logo, asesoría, jackets y piezas únicas se completan una sola vez. Las publicaciones pueden renovarse por semana, quincena o mes y conservan historial de <strong>Creado</strong> y <strong>Publicado</strong>.</p>
+    <p>Vista resumida. Cada card representa un proyecto; abre el ojo para completar tareas, revisar publicaciones y consultar la bitácora sin llenar esta pantalla de detalles.</p>
   </div>
-  <div class="actions"><a class="btn btn-primary" href="{% url 'design:task_create' %}">+ Nueva actividad</a></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'design:task_create' %}">＋ Nueva tarea</a></div>
 </div>
 
-<div class="dt-kpis">
-  <div class="card dt-kpi"><span>Productos</span><strong>{{ product_count }}</strong><small>servicios de Diseño</small></div>
-  <div class="card dt-kpi"><span>Tareas</span><strong>{{ total_tasks }}</strong><small>actividades visibles</small></div>
-  <div class="card dt-kpi"><span>Completas</span><strong>{{ completed_tasks }}</strong><small>100% actual</small></div>
-  <div class="card dt-kpi"><span>Pendientes</span><strong>{{ pending_tasks }}</strong><small>requieren trabajo</small></div>
-  <div class="card dt-kpi"><span>Sin configurar</span><strong>{{ configuration_pending }}</strong><small>renovación pendiente</small></div>
-  <div class="card dt-kpi"><span>Avance</span><strong>{{ overall_progress }}%</strong><small>{% if overdue_tasks %}{{ overdue_tasks }} vencida(s){% else %}estado actual{% endif %}</small></div>
+<div class="design-kpis">
+  <div class="card design-kpi"><span>Proyectos</span><strong>{{ project_count }}</strong><small>con Diseño contratado</small></div>
+  <div class="card design-kpi"><span>Servicios</span><strong>{{ total_services }}</strong><small>productos activos</small></div>
+  <div class="card design-kpi"><span>Completados</span><strong>{{ completed_services }}</strong><small>al 100% actual</small></div>
+  <div class="card design-kpi"><span>Renovación</span><strong>{{ renewal_services }}</strong><small>servicios recurrentes</small></div>
+  <div class="card design-kpi"><span>Avance general</span><strong>{{ overall_progress }}%</strong><small>estado actual</small></div>
 </div>
 
-<form method="get" class="card dt-filter">
-  <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar cliente, proyecto, producto o tarea…">
+<form method="get" class="card design-filter">
+  <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar cliente, proyecto o servicio…">
   <select name="status">
-    <option value="all" {% if selected_status == 'all' %}selected{% endif %}>Todas</option>
-    <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Pendientes</option>
-    <option value="done" {% if selected_status == 'done' %}selected{% endif %}>Completas</option>
-    <option value="configuration" {% if selected_status == 'configuration' %}selected{% endif %}>Falta configurar</option>
-    <option value="created" {% if selected_status == 'created' %}selected{% endif %}>Contenido creado</option>
-    <option value="published" {% if selected_status == 'published' %}selected{% endif %}>Contenido publicado</option>
-    <option value="overdue" {% if selected_status == 'overdue' %}selected{% endif %}>Vencidas</option>
+    <option value="all" {% if selected_status == 'all' %}selected{% endif %}>Todos</option>
+    <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Con pendientes</option>
+    <option value="done" {% if selected_status == 'done' %}selected{% endif %}>Completados</option>
+    <option value="renewal" {% if selected_status == 'renewal' %}selected{% endif %}>Con renovación</option>
   </select>
   <button class="btn btn-secondary" type="submit">Filtrar</button>
   {% if search_query or selected_status != 'all' %}<a class="btn btn-ghost" href="{% url 'design:tasks' %}">Limpiar</a>{% endif %}
 </form>
 
-{% for row in rows %}
-<div class="card dt-product">
-  <div class="dt-product-head">
-    <div><span class="project-code">{{ row.project.project_code }}</span><h3>{{ row.project.client.business_name }}</h3><small>{{ row.project.name }}</small></div>
-    <div><span class="eyebrow">Producto de Diseño</span><strong>{{ row.plan.name }}</strong><small>{{ row.plan.get_service_type_display }} · {{ row.plan.get_billing_cycle_display }}</small></div>
-    <div class="dt-progress"><strong>{{ row.progress }}%</strong><div class="dt-bar {{ row.progress_state }}"><i style="width:{{ row.progress }}%"></i></div><small>{{ row.done }}/{{ row.total }} al 100%</small></div>
-    <div class="actions"><a class="btn btn-secondary btn-sm" href="{% url 'design:task_create' %}?project_plan={{ row.assignment.pk }}">+ Actividad</a></div>
-  </div>
-
-  {% for item in row.tasks %}
-  <div class="dt-task">
-    <div class="dt-task-top">
-      <div class="dt-task-title"><strong>{{ item.task.title }}</strong>{% if item.task.description %}<small>{{ item.task.description }}</small>{% endif %}</div>
-      <div><span class="dt-state {{ item.state }}">{% if item.state == 'green' %}✓{% elif item.state == 'yellow' %}◐{% else %}○{% endif %} {{ item.state_label }}</span></div>
-      <div><small style="opacity:.62;display:block">Responsable</small><strong>{{ item.task.assigned_to.display_name|default:'Sin asignar' }}</strong>{% if item.task.due_date %}<small style="display:block;margin-top:3px">Límite {{ item.task.due_date|date:'d/m/Y' }}{% if item.overdue %} · Vencida{% endif %}</small>{% endif %}</div>
-      <div class="actions">
-        {% if item.task.task_type == 'standard' %}
-        <form method="post" action="{% url 'design:task_toggle' item.task.pk %}" style="display:inline">{% csrf_token %}<button class="btn btn-ghost btn-sm" type="submit">{% if item.progress == 100 %}↺ Reabrir{% else %}✓ Completar{% endif %}</button></form>
-        {% endif %}
-        <a class="btn btn-secondary btn-sm" href="{% url 'design:task_edit' item.task.pk %}">Editar</a>
-      </div>
-    </div>
-
-    {% if item.needs_configuration %}
-      <div class="dt-alert"><strong>⚠ Falta configurar la renovación</strong>Define si esta publicación se controla semanal, quincenal o mensualmente y desde qué fecha. Hasta configurarla se mostrará en rojo en Auditoría General. <a href="{% url 'design:task_edit' item.task.pk %}">Configurar ahora →</a></div>
-    {% elif item.task.task_type == 'content' %}
-      <div class="dt-cycles">
-        {% for cycle in item.cycles %}
-        <div class="dt-cycle {% if cycle.is_current_period %}current{% endif %}">
-          <div class="dt-cycle-label"><strong>{{ cycle.label }}{% if cycle.is_current_period %} · Actual{% endif %}</strong><small>{{ cycle.period_start|date:'d/m/Y' }} — {{ cycle.period_end|date:'d/m/Y' }}</small></div>
-          <form class="dt-check-form" method="post" action="{% url 'design:task_cycle_update' cycle.pk %}">{% csrf_token %}<input type="hidden" name="action" value="toggle_created"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="dt-toggle {% if cycle.content_created %}on{% endif %}" type="submit">{% if cycle.content_created %}✓{% else %}○{% endif %} Creado</button></form>
-          <form class="dt-check-form" method="post" action="{% url 'design:task_cycle_update' cycle.pk %}">{% csrf_token %}<input type="hidden" name="action" value="toggle_published"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="dt-toggle {% if cycle.content_published %}on{% endif %}" type="submit">{% if cycle.content_published %}✓{% else %}○{% endif %} Publicado</button></form>
-          <span class="dt-state {{ cycle.state_code }}">{{ cycle.progress_percent }}% · {{ cycle.state_label }}</span>
-        </div>
-        {% empty %}
-        <div class="dt-empty">El primer periodo se generará automáticamente al guardar la configuración.</div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  </div>
-  {% empty %}
-  <div class="dt-empty">No hay actividades para este producto.</div>
-  {% endfor %}
+<div class="legend">
+  <span><i class="g"></i> servicio único completado</span>
+  <span><i class="r"></i> servicio único pendiente</span>
+  <span><i class="b"></i> servicio con renovación</span>
 </div>
+
+<div class="project-task-grid">
+{% for row in rows %}
+  <article class="card design-project-summary state-{{ row.state }}">
+    <div class="dps-top">
+      <div class="dps-title"><span class="project-code">{{ row.project.project_code }}</span><h3>{{ row.project.client.business_name }}</h3><p>{{ row.project.name }}</p></div>
+      <a class="btn btn-secondary eye-btn" title="Ver y gestionar tareas" href="{% url 'design:project_tasks' row.project.pk %}">👁</a>
+    </div>
+    <div class="dps-stats">
+      <div class="dps-progress"><strong>{{ row.progress }}%</strong><span>avance actual del proyecto</span></div>
+      <div class="dps-service-count"><strong>{{ row.service_count }}</strong><small>servicio{{ row.service_count|pluralize }}</small></div>
+    </div>
+    <div class="dps-bar"><i style="width:{{ row.progress }}%"></i></div>
+    <div class="service-dots">
+      {% for service in row.services|slice:':5' %}
+        <span class="service-dot {{ service.dot_state }}" title="{{ service.plan.name }} · {{ service.status_label }}"><i></i><span>{{ service.plan.name }}</span></span>
+      {% endfor %}
+      {% if row.service_count > 5 %}<span class="service-dot"><span>＋{{ row.service_count|add:'-5' }} más</span></span>{% endif %}
+    </div>
+    <div class="dps-foot">
+      <span>{% if row.last_task %}Última edición: {{ row.last_task.updated_by.display_name|default:'Sistema' }}{% else %}Sin cambios todavía{% endif %}</span>
+      <span>{% if row.last_task %}{{ row.last_task.updated_at|date:'d/m/Y H:i' }}{% endif %}</span>
+    </div>
+  </article>
 {% empty %}
-<div class="card dt-empty">No hay productos de Diseño que coincidan con el filtro.</div>
+  <div class="card empty">No hay proyectos de Diseño que coincidan con el filtro.</div>
 {% endfor %}
+</div>
 {% endblock %}

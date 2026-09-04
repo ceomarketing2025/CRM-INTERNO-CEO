@@ -350,7 +350,12 @@ def ensure_default_design_tasks_for_project(project, user=None):
 
 
 def ensure_current_design_task_cycle(task, today=None):
-    """Devuelve/crea el periodo vigente para una tarea recurrente configurada."""
+    """Devuelve/crea el periodo vigente y sincroniza sus entregables.
+
+    El periodo depende de la frecuencia configurada en la tarea. Dentro de ese
+    periodo, Social Media se reparte automáticamente por semanas usando la
+    cantidad de posts/videos definida en el plan contratado.
+    """
     from datetime import timedelta
     from django.utils import timezone
     from apps.design.models import DesignTaskCycle
@@ -383,8 +388,101 @@ def ensure_current_design_task_cycle(task, today=None):
         changed.append("label")
     if changed:
         cycle.save(update_fields=changed + ["updated_at"])
+
+    _sync_design_cycle_delivery_items(cycle)
     return cycle
 
+
+def _sync_design_cycle_delivery_items(cycle):
+    """Crea los entregables del ciclo y los distribuye por semana.
+
+    `weekly_posts`/`weekly_videos` son nombres históricos del catálogo; en los
+    planes comerciales actuales representan la cantidad total del ciclo mensual.
+    No se renombra el campo para no romper datos existentes.
+    """
+    import math
+    from apps.design.models import DesignTaskCycleItem
+
+    plan = cycle.task.project_plan.plan
+    targets = {
+        DesignTaskCycleItem.ContentType.POST: max(int(plan.weekly_posts or 0), 0),
+        DesignTaskCycleItem.ContentType.VIDEO: max(int(plan.weekly_videos or 0), 0),
+    }
+    # Si una tarea recurrente no tiene cantidades configuradas en catálogo,
+    # conserva un único entregable para mantener el flujo Creado → Publicado.
+    if not any(targets.values()):
+        targets[DesignTaskCycleItem.ContentType.POST] = 1
+
+    days = max((cycle.period_end - cycle.period_start).days + 1, 1)
+    week_count = max(1, math.ceil(days / 7))
+
+    for content_type, target in targets.items():
+        existing = {
+            item.sequence: item
+            for item in cycle.delivery_items.filter(content_type=content_type)
+        }
+        for sequence in range(1, target + 1):
+            # Distribución balanceada y estable: 20 posts / 4 semanas = 5 por semana.
+            week_number = min(week_count, ((sequence - 1) * week_count // max(target, 1)) + 1)
+            item = existing.get(sequence)
+            if item is None:
+                DesignTaskCycleItem.objects.create(
+                    cycle=cycle,
+                    content_type=content_type,
+                    sequence=sequence,
+                    week_number=week_number,
+                )
+            elif item.week_number != week_number:
+                item.week_number = week_number
+                item.save(update_fields=["week_number", "updated_at"])
+
+        # Si baja la cantidad contratada, solo limpiamos entregables todavía vacíos.
+        for sequence, item in existing.items():
+            if sequence <= target:
+                continue
+            if item.content_created or item.content_published or item.notes:
+                continue
+            item.delete()
+
+    # Limpia tipos que ahora tienen meta 0 y nunca fueron trabajados.
+    for content_type, target in targets.items():
+        if target:
+            continue
+        cycle.delivery_items.filter(
+            content_type=content_type,
+            content_created=False,
+            content_published=False,
+            notes="",
+        ).delete()
+
+    _refresh_design_cycle_summary(cycle)
+
+
+def _refresh_design_cycle_summary(cycle, user=None, touch=False):
+    """Mantiene los booleanos históricos del ciclo sincronizados con sus items."""
+    items = list(cycle.delivery_items.all())
+    if not items:
+        return cycle
+    created = all(item.content_created for item in items)
+    published = all(item.content_published for item in items)
+    changed = []
+    if cycle.content_created != created:
+        cycle.content_created = created
+        changed.append("content_created")
+    if cycle.content_published != published:
+        cycle.content_published = published
+        changed.append("content_published")
+    if user is not None and cycle.updated_by_id != getattr(user, "pk", None):
+        cycle.updated_by = user
+        changed.append("updated_by")
+    if changed:
+        cycle.save(update_fields=changed + ["updated_at"])
+    elif touch:
+        # Solo una edición real de un entregable invalida la auditoría previa.
+        from django.utils import timezone
+        type(cycle).objects.filter(pk=cycle.pk).update(updated_at=timezone.now())
+        cycle.refresh_from_db(fields=["updated_at"])
+    return cycle
 
 def design_cycle_label(frequency, start, end):
     months = [

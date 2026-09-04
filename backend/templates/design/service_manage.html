@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block page_heading %}Servicios de Diseño{% endblock %}
+{% block content %}
+<style>
+.sm-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px}.sm-head h2{margin:4px 0}.sm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.sm-option{position:relative;display:block}.sm-option input{position:absolute;opacity:0;pointer-events:none}.sm-card{display:flex;gap:12px;align-items:flex-start;padding:14px;border:1px solid rgba(127,127,127,.15);border-radius:13px;cursor:pointer;transition:.15s}.sm-option input:checked+.sm-card{border-color:rgba(47,111,228,.55);box-shadow:0 0 0 2px rgba(47,111,228,.08)}.sm-check{width:20px;height:20px;border:1px solid rgba(127,127,127,.28);border-radius:6px;display:grid;place-items:center;flex:0 0 auto}.sm-option input:checked+.sm-card .sm-check:after{content:'✓';font-weight:900}.sm-copy strong{display:block}.sm-copy small{display:block;opacity:.62;margin-top:3px}.sm-save{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:14px;padding:14px}.sm-save p{margin:0;opacity:.66;font-size:12px}@media(max-width:700px){.sm-grid{grid-template-columns:1fr}.sm-save{flex-direction:column;align-items:stretch}}
+</style>
+<div class="sm-head"><div><span class="eyebrow">Diseño · {{ project.project_code }}</span><h2>Servicios de {{ project.client.business_name }}</h2><p>Agrega o retira productos del área. Los servicios con tareas únicas ya completadas y aprobadas en Auditoría General quedan protegidos como historial.</p></div><a class="btn btn-ghost" href="{% url 'design:project_tasks' project.pk %}">← Volver</a></div>
+<form method="post">{% csrf_token %}
+  <div class="sm-grid">
+  {% for plan in plans %}
+    <label class="sm-option"><input type="checkbox" name="service_plans" value="{{ plan.pk }}" {% if plan.pk in active_ids %}checked{% endif %}><span class="sm-card"><span class="sm-check"></span><span class="sm-copy"><strong>{{ plan.name }}</strong><small>{{ plan.get_service_type_display }} · {{ plan.get_billing_cycle_display }}{% if plan.content_goal_label %} · {{ plan.content_goal_label }}{% endif %}</small>{% if plan.description %}<small>{{ plan.description|truncatechars:120 }}</small>{% endif %}</span></span></label>
+  {% empty %}<div class="card">No hay productos activos de Diseño en el catálogo.</div>{% endfor %}
+  </div>
+  <div class="card sm-save"><p>Los cambios quedan registrados con usuario y fecha. No se elimina historial de tareas trabajadas.</p><button class="btn btn-primary btn-lg" type="submit">Guardar servicios</button></div>
+</form>
+{% endblock %}

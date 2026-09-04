@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block page_heading %}Bitácora de Diseño{% endblock %}
+{% block content %}
+<style>
+.dp-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px}.dp-head h2{margin:4px 0}.dp-head p{margin:0;opacity:.68}.dp-summary{display:grid;grid-template-columns:minmax(220px,1fr) 150px 180px;gap:12px;align-items:center;padding:16px;margin-bottom:16px}.dp-progress strong{font-size:26px}.dp-bar{height:8px;border-radius:999px;background:rgba(127,127,127,.12);overflow:hidden;margin-top:6px}.dp-bar i{display:block;height:100%}.dp-bar.red i{background:#d94b4b}.dp-bar.yellow i{background:#d8a125}.dp-bar.green i{background:#2b9c66}.service-card{padding:0;overflow:hidden;margin-bottom:14px}.service-head{display:grid;grid-template-columns:minmax(240px,1fr) 150px auto;gap:14px;align-items:center;padding:16px 18px;border-bottom:1px solid rgba(127,127,127,.11)}.service-head h3{margin:2px 0 3px}.service-head small{opacity:.65}.service-state{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800}.service-state i{width:10px;height:10px;border-radius:50%;background:#d94b4b}.service-state.green i{background:#2b9c66}.service-state.blue i{background:#2f6fe4}.task-row{padding:16px 18px;border-bottom:1px solid rgba(127,127,127,.09)}.task-row:last-child{border-bottom:0}.task-top{display:grid;grid-template-columns:minmax(240px,1.4fr) minmax(140px,.5fr) minmax(170px,.7fr) auto;gap:14px;align-items:center}.task-title strong{display:block}.task-title small{display:block;margin-top:4px;opacity:.64}.task-status{display:inline-flex;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800;width:max-content}.task-status.red{background:rgba(217,75,75,.11);color:#a53a3a}.task-status.yellow{background:rgba(216,161,37,.13);color:#86620a}.task-status.green{background:rgba(43,156,102,.12);color:#21754e}.task-status.blue{background:rgba(47,111,228,.12);color:#275fbd}.task-meta{font-size:11px;opacity:.65;line-height:1.45}.lock-note,.config-note{margin-top:12px;border-radius:11px;padding:11px 12px;font-size:12px}.lock-note{background:rgba(43,156,102,.08);border:1px solid rgba(43,156,102,.18)}.config-note{background:rgba(217,75,75,.06);border:1px solid rgba(217,75,75,.18)}.cycle-shell{margin-top:14px;border:1px solid rgba(127,127,127,.13);border-radius:14px;overflow:hidden}.cycle-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 13px;background:rgba(127,127,127,.045)}.cycle-head strong{font-size:13px}.cycle-head span{font-size:11px;opacity:.65}.week-block{padding:13px;border-top:1px solid rgba(127,127,127,.1)}.week-block:first-of-type{border-top:0}.week-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.week-head strong{font-size:13px}.week-head small{opacity:.62}.week-progress{font-size:11px;font-weight:800}.delivery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}.delivery{border:1px solid rgba(127,127,127,.13);border-radius:11px;padding:9px}.delivery-title{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}.delivery-title strong{font-size:11px}.delivery-dot{width:8px;height:8px;border-radius:50%;background:#d94b4b}.delivery.yellow .delivery-dot{background:#d8a125}.delivery.green .delivery-dot{background:#2b9c66}.delivery-actions{display:flex;gap:6px}.delivery-actions form{flex:1}.mini-check{width:100%;border:1px solid rgba(127,127,127,.17);background:transparent;border-radius:8px;padding:6px 5px;font-size:10px;font-weight:800;cursor:pointer}.mini-check.on{background:rgba(43,156,102,.11);border-color:rgba(43,156,102,.22)}.history{margin-top:10px}.history summary{cursor:pointer;font-size:11px;font-weight:800;opacity:.72}.history-list{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.history-chip{padding:6px 8px;border-radius:999px;background:rgba(127,127,127,.07);font-size:10px}.empty-task{padding:18px;opacity:.65}
+@media(max-width:960px){.dp-summary,.service-head,.task-top{grid-template-columns:1fr 1fr}}@media(max-width:640px){.dp-summary,.service-head,.task-top{grid-template-columns:1fr}.delivery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+
+<div class="dp-head">
+  <div><span class="eyebrow">Diseño · {{ project.project_code }}</span><h2>{{ project.client.business_name }}</h2><p>{{ project.name }} · Bitácora operativa y renovaciones.</p></div>
+  <div class="actions"><a class="btn btn-ghost" href="{% url 'design:tasks' %}">← Proyectos</a><a class="btn btn-secondary" href="{% url 'design:service_manage' project.pk %}">Servicios</a><a class="btn btn-primary" href="{% url 'design:task_create' %}">＋ Tarea</a></div>
+</div>
+
+<div class="card dp-summary">
+  <div><span class="eyebrow">Resumen</span><strong>{{ services|length }} servicio{{ services|length|pluralize }} de Diseño</strong></div>
+  <div class="dp-progress"><strong>{{ project_progress }}%</strong><div class="dp-bar {{ project_state }}"><i style="width:{{ project_progress }}%"></i></div></div>
+  <div><small style="opacity:.62">Última gestión</small><strong style="display:block">{{ today|date:'d/m/Y' }}</strong></div>
+</div>
+
+{% for service in services %}
+<section class="card service-card">
+  <div class="service-head">
+    <div><span class="eyebrow">Servicio contratado</span><h3>{{ service.plan.name }}</h3><small>{{ service.plan.get_service_type_display }}{% if service.plan.content_goal_label %} · {{ service.plan.content_goal_label }}{% endif %}</small></div>
+    <div><span class="service-state {{ service.state }}"><i></i>{% if service.recurring %}Renovación{% elif service.progress == 100 %}Completado{% else %}Pendiente{% endif %}</span></div>
+    <div><strong>{{ service.progress }}%</strong><small style="display:block;opacity:.62">avance actual</small></div>
+  </div>
+
+  {% for item in service.tasks %}
+  <div class="task-row">
+    <div class="task-top">
+      <div class="task-title"><strong>{{ item.task.title }}</strong>{% if item.task.description %}<small>{{ item.task.description }}</small>{% endif %}</div>
+      <div><span class="task-status {{ item.state.state }}">{{ item.state.progress }}% · {{ item.state.label }}</span></div>
+      <div class="task-meta">Última edición<br><strong>{{ item.task.updated_by.display_name|default:'Sistema' }}</strong> · {{ item.task.updated_at|date:'d/m/Y H:i' }}{% if item.task.assigned_to %}<br>Responsable: {{ item.task.assigned_to.display_name }}{% endif %}</div>
+      <div class="actions">
+        {% if item.task.task_type == 'standard' %}
+          {% if item.locked %}<span class="badge">🔒 Auditada</span>{% else %}<form method="post" action="{% url 'design:task_toggle' item.task.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-primary btn-sm" type="submit">{% if item.state.progress == 100 %}↺ Reabrir{% else %}✓ Listo{% endif %}</button></form>{% endif %}
+        {% endif %}
+        <a class="btn btn-secondary btn-sm" href="{% url 'design:task_edit' item.task.pk %}">{% if item.locked %}Ver{% else %}Editar{% endif %}</a>
+      </div>
+    </div>
+
+    {% if item.locked %}<div class="lock-note"><strong>🔒 Registro protegido.</strong> Esta tarea única ya fue completada y aprobada en Auditoría General. Se conserva como historial y no puede reabrirse ni retirarse con su servicio.</div>{% endif %}
+
+    {% if item.task.task_type == 'content' %}
+      {% if item.state.needs_configuration %}
+        <div class="config-note"><strong>⚠ Configuración pendiente.</strong> Define la renovación y la fecha inicial para generar semanas y entregables automáticamente. <a href="{% url 'design:task_edit' item.task.pk %}">Configurar ahora →</a></div>
+      {% elif item.cycle %}
+        <div class="cycle-shell">
+          <div class="cycle-head"><div><strong>{{ item.cycle.label }}</strong><span> · ciclo actual</span></div><div><strong>{{ item.cycle.published_items }}/{{ item.cycle.total_items }}</strong><span> publicados</span></div></div>
+          {% for week in item.week_groups %}
+          <div class="week-block">
+            <div class="week-head"><div><strong>{{ week.label }}</strong><small> · {{ week.start|date:'d/m' }}–{{ week.end|date:'d/m' }}</small></div><span class="week-progress">{{ week.published }}/{{ week.total }} publicados · {{ week.progress }}%</span></div>
+            <div class="delivery-grid">
+              {% for delivery in week.items %}
+              <div class="delivery {{ delivery.state_code }}">
+                <div class="delivery-title"><strong>{{ delivery.get_content_type_display }} {{ delivery.sequence }}</strong><i class="delivery-dot"></i></div>
+                <div class="delivery-actions">
+                  <form method="post" action="{% url 'design:task_cycle_item_update' delivery.pk %}">{% csrf_token %}<input type="hidden" name="action" value="toggle_created"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="mini-check {% if delivery.content_created %}on{% endif %}" type="submit">{% if delivery.content_created %}✓{% else %}○{% endif %} Creado</button></form>
+                  <form method="post" action="{% url 'design:task_cycle_item_update' delivery.pk %}">{% csrf_token %}<input type="hidden" name="action" value="toggle_published"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="mini-check {% if delivery.content_published %}on{% endif %}" type="submit">{% if delivery.content_published %}✓{% else %}○{% endif %} Publicado</button></form>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% if item.history %}<details class="history"><summary>Ver renovaciones anteriores ({{ item.history|length }})</summary><div class="history-list">{% for old in item.history %}<span class="history-chip">{{ old.label }} · {{ old.progress_percent }}% · {{ old.state_label }}</span>{% endfor %}</div></details>{% endif %}
+      {% endif %}
+    {% endif %}
+  </div>
+  {% empty %}<div class="empty-task">No hay tareas para este servicio.</div>{% endfor %}
+</section>
+{% empty %}<div class="card empty-task">Este proyecto todavía no tiene servicios de Diseño activos.</div>{% endfor %}
+{% endblock %}

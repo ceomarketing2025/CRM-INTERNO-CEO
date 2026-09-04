@@ -3,6 +3,7 @@ from .entities import (
     DesignBrief,
     DesignTask,
     DesignTaskCycle,
+    DesignTaskCycleItem,
     PaletteColor,
     PaletteGradient,
     SocialMediaContentItem,

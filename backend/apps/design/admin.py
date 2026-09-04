@@ -4,6 +4,7 @@ from .models import (
     DesignBrief,
     DesignTask,
     DesignTaskCycle,
+    DesignTaskCycleItem,
     PaletteColor,
     PaletteGradient,
     SocialMediaContentItem,
@@ -13,6 +14,7 @@ from .models import (
 admin.site.register(DesignBrief)
 admin.site.register(DesignTask)
 admin.site.register(DesignTaskCycle)
+admin.site.register(DesignTaskCycleItem)
 admin.site.register(ColorPalette)
 admin.site.register(PaletteColor)
 admin.site.register(PaletteGradient)

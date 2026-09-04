@@ -111,13 +111,25 @@ def workspace(request, project_pk):
     project = _project_for_marketing(request, project_pk)
     obj = ensure_workspace(project)
     form = MarketingIntakeForm(request.POST or None, instance=obj)
-    if request.method == "POST" and form.is_valid():
-        saved = save_intake(form=form, user=request.user)
-        # Se mantiene la sincronización ya existente con Desarrollo, sin tocar ese módulo.
-        from apps.questionnaires.services import sync_marketing_shared_to_website
-        sync_marketing_shared_to_website(saved, request.user)
-        messages.success(request, "Información inicial de Marketing guardada.")
-        return redirect("marketing:workspace", project_pk=project.pk)
+    if request.method == "POST":
+        if form.is_valid():
+            saved = save_intake(form=form, user=request.user)
+            # Se mantiene la sincronización ya existente con Desarrollo, sin tocar ese módulo.
+            from apps.questionnaires.services import sync_marketing_shared_to_website
+            sync_marketing_shared_to_website(saved, request.user)
+            if saved.intake_ready:
+                messages.success(
+                    request,
+                    "Información inicial completada. Ya puedes ingresar a Google Business, Google LSA y Publicidad Digital.",
+                )
+            else:
+                messages.success(request, "Información inicial de Marketing guardada.")
+            return redirect("marketing:workspace", project_pk=project.pk)
+
+        messages.error(
+            request,
+            "No se pudo marcar la información inicial como completa. Revisa los campos señalados en rojo.",
+        )
 
     return render(request, "marketing/workspace.html", {
         "project": project,
@@ -232,7 +244,7 @@ def checklist_edit(request, pk):
         log_activity(request.user, "marketing", "checklist_update", item, description=item.label)
         messages.success(request, "Check actualizado.")
         return redirect("marketing:workspace", project_pk=item.workspace.project_id)
-    return render(request, "shared/form.html", {"form": form, "title": item.label, "subtitle": item.get_area_display()})
+    return render(request, "marketing/form.html", {"form": form, "title": item.label, "subtitle": item.get_area_display()})
 
 
 @role_required("marketing")
@@ -249,7 +261,7 @@ def document_add(request, project_pk):
         log_activity(request.user, "marketing", "document_add", obj, description=obj.title)
         messages.success(request, "Documento agregado.")
         return redirect("marketing:workspace", project_pk=project_pk)
-    return render(request, "shared/form.html", {
+    return render(request, "marketing/form.html", {
         "form": form,
         "title": "Agregar documento de la reunión / Marketing",
         "subtitle": "Sube PDF o registra un link de Drive. Las credenciales no se manejan en este módulo.",
@@ -370,7 +382,7 @@ def campaign_weekly_report(request, pk):
         log_activity(request.user, "marketing", "campaign_weekly_report", report, campaign.name)
         messages.success(request, "Seguimiento semanal registrado.")
         return redirect("marketing:campaign_edit", pk=campaign.pk)
-    return render(request, "shared/form.html", {
+    return render(request, "marketing/form.html", {
         "form": form,
         "title": "Seguimiento semanal de campaña",
         "subtitle": f"{campaign.get_platform_display()} · {campaign.name}",
@@ -391,7 +403,7 @@ def social_tracking_create(request):
         log_activity(request.user, "marketing", "social_tracking_create", obj)
         messages.success(request, "Seguimiento creado.")
         return redirect("marketing:social_tracking")
-    return render(request, "shared/form.html", {"form": form, "title": "Nuevo seguimiento Social Media / Google", "subtitle": "Estados simples: Completo/Incompleto y Sí/No."})
+    return render(request, "marketing/form.html", {"form": form, "title": "Nuevo seguimiento Social Media / Google", "subtitle": "Estados simples: Completo/Incompleto y Sí/No."})
 
 
 @role_required("marketing")
@@ -403,7 +415,7 @@ def social_tracking_edit(request, pk):
         log_activity(request.user, "marketing", "social_tracking_update", obj)
         messages.success(request, "Seguimiento actualizado.")
         return redirect("marketing:social_tracking")
-    return render(request, "shared/form.html", {"form": form, "title": "Editar seguimiento", "subtitle": obj.client.business_name})
+    return render(request, "marketing/form.html", {"form": form, "title": "Editar seguimiento", "subtitle": obj.client.business_name})
 
 
 @role_required("marketing")
@@ -419,7 +431,7 @@ def social_plan_create(request):
         save_social_plan(form=form, user=request.user)
         messages.success(request, "Plan Social Media creado con recordatorio de informe mensual.")
         return redirect("marketing:social_plans")
-    return render(request, "shared/form.html", {"form": form, "title": "Nuevo plan Social Media", "subtitle": "Seguimiento diario + revisión mensual."})
+    return render(request, "marketing/form.html", {"form": form, "title": "Nuevo plan Social Media", "subtitle": "Seguimiento diario + revisión mensual."})
 
 
 @role_required("marketing")
@@ -432,7 +444,7 @@ def social_plan_edit(request, pk):
         save_social_plan(form=form, user=request.user)
         messages.success(request, "Plan Social Media actualizado.")
         return redirect("marketing:social_plans")
-    return render(request, "shared/form.html", {"form": form, "title": "Editar plan Social Media", "subtitle": obj.client.business_name})
+    return render(request, "marketing/form.html", {"form": form, "title": "Editar plan Social Media", "subtitle": obj.client.business_name})
 
 
 @role_required("marketing")
@@ -446,7 +458,7 @@ def social_daily_add(request, plan_pk):
         log_activity(request.user, "marketing", "social_daily_add", obj)
         messages.success(request, "Seguimiento diario guardado.")
         return redirect("marketing:social_plans")
-    return render(request, "shared/form.html", {"form": form, "title": "Seguimiento diario", "subtitle": plan.client.business_name})
+    return render(request, "marketing/form.html", {"form": form, "title": "Seguimiento diario", "subtitle": plan.client.business_name})
 
 
 @role_required("marketing")
@@ -459,7 +471,7 @@ def brief_edit(request, project_pk):
         log_activity(request.user, "marketing", "brief_update", brief)
         messages.success(request, "Brief de marketing guardado.")
         return redirect("projects:detail", pk=project.pk)
-    return render(request, "shared/form.html", {"form": form, "title": "Brief de marketing", "subtitle": project.name})
+    return render(request, "marketing/form.html", {"form": form, "title": "Brief de marketing", "subtitle": project.name})
 
 
 @role_required("marketing")
@@ -470,4 +482,4 @@ def task_create(request):
         log_activity(request.user, "marketing", "task_create", obj)
         messages.success(request, "Tarea creada.")
         return redirect("marketing:list")
-    return render(request, "shared/form.html", {"form": form, "title": "Nueva tarea de marketing", "subtitle": "Tarea operativa independiente."})
+    return render(request, "marketing/form.html", {"form": form, "title": "Nueva tarea de marketing", "subtitle": "Tarea operativa independiente."})

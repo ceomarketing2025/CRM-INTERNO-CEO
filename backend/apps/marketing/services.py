@@ -277,7 +277,10 @@ def save_google_business(*, form, user):
     # El mensaje de reviews es controlado por el CRM para que siempre coincida
     # con el link que genera el QR.
     if workspace.review_link:
-        workspace.review_message = build_google_review_message(workspace.review_link)
+        workspace.review_message = build_google_review_message(
+            workspace.review_link,
+            workspace.project.client.business_name,
+        )
     else:
         workspace.review_message = ""
 
@@ -289,18 +292,19 @@ def save_google_business(*, form, user):
     return workspace
 
 
-def build_google_review_message(review_link):
-    """Mensaje aprobado para Kristian Tree Service con el link asignado."""
+def build_google_review_message(review_link, company_name):
+    """Genera un mensaje de reviews general usando el nombre real del cliente."""
+    company_name = (company_name or "our company").strip()
     return (
-        "Hi!\n\n"
-        "Thank you for choosing Kristian Tree Service. We truly appreciate the opportunity to work with you.\n\n"
+        "Hi there! 👋\n\n"
+        f"Thank you for choosing {company_name}. We truly appreciate the opportunity to work with you.\n\n"
         "If you were happy with our service, would you mind taking a minute to leave us a 5-star Google review? ⭐ "
-        "Your feedback helps our small business grow and helps other homeowners find a trusted tree service.\n\n"
+        "Your feedback helps our business grow and helps other customers feel confident choosing our services.\n\n"
         "You can leave your review by clicking the link below or simply scanning the QR code attached.\n\n"
         "⭐ Google Review:\n\n"
         f"{review_link}\n\n"
-        "Thank you again for your support! We look forward to helping you with any future tree service needs. 🌳\n\n"
-        "Kristian Tree Service"
+        "Thank you so much for your support! 🙌\n\n"
+        f"{company_name}"
     )
 
 

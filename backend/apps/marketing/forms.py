@@ -93,23 +93,58 @@ class MarketingIntakeForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         email_mode = cleaned.get("email_account_mode")
-        gmail_email = cleaned.get("gmail_email")
+        gmail_email = (cleaned.get("gmail_email") or "").strip()
+        contact_email = (cleaned.get("contact_email") or "").strip()
         intake_status = cleaned.get("intake_status")
+        business_profile_mode = cleaned.get("business_profile_mode")
+        lsa_documents_available = cleaned.get("lsa_documents_available")
 
-        if email_mode in {"existing", "create"} and not gmail_email:
-            self.add_error("gmail_email", "Ingresa el correo que existe o el Gmail creado por Marketing.")
+        # El correo operativo puede venir del campo Correo electrónico o del
+        # campo Correo/Gmail utilizado. Antes el formulario exigía únicamente
+        # gmail_email mientras el checklist aceptaba cualquiera de los dos,
+        # provocando que la reunión pareciera completa pero nunca se guardara.
+        if email_mode in {"existing", "create"}:
+            operational_email = gmail_email or contact_email
+            if not operational_email:
+                self.add_error(
+                    "contact_email",
+                    "Registra el correo electrónico que ya existe o que Marketing creó.",
+                )
+                self.add_error(
+                    "gmail_email",
+                    "Registra el correo utilizado. Puedes usar el mismo correo electrónico del cliente.",
+                )
+            elif not gmail_email:
+                # Evita pedir el mismo dato dos veces: si ya se registró arriba,
+                # se reutiliza como Gmail/correo operativo.
+                cleaned["gmail_email"] = operational_email
         elif email_mode == "pending":
             cleaned["gmail_email"] = ""
 
         if intake_status == "complete":
             if not (cleaned.get("meeting_summary") or "").strip():
-                self.add_error("meeting_summary", "Para completar esta etapa registra la información de la reunión.")
+                self.add_error(
+                    "meeting_summary",
+                    "Para completar esta etapa registra la información levantada en la reunión.",
+                )
+
             if email_mode not in {"existing", "create"}:
-                self.add_error("email_account_mode", "Define si el correo ya existe o si Marketing lo creará.")
-            if not cleaned.get("business_profile_mode"):
-                self.add_error("business_profile_mode", "Define si el cliente ya tiene Google Business o si debe crearse.")
-            if cleaned.get("lsa_documents_available") not in {"yes", "no"}:
-                self.add_error("lsa_documents_available", "Selecciona Sí o No para los documentos de LSA.")
+                self.add_error(
+                    "email_account_mode",
+                    "Define si el correo ya existe o si Marketing lo creará.",
+                )
+
+            if business_profile_mode not in {"existing", "create", "no"}:
+                self.add_error(
+                    "business_profile_mode",
+                    "Define la situación de Google Business.",
+                )
+
+            if lsa_documents_available not in {"yes", "no"}:
+                self.add_error(
+                    "lsa_documents_available",
+                    "Selecciona Sí o No para la disponibilidad de documentos de LSA.",
+                )
 
         return cleaned
 
@@ -152,7 +187,7 @@ class GoogleBusinessForm(forms.ModelForm):
         self.fields["business_profile_notes"].label = "Notas"
         self.fields["review_link"].label = "Link directo para dejar la review"
         self.fields["review_message"].label = "Mensaje para enviar al customer"
-        self.fields["review_message"].help_text = "Se genera automáticamente con el link de review guardado."
+        self.fields["review_message"].help_text = "Se genera automáticamente con el nombre de la empresa y el link de review guardado."
 
     def clean(self):
         cleaned = super().clean()

@@ -2,80 +2,237 @@
 {% block page_heading %}Google LSA · {{ project.client.business_name }}{% endblock %}
 {% block content %}
 {% with marketing_section='lsa' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
-<div class="page-intro marketing-page-intro"><div><span class="eyebrow">Google Local Services Ads</span><h2>Validación y seguimiento LSA</h2><p>Datos LSA, revisión según Social Media y recordatorio adicional para subir fotos cada 15 días.</p></div><a class="btn btn-secondary" href="{% url 'marketing:workspace' project.pk %}">← Información inicial</a></div>
-{% if workspace.lsa_documents_available == 'no' %}<div class="semantic-banner is-wait"><strong>El cliente indicó que no tiene documentos para LSA.</strong><span>Los campos documentales no son obligatorios mientras esta respuesta sea No.</span></div>{% endif %}
-<div class="two-col wide-left marketing-layout">
-<form class="card form-card marketing-section-card" method="post" id="lsa-form">{% csrf_token %}
- {{ form.non_field_errors }}
- <div class="card-head"><div><h3>Google LSA</h3><p>Los campos dependientes se habilitan según cada respuesta.</p></div><span class="semantic-pill {% if lsa.verification_status == 'complete' %}is-success{% else %}is-wait{% endif %}">{{ lsa.get_verification_status_display }}</span></div>
 
- <div class="marketing-form-section">
-   <h4>Documentos y validación</h4>
-   <div class="form-grid">
-     {% if workspace.lsa_documents_available == 'yes' %}
-     <div class="field form-wide"><label>{{ form.documents_drive_url.label }}</label>{{ form.documents_drive_url }}<small>Link del Drive donde están los documentos.</small>{{ form.documents_drive_url.errors }}</div>
-     <div class="field"><label>{{ form.driver_license_ready.label }}</label>{{ form.driver_license_ready }}{{ form.driver_license_ready.errors }}</div>
-     <div class="field"><label>{{ form.founding_year.label }}</label>{{ form.founding_year }}{{ form.founding_year.errors }}</div>
-     {% endif %}
-     <div class="field"><label>{{ form.verification_status.label }}</label>{{ form.verification_status }}{{ form.verification_status.errors }}</div>
-     <div class="field"><label>{{ form.weekly_cost.label }}</label>{{ form.weekly_cost }}{{ form.weekly_cost.errors }}</div>
-     <div class="field"><label>{{ form.leads_last_7_days.label }}</label>{{ form.leads_last_7_days }}{{ form.leads_last_7_days.errors }}</div>
-   </div>
- </div>
-
- <div class="marketing-form-section">
-   <h4>Social Media y revisión</h4>
-   <div class="form-grid">
-     <div class="field"><label>{{ form.has_social_media.label }}</label>{{ form.has_social_media }}<small>Si seleccionas No, el CRM pasa la revisión a Personalizado.</small>{{ form.has_social_media.errors }}</div>
-     <div class="field conditional-panel" id="review-mode-wrap" data-social-required><label>{{ form.followup_mode.label }}</label>{{ form.followup_mode }}{{ form.followup_mode.errors }}</div>
-     <div class="field conditional-panel" id="weekly-date-wrap"><label>{{ form.followup_start_date.label }}</label>{{ form.followup_start_date }}<small>Se crean recordatorios cada 7 días para Marketing + Administración/Gerencia.</small>{{ form.followup_start_date.errors }}</div>
-     <div class="field conditional-panel" id="custom-date-wrap"><label>{{ form.custom_followup_date.label }}</label>{{ form.custom_followup_date }}<small>Se crea un recordatorio único en la fecha seleccionada.</small>{{ form.custom_followup_date.errors }}</div>
-   </div>
- </div>
-
- <div class="marketing-form-section">
-   <h4>Fotos de Google LSA</h4>
-   <div class="form-grid">
-     <div class="field"><label>{{ form.photo_reminder_enabled.label }}</label>{{ form.photo_reminder_enabled }}{{ form.photo_reminder_enabled.errors }}</div>
-     <div class="field conditional-panel" id="photo-date-wrap"><label>{{ form.photo_reminder_start_date.label }}</label>{{ form.photo_reminder_start_date }}<small>Desde esta fecha se crean recordatorios cada 15 días para subir/actualizar fotos.</small>{{ form.photo_reminder_start_date.errors }}</div>
-     <div class="field form-wide"><label>{{ form.notes.label }}</label>{{ form.notes }}{{ form.notes.errors }}</div>
-   </div>
- </div>
-
- <div class="semantic-banner is-wait compact"><strong>Recordatorios</strong><span>Las revisiones LSA y las fotos cada 15 días se crean en el sistema de Recordatorios para Marketing y Administración/Gerencia.</span></div>
- <div class="form-actions"><button class="btn btn-primary">Guardar Google LSA</button></div>
-</form>
-<div class="card marketing-section-card"><div class="card-head"><div><h3>Checklist LSA</h3><p>Se actualiza únicamente cuando la combinación de campos es válida.</p></div></div>{% include 'marketing/_checks.html' with checks=checks %}</div>
+<div class="page-intro marketing-page-intro">
+  <div>
+    <span class="eyebrow">Google Local Services Ads</span>
+    <h2>Validación y seguimiento LSA</h2>
+    <p>Documentos, licencia de conducir, año de fundación, métricas y recordatorios dependientes de Social Media.</p>
+  </div>
+  <a class="btn btn-secondary" href="{% url 'marketing:workspace' project.pk %}">← Información inicial</a>
 </div>
+
+{% if workspace.lsa_documents_available == 'yes' %}
+<div class="semantic-banner is-wait compact">
+  <strong>Documentos LSA: Sí</strong>
+  <span>El link del Drive y la licencia de conducir son obligatorios.</span>
+</div>
+{% elif workspace.lsa_documents_available == 'no' %}
+<div class="semantic-banner is-wait compact">
+  <strong>Documentos LSA: No</strong>
+  <span>Drive y licencia quedan deshabilitados. El año de fundación y el seguimiento LSA continúan activos.</span>
+</div>
+{% endif %}
+
+<div class="two-col wide-left marketing-layout">
+  <form class="card form-card marketing-section-card" method="post" id="lsa-form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {{ form.followup_mode }}
+
+    <div class="card-head">
+      <div>
+        <h3>Google LSA</h3>
+        <p>Los campos se habilitan según las respuestas registradas.</p>
+      </div>
+      <span class="semantic-pill {% if lsa.verification_status == 'complete' %}is-success{% else %}is-wait{% endif %}">
+        {{ lsa.get_verification_status_display }}
+      </span>
+    </div>
+
+    <div class="marketing-form-section">
+      <h4>Documentos y validación</h4>
+      <div class="form-grid">
+        <div class="field form-wide" id="lsa-drive-wrap" {% if workspace.lsa_documents_available != 'yes' %}style="display:none;"{% endif %}>
+          <label>{{ form.documents_drive_url.label }}</label>
+          {{ form.documents_drive_url }}
+          <small>Link del Drive donde se encuentran los documentos de Google LSA.</small>
+          {{ form.documents_drive_url.errors }}
+        </div>
+
+        <div class="field" id="lsa-license-wrap" {% if workspace.lsa_documents_available != 'yes' %}style="display:none;"{% endif %}>
+          <label>{{ form.driver_license_ready.label }}</label>
+          {{ form.driver_license_ready }}
+          {{ form.driver_license_ready.errors }}
+        </div>
+
+        <div class="field">
+          <label>{{ form.founding_year.label }}</label>
+          {{ form.founding_year }}
+          {{ form.founding_year.errors }}
+        </div>
+
+        <div class="field">
+          <label>{{ form.verification_status.label }}</label>
+          {{ form.verification_status }}
+          {{ form.verification_status.errors }}
+        </div>
+
+        <div class="field">
+          <label>{{ form.weekly_cost.label }}</label>
+          {{ form.weekly_cost }}
+          {{ form.weekly_cost.errors }}
+        </div>
+
+        <div class="field">
+          <label>{{ form.leads_last_7_days.label }}</label>
+          {{ form.leads_last_7_days }}
+          {{ form.leads_last_7_days.errors }}
+        </div>
+
+        <div class="field form-wide">
+          <label>{{ form.notes.label }}</label>
+          {{ form.notes }}
+          {{ form.notes.errors }}
+        </div>
+      </div>
+    </div>
+
+    <div class="marketing-form-section">
+      <h4>Social Media y revisión</h4>
+      <p class="section-help">La respuesta de Social Media controla automáticamente el tipo de recordatorio.</p>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>{{ form.has_social_media.label }}</label>
+          {{ form.has_social_media }}
+          <small>Sí = revisión semanal. No = recordatorio personalizado.</small>
+          {{ form.has_social_media.errors }}
+        </div>
+
+        <div class="field" id="weekly-date-wrap" style="display:none;">
+          <label>{{ form.followup_start_date.label }}</label>
+          {{ form.followup_start_date }}
+          <small>Se crean recordatorios cada 7 días para Marketing y Administración/Gerencia.</small>
+          {{ form.followup_start_date.errors }}
+        </div>
+
+        <div class="field" id="custom-date-wrap" style="display:none;">
+          <label>{{ form.custom_followup_date.label }}</label>
+          {{ form.custom_followup_date }}
+          <small>Se crea un recordatorio personalizado para Marketing y Administración/Gerencia.</small>
+          {{ form.custom_followup_date.errors }}
+        </div>
+      </div>
+
+      <div id="social-followup-summary" class="semantic-banner is-wait compact" style="display:none; margin-top:12px;">
+        <strong id="social-followup-title"></strong>
+        <span id="social-followup-text"></span>
+      </div>
+    </div>
+
+    <div class="marketing-form-section">
+      <h4>Fotos Google LSA</h4>
+      <div class="form-grid">
+        <div class="field">
+          <label>{{ form.photo_reminder_enabled.label }}</label>
+          {{ form.photo_reminder_enabled }}
+          {{ form.photo_reminder_enabled.errors }}
+        </div>
+
+        <div class="field" id="photo-date-wrap" style="display:none;">
+          <label>{{ form.photo_reminder_start_date.label }}</label>
+          {{ form.photo_reminder_start_date }}
+          <small>Desde esta fecha se genera un recordatorio cada 15 días para Marketing y Administración/Gerencia.</small>
+          {{ form.photo_reminder_start_date.errors }}
+        </div>
+      </div>
+    </div>
+
+    <div class="semantic-banner is-wait compact">
+      <strong>Recordatorios automáticos</strong>
+      <span>Las revisiones LSA y la carga de fotos se sincronizan con el módulo existente de Recordatorios.</span>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary">Guardar Google LSA</button>
+    </div>
+  </form>
+
+  <div class="card marketing-section-card">
+    <div class="card-head">
+      <div>
+        <h3>Checklist LSA</h3>
+        <p>Solo se completa cuando las dependencias correspondientes son válidas.</p>
+      </div>
+    </div>
+    {% include 'marketing/_checks.html' with checks=checks %}
+  </div>
+</div>
+
 <script>
-(function(){
- var social=document.getElementById('id_has_social_media');
- var mode=document.getElementById('id_followup_mode');
- var modeWrap=document.getElementById('review-mode-wrap');
- var weekly=document.getElementById('weekly-date-wrap');
- var custom=document.getElementById('custom-date-wrap');
- var weeklyInput=document.getElementById('id_followup_start_date');
- var customInput=document.getElementById('id_custom_followup_date');
- var photo=document.getElementById('id_photo_reminder_enabled');
- var photoWrap=document.getElementById('photo-date-wrap');
- var photoInput=document.getElementById('id_photo_reminder_start_date');
- function setEnabled(panel,input,show){panel.hidden=!show;if(input)input.disabled=!show;}
- function refreshSocial(){
-   if(!social||!mode)return;
-   if(social.value==='no'){
-     mode.value='custom'; modeWrap.hidden=true; mode.disabled=false;
-     setEnabled(weekly,weeklyInput,false); setEnabled(custom,customInput,true);
-   }else if(social.value==='yes'){
-     modeWrap.hidden=false; mode.disabled=false;
-     setEnabled(weekly,weeklyInput,mode.value==='weekly');
-     setEnabled(custom,customInput,mode.value==='custom');
-   }else{
-     modeWrap.hidden=true; setEnabled(weekly,weeklyInput,false); setEnabled(custom,customInput,false);
-   }
- }
- function refreshPhoto(){var show=photo&&photo.value==='yes';setEnabled(photoWrap,photoInput,show);}
- document.addEventListener('change',function(e){if(e.target===social||e.target===mode)refreshSocial();if(e.target===photo)refreshPhoto();});
- refreshSocial();refreshPhoto();
+(function () {
+  var social = document.getElementById('id_has_social_media');
+  var mode = document.getElementById('id_followup_mode');
+  var weeklyWrap = document.getElementById('weekly-date-wrap');
+  var weeklyInput = document.getElementById('id_followup_start_date');
+  var customWrap = document.getElementById('custom-date-wrap');
+  var customInput = document.getElementById('id_custom_followup_date');
+  var summary = document.getElementById('social-followup-summary');
+  var summaryTitle = document.getElementById('social-followup-title');
+  var summaryText = document.getElementById('social-followup-text');
+
+  var photo = document.getElementById('id_photo_reminder_enabled');
+  var photoWrap = document.getElementById('photo-date-wrap');
+  var photoInput = document.getElementById('id_photo_reminder_start_date');
+
+  var verification = document.getElementById('id_verification_status');
+  var weeklyCost = document.getElementById('id_weekly_cost');
+  var leads = document.getElementById('id_leads_last_7_days');
+
+  function showField(wrapper, input, show) {
+    if (!wrapper) return;
+    wrapper.style.display = show ? '' : 'none';
+    if (input) {
+      input.disabled = !show;
+      input.required = !!show;
+      if (!show) input.value = '';
+    }
+  }
+
+  function refreshSocial() {
+    if (!social || !mode) return;
+
+    if (social.value === 'yes') {
+      mode.value = 'weekly';
+      showField(weeklyWrap, weeklyInput, true);
+      showField(customWrap, customInput, false);
+      summary.style.display = '';
+      summaryTitle.textContent = 'Revisión semanal activa';
+      summaryText.textContent = 'El CRM notificará cada 7 días a Marketing y Administración/Gerencia desde la fecha seleccionada.';
+    } else if (social.value === 'no') {
+      mode.value = 'custom';
+      showField(weeklyWrap, weeklyInput, false);
+      showField(customWrap, customInput, true);
+      summary.style.display = '';
+      summaryTitle.textContent = 'Recordatorio personalizado';
+      summaryText.textContent = 'Selecciona la fecha en que Marketing y Administración/Gerencia deben recibir la notificación.';
+    } else {
+      mode.value = 'none';
+      showField(weeklyWrap, weeklyInput, false);
+      showField(customWrap, customInput, false);
+      summary.style.display = 'none';
+    }
+  }
+
+  function refreshPhotos() {
+    var enabled = photo && photo.value === 'yes';
+    showField(photoWrap, photoInput, enabled);
+  }
+
+  function refreshVerification() {
+    var complete = verification && verification.value === 'complete';
+    if (weeklyCost) weeklyCost.required = complete;
+    if (leads) leads.required = complete;
+  }
+
+  if (social) social.addEventListener('change', refreshSocial);
+  if (photo) photo.addEventListener('change', refreshPhotos);
+  if (verification) verification.addEventListener('change', refreshVerification);
+
+  refreshSocial();
+  refreshPhotos();
+  refreshVerification();
 })();
 </script>
 {% endblock %}

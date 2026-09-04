@@ -47,8 +47,10 @@
       {% endif %}
 
       {% if current_role == 'developer' or current_role == 'manager' or request.user.is_superuser %}
-      <div class="nav-label">Ficha de Desarrollo</div>
-      <a href="{% url 'questionnaires:development_dashboard' %}" class="nav-link"><span>⌘</span><b>Ficha de Desarrollo</b></a>
+      <div class="nav-label">Desarrollo</div>
+      <a href="{% url 'questionnaires:development_dashboard' %}" class="nav-link"><span>⌘</span><b>Proyectos Desarrollo</b></a>
+      <a href="{% url 'questionnaires:seo_status' %}" class="nav-link"><span>↗</span><b>Estado SEO</b></a>
+      <a href="{% url 'domains:list' %}" class="nav-link"><span>◎</span><b>Dominios</b></a>
       {% endif %}
 
       {% if current_role == 'manager' or request.user.is_superuser %}

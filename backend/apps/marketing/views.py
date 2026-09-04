@@ -9,10 +9,8 @@ import qrcode
 from apps.audit.models import ActivityLog
 from apps.audit.services import log_activity
 from apps.core.decorators import role_required
-from apps.plans.models.choices import PlanDepartment
 from apps.projects.models import Project
-from apps.projects.selectors import can_access_project, projects_for_area
-from apps.projects.services import sync_project_area_records
+from apps.projects.selectors import can_access_project
 
 from .forms import (
     AdCampaignForm,
@@ -58,15 +56,9 @@ from .services import (
 
 
 def _project_for_marketing(request, project_pk):
-    project = get_object_or_404(
-        Project.objects.select_related("client", "purchased_plan__plan")
-        .prefetch_related("assignments__user", "contracted_plans__plan", "contracted_plans__subscription"),
-        pk=project_pk,
-    )
+    project = get_object_or_404(Project.objects.select_related("client"), pk=project_pk)
     if not can_access_project(request.user, project):
-        raise PermissionDenied("Este proyecto no pertenece a la ficha de Marketing.")
-    # Mantiene listas las fichas de Diseño / Marketing / Desarrollo del mismo proyecto.
-    sync_project_area_records(project, request.user)
+        raise PermissionDenied("Este proyecto no está asignado a Marketing.")
     return project
 
 
@@ -81,57 +73,36 @@ def _active_groups(workspace):
 
 @role_required("marketing")
 def marketing_list(request):
-    # Fuente única del CRM: plan contratado + tipo de servicio + flujo web + compatibilidad histórica.
-    projects = projects_for_area("marketing").order_by("-updated_at", "-created_at")
-    marketing_project_ids = projects.values_list("pk", flat=True)
-    tasks = (
-        MarketingTask.objects.select_related("project", "assigned_to")
-        .filter(project_id__in=marketing_project_ids)
-        .order_by("-updated_at")[:30]
-    )
-    campaigns = (
-        AdCampaign.objects.select_related("project__client", "assigned_to", "manager_approved_by")
-        .filter(project_id__in=marketing_project_ids)
-        .order_by("-updated_at")[:20]
-    )
-
+    projects = Project.objects.select_related("client", "purchased_plan__plan").filter(project_type__in=["social_media", "seo", "website"])
+    if not request.user.is_manager:
+        projects = projects.filter(assignments__user=request.user, assignments__area="marketing").distinct()
+    tasks_qs = MarketingTask.objects.select_related("project", "assigned_to")
+    campaigns_qs = AdCampaign.objects.select_related("project__client", "assigned_to")
+    if not request.user.is_manager:
+        tasks_qs = tasks_qs.filter(project__assignments__user=request.user, project__assignments__area="marketing").distinct()
+        campaigns_qs = campaigns_qs.filter(project__assignments__user=request.user, project__assignments__area="marketing").distinct()
+    tasks = tasks_qs[:30]
+    campaigns = campaigns_qs[:20]
     project_rows = []
     for project in projects:
-        sync_project_area_records(project, request.user)
-        workspace_obj = (
-            MarketingWorkspace.objects.filter(project=project)
-            .prefetch_related("checklist_items")
-            .first()
-        )
-        if workspace_obj:
-            active = workspace_obj.checklist_items.filter(active=True)
+        workspace = MarketingWorkspace.objects.filter(project=project).prefetch_related("checklist_items").first()
+        if workspace:
+            active = workspace.checklist_items.filter(active=True)
             total = active.count()
             complete = active.filter(status="complete").count()
         else:
             total = complete = 0
         percent = round((complete / total) * 100) if total else 0
         last_log = ActivityLog.objects.filter(metadata__project_id=project.pk).select_related("user").first()
-        area_plans = [
-            item.plan for item in project.contracted_plans.all()
-            if item.is_active and item.plan.department == PlanDepartment.MARKETING
-        ]
-        workflow_plans = [item.plan for item in project.contracted_plans.all() if item.is_active]
         project_rows.append({
             "project": project,
-            "workspace": workspace_obj,
+            "workspace": workspace,
             "checks_total": total,
             "checks_complete": complete,
             "percent": percent,
             "last_log": last_log,
-            "area_plans": area_plans,
-            "workflow_plans": workflow_plans,
         })
-
-    return render(request, "marketing/dashboard.html", {
-        "project_rows": project_rows,
-        "tasks": tasks,
-        "campaigns": campaigns,
-    })
+    return render(request, "marketing/dashboard.html", {"project_rows": project_rows, "tasks": tasks, "campaigns": campaigns})
 
 
 @role_required("marketing")
@@ -289,9 +260,6 @@ def document_add(request, project_pk):
 def review_qr(request, project_pk):
     project = _project_for_marketing(request, project_pk)
     workspace_obj = ensure_workspace(project)
-    if workspace_obj.business_profile_status != "approved":
-        messages.error(request, "El QR de reviews se habilita cuando Google Business está aprobado.")
-        return redirect("marketing:google_business", project_pk=project_pk)
     if not workspace_obj.review_link:
         messages.error(request, "Primero registra el link de reviews.")
         return redirect("marketing:google_business", project_pk=project_pk)
@@ -306,12 +274,9 @@ def review_qr(request, project_pk):
 
 @role_required("marketing", "administration")
 def campaign_list(request):
-    marketing_project_ids = projects_for_area("marketing").values_list("pk", flat=True)
-    records = (
-        AdCampaign.objects.select_related("project__client", "assigned_to", "manager_approved_by")
-        .filter(project_id__in=marketing_project_ids)
-        .distinct()
-    )
+    records = AdCampaign.objects.select_related("project__client", "assigned_to", "manager_approved_by")
+    if not request.user.is_manager and request.user.role != "administration":
+        records = records.filter(project__assignments__user=request.user, project__assignments__area="marketing").distinct()
     return render(request, "marketing/campaign_list.html", {"records": records})
 
 
@@ -398,17 +363,13 @@ def campaign_weekly_report(request, pk):
         raise PermissionDenied("Esta campaña no pertenece a un proyecto asignado a Marketing.")
     form = CampaignWeeklyReportForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        review_date = form.cleaned_data["review_date"]
-        if CampaignWeeklyReport.objects.filter(campaign=campaign, review_date=review_date).exists():
-            form.add_error("review_date", "Ya existe un seguimiento para esta campaña en esa fecha.")
-        else:
-            report = form.save(commit=False)
-            report.campaign = campaign
-            report.reviewed_by = request.user
-            report.save()
-            log_activity(request.user, "marketing", "campaign_weekly_report", report, campaign.name)
-            messages.success(request, "Seguimiento semanal registrado.")
-            return redirect("marketing:campaign_edit", pk=campaign.pk)
+        report = form.save(commit=False)
+        report.campaign = campaign
+        report.reviewed_by = request.user
+        report.save()
+        log_activity(request.user, "marketing", "campaign_weekly_report", report, campaign.name)
+        messages.success(request, "Seguimiento semanal registrado.")
+        return redirect("marketing:campaign_edit", pk=campaign.pk)
     return render(request, "shared/form.html", {
         "form": form,
         "title": "Seguimiento semanal de campaña",

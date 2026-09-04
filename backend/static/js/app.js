@@ -15,3 +15,26 @@ document.addEventListener('click', async (event) => {
     document.execCommand('copy');
   }
 });
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  const filterButtons = document.querySelectorAll(".development-filter");
+  const projectCards = document.querySelectorAll(".development-card-v5");
+
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const filter = button.dataset.filter;
+      filterButtons.forEach((btn) => btn.classList.remove("active"));
+      button.classList.add("active");
+
+      projectCards.forEach((card) => {
+        card.style.display = filter === "all" || card.dataset.status === filter ? "" : "none";
+      });
+
+      document.getElementById("development-projects")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    });
+  });
+});

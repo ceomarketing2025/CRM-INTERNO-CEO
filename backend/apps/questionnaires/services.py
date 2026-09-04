@@ -8,6 +8,11 @@ WEBSITE_TEMPLATE_CODE = "website-technical-v2"
 # Internal notes do not block completion.
 WEBSITE_PROGRESS_KEYS = [
     "company_description",
+    "business_logic",
+    "quotes",
+    "website_structure",
+    "resources",
+    "website_forms",
     "slogan",
     "has_mission_vision",
     "show_team",

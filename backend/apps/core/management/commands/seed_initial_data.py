@@ -149,6 +149,13 @@ class Command(BaseCommand):
                 {"key":"experience_years", "text":"Años de experiencia", "type":"number"},
                 {"key":"internal_meeting_notes", "text":"Notas internas de la reunión", "type":"textarea"},
             ]},
+            {"title": "8) Estructura y conversión web", "questions": [
+                {"key":"business_logic", "text":"Lógica del negocio", "type":"textarea"},
+                {"key":"quotes", "text":"Cotizaciones y canales de contacto", "type":"textarea"},
+                {"key":"website_structure", "text":"Estructura del sitio web", "type":"textarea"},
+                {"key":"resources", "text":"Recursos del proyecto", "type":"textarea"},
+                {"key":"website_forms", "text":"Formularios y destino de contactos", "type":"textarea"},
+            ]},
         ]
         self.upsert_template(
             "website-technical-v2",

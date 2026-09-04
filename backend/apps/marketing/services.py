@@ -23,8 +23,8 @@ CHECKLIST_TEMPLATE = [
     ("google_profile", "v4_gbp_link", "Link del perfil registrado", 10),
     ("google_profile", "v4_gbp_id", "ID del perfil registrado", 20),
     ("google_profile", "v4_gbp_social", "Links de redes sociales registrados", 30),
-    ("google_profile", "v4_gbp_verification", "Estado de verificación registrado", 40),
-    ("google_profile", "v4_gbp_reviews", "Reviews: link, QR y mensaje preparados", 50),
+    ("google_profile", "v6_gbp_notes", "Notas registradas", 40),
+    ("google_profile", "v4_gbp_reviews", "QR y mensaje de reviews preparados", 50),
     ("google_lsa", "v4_lsa_drive", "Drive de documentos registrado", 10),
     ("google_lsa", "v4_lsa_license", "Licencia de conducir validada", 20),
     ("google_lsa", "v4_lsa_founding", "Año de fundación registrado", 30),
@@ -138,11 +138,11 @@ def sync_workspace_checks(workspace):
     _set_check(workspace, "v4_gbp_link", bool(workspace.business_profile_link))
     _set_check(workspace, "v4_gbp_id", bool(workspace.business_profile_id.strip()))
     _set_check(workspace, "v4_gbp_social", bool(workspace.business_profile_social_links.strip()))
-    _set_check(workspace, "v4_gbp_verification", workspace.business_profile_status in {"verification", "approved", "denied"})
+    _set_check(workspace, "v6_gbp_notes", bool(workspace.business_profile_notes.strip()))
     _set_check(
         workspace,
         "v4_gbp_reviews",
-        workspace.business_profile_status == "approved" and bool(workspace.review_link and workspace.review_message.strip()),
+        bool(workspace.review_link and workspace.review_message.strip()),
     )
 
     lsa = getattr(workspace, "lsa_workspace", None)
@@ -150,17 +150,15 @@ def sync_workspace_checks(workspace):
         if workspace.lsa_documents_available == "no":
             _set_check(workspace, "v4_lsa_drive", True, "No aplica: cliente sin documentos LSA")
             _set_check(workspace, "v4_lsa_license", True, "No aplica: cliente sin documentos LSA")
-            _set_check(workspace, "v4_lsa_founding", True, "No aplica: cliente sin documentos LSA")
         else:
             _set_check(workspace, "v4_lsa_drive", bool(lsa.documents_drive_url))
             _set_check(workspace, "v4_lsa_license", lsa.driver_license_ready == "yes")
-            _set_check(workspace, "v4_lsa_founding", bool(lsa.founding_year))
+        _set_check(workspace, "v4_lsa_founding", bool(lsa.founding_year))
         _set_check(workspace, "v4_lsa_verification", lsa.verification_status == "complete")
         _set_check(workspace, "v4_lsa_metrics", lsa.weekly_cost is not None and lsa.leads_last_7_days is not None)
         followup_ready = (
-            (lsa.followup_mode == "weekly" and bool(lsa.followup_start_date))
-            or (lsa.followup_mode == "custom" and bool(lsa.custom_followup_date))
-            or lsa.followup_mode == "none"
+            (lsa.has_social_media == "yes" and lsa.followup_mode == "weekly" and bool(lsa.followup_start_date))
+            or (lsa.has_social_media == "no" and lsa.followup_mode == "custom" and bool(lsa.custom_followup_date))
         )
         _set_check(workspace, "v4_lsa_followup", followup_ready)
         photo_ready = (
@@ -269,31 +267,41 @@ def save_intake(*, form, user):
 @transaction.atomic
 def save_google_business(*, form, user):
     workspace = form.save(commit=False)
-    if workspace.business_profile_status == "approved" and workspace.review_link:
-        current = (workspace.review_message or "").strip()
-        if current:
-            lines = current.splitlines()
-            replaced = False
-            for i, line in enumerate(lines):
-                if line.strip().lower().startswith("link:"):
-                    lines[i] = f"Link: {workspace.review_link}"
-                    replaced = True
-                    break
-            if not replaced:
-                lines.extend(["", f"Link: {workspace.review_link}"])
-            workspace.review_message = "\n".join(lines).strip()
-        else:
-            workspace.review_message = (
-                f"Hola, gracias por confiar en {workspace.project.client.business_name}. "
-                "¿Nos ayudas dejando una reseña sobre tu experiencia?\n\n"
-                f"Link: {workspace.review_link}"
-            )
+
+    # Cuando ya existe un link real del perfil, la situación inicial deja de ser
+    # "no tiene"/"crear" y pasa a perfil existente sin pedir al usuario repetir
+    # esa selección en esta pantalla.
+    if workspace.business_profile_link and workspace.business_profile_mode in {"", "no", "create"}:
+        workspace.business_profile_mode = "existing"
+
+    # El mensaje de reviews es controlado por el CRM para que siempre coincida
+    # con el link que genera el QR.
+    if workspace.review_link:
+        workspace.review_message = build_google_review_message(workspace.review_link)
+    else:
+        workspace.review_message = ""
+
     workspace.shared_info_updated_by = user
     workspace.shared_info_updated_at = timezone.now()
     workspace.save()
     sync_workspace_checks(workspace)
     log_activity(user, "marketing", "google_business_update", workspace, workspace.get_business_profile_status_display())
     return workspace
+
+
+def build_google_review_message(review_link):
+    """Mensaje aprobado para Kristian Tree Service con el link asignado."""
+    return (
+        "Hi!\n\n"
+        "Thank you for choosing Kristian Tree Service. We truly appreciate the opportunity to work with you.\n\n"
+        "If you were happy with our service, would you mind taking a minute to leave us a 5-star Google review? ⭐ "
+        "Your feedback helps our small business grow and helps other homeowners find a trusted tree service.\n\n"
+        "You can leave your review by clicking the link below or simply scanning the QR code attached.\n\n"
+        "⭐ Google Review:\n\n"
+        f"{review_link}\n\n"
+        "Thank you again for your support! We look forward to helping you with any future tree service needs. 🌳\n\n"
+        "Kristian Tree Service"
+    )
 
 
 def ensure_lsa_followup_reminders(lsa, *, user=None, horizon_weeks=12):

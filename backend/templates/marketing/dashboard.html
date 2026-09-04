@@ -1,71 +1,7 @@
 {% extends 'base.html' %}
-{% block page_heading %}Ficha de Marketing{% endblock %}
+{% block page_heading %}Marketing{% endblock %}
 {% block content %}
-<div class="page-intro">
-  <div>
-    <span class="eyebrow">Área de Marketing</span>
-    <h2>Proyectos para llenar Marketing</h2>
-    <p>Cada proyecto que pertenece a Marketing aparece aquí según los planes y servicios contratados. La ficha reúne información inicial, Google Business, Google LSA, Publicidad Digital, Social Media y el acceso al resumen sincronizado del proyecto.</p>
-  </div>
-  <div class="actions">
-    <a class="btn btn-secondary" href="{% url 'marketing:social_tracking' %}">Seguimiento general</a>
-    <a class="btn btn-secondary" href="{% url 'marketing:social_plans' %}">Social Media</a>
-    <a class="btn btn-secondary" href="{% url 'marketing:campaign_list' %}">Campañas</a>
-    <a class="btn btn-primary" href="{% url 'marketing:task_create' %}">＋ Tarea</a>
-  </div>
-</div>
-
-<div class="stats-grid">
-  <div class="stat-card"><span>Proyectos Marketing</span><strong>{{ project_rows|length }}</strong><small>Sincronizados con la clasificación central del CRM</small></div>
-  <a class="stat-card" href="{% url 'marketing:campaign_list' %}"><span>Campañas recientes</span><strong>{{ campaigns|length }}</strong><small>Meta / Google / TikTok</small></a>
-  <a class="stat-card" href="{% url 'marketing:social_plans' %}"><span>Social Media</span><strong>↗</strong><small>Planes, publicaciones y seguimiento</small></a>
-  <div class="stat-card warning"><span>Validación</span><strong>Admin</strong><small>Las campañas requieren aprobación antes de lanzar</small></div>
-</div>
-
-<div class="project-grid area-sheet-grid">
-{% for row in project_rows %}{% with p=row.project %}
-<article class="project-card area-project-card area-sheet-card">
-  <div class="project-card-top"><span class="project-code">{{ p.project_code }}</span><span class="badge">{{ p.get_project_type_display }}</span></div>
-
-  <div class="area-sheet-heading">
-    <div><span class="eyebrow">{{ p.client.business_name }}</span><h3>{{ p.name }}</h3><p>{{ p.client.full_name|default:'Sin contacto' }}</p></div>
-    <div class="area-progress-number"><strong>{{ row.percent }}%</strong><span>Marketing</span></div>
-  </div>
-
-  {% if row.area_plans %}
-  <div class="contracted-mini-v9">{% for plan in row.area_plans %}<span class="contract-chip dept-marketing">{{ plan.name }}</span>{% endfor %}</div>
-  {% elif row.workflow_plans %}
-  <div class="contracted-mini-v9">{% for plan in row.workflow_plans %}<span class="contract-chip">{{ plan.name }}</span>{% endfor %}<span class="badge">Flujo compartido → Marketing</span></div>
-  {% endif %}
-
-  <section class="control-area-card embedded-area-control {% if row.checks_total and row.checks_complete == row.checks_total %}complete{% endif %}">
-    <div class="control-area-head"><b>M</b><div><strong>Marketing</strong><span>{{ row.checks_complete }}/{{ row.checks_total }} checks activos</span></div></div>
-    <div class="progress slim"><i style="width:{{ row.percent }}%"></i></div>
-    <small>{% if row.workspace and row.workspace.intake_ready %}Información inicial lista; módulos operativos habilitados.{% elif row.checks_total %}Completa primero la información inicial de la reunión.{% else %}Preparando ficha y checklist del proyecto.{% endif %}</small>
-  </section>
-
-  <div class="area-fill-list">
-    <a class="area-fill-row {% if row.workspace and row.workspace.intake_ready %}is-complete{% endif %}" href="{% url 'marketing:workspace' p.pk %}">
-      <span class="fill-state">{% if row.workspace and row.workspace.intake_ready %}✓{% else %}1{% endif %}</span>
-      <div><strong>Información inicial / reunión</strong><small>Datos del cliente, correo, situación de Google Business, documentos LSA y documentos de reunión.</small></div>
-      <b>{% if row.workspace and row.workspace.intake_ready %}Editar{% else %}Llenar{% endif %} →</b>
-    </a>
-    <a class="area-fill-row" href="{% url 'marketing:google_business' p.pk %}">
-      <span class="fill-state">2</span><div><strong>Google Business</strong><small>Perfil, verificación, link, ID, redes, reviews, QR y mensaje.</small></div><b>Abrir →</b>
-    </a>
-    <a class="area-fill-row" href="{% url 'marketing:google_lsa' p.pk %}">
-      <span class="fill-state">3</span><div><strong>Google LSA</strong><small>Documentos, licencia, métricas, revisión y recordatorios de fotos.</small></div><b>Abrir →</b>
-    </a>
-    <a class="area-fill-row" href="{% url 'marketing:digital_ads' p.pk %}">
-      <span class="fill-state">4</span><div><strong>Publicidad Digital</strong><small>Meta Ads, Google Ads, TikTok Ads, campañas y validación de Gerencia.</small></div><b>Abrir →</b>
-    </a>
-    <a class="area-fill-row" href="{% url 'handoff:summary' p.pk %}">
-      <span class="fill-state">↗</span><div><strong>Resumen sincronizado del proyecto</strong><small>Diseño + Marketing + Desarrollo + credenciales habilitadas.</small></div><b>Ver →</b>
-    </a>
-  </div>
-
-  <div class="project-footer"><span>{% if row.last_log %}Última modificación: {{ row.last_log.user.display_name|default:'Sistema' }}{% else %}Sin actividad registrada{% endif %}</span><span>{% if row.last_log %}{{ row.last_log.created_at|date:'d/m/Y H:i' }}{% endif %}</span></div>
-</article>
-{% endwith %}{% empty %}<div class="empty card">No hay proyectos que pertenezcan a la Ficha de Marketing.</div>{% endfor %}
-</div>
+<div class="page-intro"><div><span class="eyebrow">Área independiente</span><h2>Marketing</h2><p>Flujo por proyecto: reunión → Google Business / Google LSA / Publicidad Digital, con checks, QR, validaciones y recordatorios.</p></div><div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:social_tracking' %}">Seguimiento general</a><a class="btn btn-secondary" href="{% url 'marketing:campaign_list' %}">Campañas</a><a class="btn btn-primary" href="{% url 'marketing:task_create' %}">＋ Tarea</a></div></div>
+<div class="stats-grid"><a class="stat-card" href="{% url 'marketing:campaign_list' %}"><span>Campañas</span><strong>{{ campaigns|length }}</strong><small>Meta / Google / TikTok / tradicional</small></a><a class="stat-card" href="{% url 'marketing:social_plans' %}"><span>Social Media</span><strong>↗</strong><small>Planes, publicaciones y seguimiento</small></a><div class="stat-card warning"><span>Validación</span><strong>Admin</strong><small>Campañas requieren aprobación antes de lanzar</small></div></div>
+<div class="project-grid">{% for row in project_rows %}{% with p=row.project %}<div class="project-card area-project-card"><div class="project-card-top"><span class="project-code">{{ p.project_code }}</span><span class="badge">{{ p.get_project_type_display }}</span></div><h3>{{ p.client.business_name }}</h3><p>{{ p.client.full_name|default:'Sin contacto' }}{% if p.purchased_plan %} · {{ p.purchased_plan.plan.name }}{% endif %}</p><div class="area-checks"><span class="{% if row.workspace %}done{% endif %}"><i></i> Información inicial {% if row.workspace and row.workspace.intake_ready %}completa{% else %}pendiente{% endif %}</span><span class="{% if row.percent == 100 and row.checks_total %}done{% endif %}"><i></i> Checklist {{ row.checks_complete }}/{{ row.checks_total }}</span></div>{% if row.checks_total %}<div class="progress"><i style="width:{{ row.percent }}%"></i></div>{% endif %}<div class="quick-action-grid"><a href="{% url 'marketing:workspace' p.pk %}"><b>Marketing</b><small>Reunión + módulos</small></a><a href="{% url 'marketing:digital_ads' p.pk %}"><b>Publicidad</b><small>Meta / Google / TikTok</small></a><a href="{% url 'handoff:summary' p.pk %}"><b>Resumen</b><small>Ver todo el proyecto</small></a></div><div class="project-footer"><span>{% if row.last_log %}Última: {{ row.last_log.user.display_name|default:'Sistema' }}{% else %}Sin actividad registrada{% endif %}</span><span>{% if row.last_log %}{{ row.last_log.created_at|date:'d/m H:i' }}{% endif %}</span></div></div>{% endwith %}{% empty %}<div class="empty card">No hay proyectos asignados a Marketing.</div>{% endfor %}</div>
 {% endblock %}

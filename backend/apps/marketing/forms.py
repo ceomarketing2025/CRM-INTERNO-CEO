@@ -1,6 +1,5 @@
 from django import forms
 from apps.accounts.models import UserAccount
-from apps.projects.selectors import projects_for_area
 from .models import (
     AdCampaign,
     AdvertisingAccount,
@@ -24,11 +23,6 @@ DATE = forms.DateInput(attrs={"type": "date"})
 NUMBER_MONEY = forms.NumberInput(attrs={"step": "0.01", "min": "0"})
 
 
-def _marketing_projects():
-    """Fuente única de proyectos que pertenecen a la ficha de Marketing."""
-    return projects_for_area("marketing").select_related("client").order_by("client__business_name", "name")
-
-
 class MarketingBriefForm(forms.ModelForm):
     class Meta:
         model = MarketingBrief
@@ -42,8 +36,10 @@ class MarketingTaskForm(forms.ModelForm):
         self.fields["assigned_to"].queryset = UserAccount.objects.filter(
             role__in=[UserAccount.Role.MARKETING, UserAccount.Role.MANAGER], is_active=True
         )
-        if user:
-            self.fields["project"].queryset = _marketing_projects()
+        if user and not user.is_manager:
+            self.fields["project"].queryset = self.fields["project"].queryset.filter(
+                assignments__user=user, assignments__area="marketing"
+            ).distinct()
 
     class Meta:
         model = MarketingTask
@@ -123,10 +119,16 @@ MarketingWorkspaceForm = MarketingIntakeForm
 
 
 class GoogleBusinessForm(forms.ModelForm):
+    """Google Business: perfil + reviews.
+
+    La situación del perfil se define en la información inicial. En esta vista se
+    trabaja únicamente la información operativa del perfil, su verificación y el
+    QR de reviews.
+    """
+
     class Meta:
         model = MarketingWorkspace
         fields = [
-            "business_profile_mode",
             "business_profile_status",
             "business_profile_link",
             "business_profile_id",
@@ -138,59 +140,47 @@ class GoogleBusinessForm(forms.ModelForm):
         widgets = {
             "business_profile_social_links": TEXTAREA_3,
             "business_profile_notes": TEXTAREA_3,
-            "review_message": TEXTAREA_4,
+            "review_message": forms.Textarea(attrs={"rows": 12, "readonly": "readonly"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["business_profile_status"].label = "Estado de verificación"
         self.fields["business_profile_link"].label = "Link del perfil de Google Business"
         self.fields["business_profile_id"].label = "ID del perfil"
         self.fields["business_profile_social_links"].label = "Links de redes sociales"
+        self.fields["business_profile_notes"].label = "Notas"
         self.fields["review_link"].label = "Link directo para dejar la review"
         self.fields["review_message"].label = "Mensaje para enviar al customer"
-        self.fields["review_message"].help_text = "El CRM inserta automáticamente el link asignado en la línea “Link:”."
+        self.fields["review_message"].help_text = "Se genera automáticamente con el link de review guardado."
 
     def clean(self):
         cleaned = super().clean()
-        mode = cleaned.get("business_profile_mode")
         status = cleaned.get("business_profile_status")
 
-        if mode == "no":
-            # Un No cierra el flujo dependiente y evita datos invisibles/incoherentes.
-            cleaned["business_profile_status"] = "not_started"
-            for field in [
-                "business_profile_link",
-                "business_profile_id",
-                "business_profile_social_links",
-                "review_link",
-                "review_message",
-            ]:
-                cleaned[field] = ""
-            return cleaned
-
-        if mode == "existing" and not cleaned.get("business_profile_link"):
-            self.add_error("business_profile_link", "Si el perfil ya existe, registra su link.")
-
-        if status == "approved":
+        # Cuando el perfil entra a verificación o queda aprobado, sus datos base
+        # ya deben estar registrados. Esto evita estados verdes con campos vacíos.
+        if status in {"verification", "approved"}:
             required = {
-                "business_profile_link": "Registra el link del perfil aprobado.",
-                "business_profile_id": "Registra el ID del perfil aprobado.",
+                "business_profile_link": "Registra el link del perfil de Google Business.",
+                "business_profile_id": "Registra el ID del perfil.",
                 "business_profile_social_links": "Registra al menos un link de red social.",
-                "review_link": "Pega el link directo que se utilizará para el QR de reviews.",
             }
             for field, message in required.items():
                 value = cleaned.get(field)
                 if not value or (isinstance(value, str) and not value.strip()):
                     self.add_error(field, message)
-        elif status != "approved":
-            # El QR solo pertenece al estado aprobado. Conservamos el valor guardado en instancia,
-            # pero no se considera válido/activo hasta aprobar.
-            pass
+
+        # El QR es parte del cierre del perfil aprobado.
+        if status == "approved" and not cleaned.get("review_link"):
+            self.add_error("review_link", "Para aprobar Google Business registra el link directo de reviews.")
 
         return cleaned
 
 
 class GoogleLSAForm(forms.ModelForm):
+    """Google LSA con dependencias reales entre documentos, Social Media y recordatorios."""
+
     class Meta:
         model = GoogleLSAWorkspace
         fields = [
@@ -209,63 +199,85 @@ class GoogleLSAForm(forms.ModelForm):
             "notes",
         ]
         widgets = {
+            "followup_mode": forms.HiddenInput(),
             "followup_start_date": DATE,
             "custom_followup_date": DATE,
             "photo_reminder_start_date": DATE,
             "weekly_cost": NUMBER_MONEY,
+            "founding_year": forms.NumberInput(attrs={"min": "1800", "max": "2100", "step": "1"}),
             "notes": TEXTAREA_4,
         }
 
     def __init__(self, *args, workspace=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.workspace = workspace or (self.instance.workspace if getattr(self.instance, "workspace_id", None) else None)
+        self.fields["documents_drive_url"].label = "Link del Drive de documentos"
         self.fields["driver_license_ready"].label = "Licencia de conducir"
         self.fields["founding_year"].label = "Año de fundación"
+        self.fields["verification_status"].label = "Validación Google LSA"
+        self.fields["weekly_cost"].label = "Costo por semana"
+        self.fields["leads_last_7_days"].label = "Cantidad de leads en los últimos 7 días"
         self.fields["has_social_media"].label = "¿Tiene Social Media?"
-        self.fields["followup_mode"].label = "Tipo de revisión / recordatorio"
-        self.fields["photo_reminder_enabled"].label = "¿Recordar subir fotos cada 15 días?"
-        self.fields["photo_reminder_start_date"].label = "Primera fecha de subida de fotos"
+        self.fields["followup_start_date"].label = "Primera revisión semanal"
+        self.fields["custom_followup_date"].label = "Fecha del recordatorio personalizado"
+        self.fields["photo_reminder_enabled"].label = "¿Activar recordatorio para subir fotos cada 15 días?"
+        self.fields["photo_reminder_start_date"].label = "Primera fecha para subir fotos"
+        self.fields["notes"].label = "Notas"
 
     def clean(self):
         cleaned = super().clean()
         docs_expected = bool(self.workspace and self.workspace.lsa_documents_available == "yes")
         has_social = cleaned.get("has_social_media")
-        mode = cleaned.get("followup_mode")
+        verification = cleaned.get("verification_status")
 
+        # Documentos dependientes de la respuesta de la reunión.
         if docs_expected:
             if not cleaned.get("documents_drive_url"):
-                self.add_error("documents_drive_url", "El cliente indicó que sí tiene documentos: registra el link del Drive.")
+                self.add_error("documents_drive_url", "Registra el link del Drive donde están los documentos.")
             if cleaned.get("driver_license_ready") not in {"yes", "no"}:
                 self.add_error("driver_license_ready", "Selecciona Sí o No para la licencia de conducir.")
-            if not cleaned.get("founding_year"):
-                self.add_error("founding_year", "Registra el año de fundación.")
+        else:
+            # Si en la reunión se indicó que no hay documentos, los campos quedan
+            # deshabilitados en UI y se limpian también en backend.
+            cleaned["documents_drive_url"] = ""
+            cleaned["driver_license_ready"] = ""
 
-        if has_social not in {"yes", "no"}:
-            self.add_error("has_social_media", "Selecciona Sí o No.")
-        elif has_social == "no":
-            # Regla de reunión: si no tiene Social Media, el seguimiento pasa a Personalizado.
-            cleaned["followup_mode"] = "custom"
-            mode = "custom"
-            cleaned["followup_start_date"] = None
-        elif has_social == "yes" and mode == "none":
-            self.add_error("followup_mode", "Si tiene Social Media, configura una revisión semanal o personalizada.")
+        # El año de fundación pertenece a LSA independientemente de los documentos.
+        if not cleaned.get("founding_year"):
+            self.add_error("founding_year", "Registra el año de fundación de la empresa.")
 
-        if mode == "weekly":
+        # Cuando LSA se marca completo, las métricas de control también deben existir.
+        if verification == "complete":
+            if cleaned.get("weekly_cost") is None:
+                self.add_error("weekly_cost", "Registra el costo por semana para completar la validación LSA.")
+            if cleaned.get("leads_last_7_days") is None:
+                self.add_error("leads_last_7_days", "Registra la cantidad de leads de los últimos 7 días.")
+
+        # Social Media controla directamente el tipo de seguimiento.
+        if has_social == "yes":
+            cleaned["followup_mode"] = "weekly"
             cleaned["custom_followup_date"] = None
             if not cleaned.get("followup_start_date"):
                 self.add_error("followup_start_date", "Selecciona la primera fecha de revisión semanal.")
-        elif mode == "custom":
+        elif has_social == "no":
+            cleaned["followup_mode"] = "custom"
             cleaned["followup_start_date"] = None
             if not cleaned.get("custom_followup_date"):
                 self.add_error("custom_followup_date", "Selecciona la fecha del recordatorio personalizado.")
-        elif mode == "none":
+        else:
+            cleaned["followup_mode"] = "none"
             cleaned["followup_start_date"] = None
             cleaned["custom_followup_date"] = None
+            self.add_error("has_social_media", "Selecciona Sí o No para Social Media.")
 
+        # Fotos LSA cada 15 días.
         photo_enabled = cleaned.get("photo_reminder_enabled")
         if photo_enabled == "yes":
             if not cleaned.get("photo_reminder_start_date"):
-                self.add_error("photo_reminder_start_date", "Selecciona la primera fecha para subir fotos. El CRM repetirá cada 15 días.")
+                self.add_error(
+                    "photo_reminder_start_date",
+                    "Selecciona la primera fecha. El CRM repetirá el recordatorio cada 15 días.",
+                )
         elif photo_enabled == "no":
             cleaned["photo_reminder_start_date"] = None
         else:
@@ -438,8 +450,10 @@ class AdCampaignForm(forms.ModelForm):
         if project:
             self.fields["project"].initial = project
             self.fields["project"].widget = forms.HiddenInput()
-        elif user:
-            self.fields["project"].queryset = _marketing_projects()
+        elif user and not user.is_manager:
+            self.fields["project"].queryset = self.fields["project"].queryset.filter(
+                assignments__user=user, assignments__area="marketing"
+            ).distinct()
         if platform:
             self.fields["platform"].initial = platform
             self.fields["platform"].widget = forms.HiddenInput()
@@ -530,8 +544,10 @@ class SocialMediaPlanForm(forms.ModelForm):
         self.fields["assigned_to"].queryset = UserAccount.objects.filter(
             role__in=[UserAccount.Role.MARKETING, UserAccount.Role.MANAGER], is_active=True
         )
-        if user:
-            self.fields["project"].queryset = _marketing_projects()
+        if user and not user.is_manager:
+            self.fields["project"].queryset = self.fields["project"].queryset.filter(
+                assignments__user=user, assignments__area="marketing"
+            ).distinct()
 
 
 class SocialMediaDailyLogForm(forms.ModelForm):

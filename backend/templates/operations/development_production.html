@@ -2,7 +2,21 @@
 {% block page_heading %}Ficha de producción{% endblock %}
 {% block content %}
 <div class="page-intro">
-  <div><span class="eyebrow">Desarrollo · {{ project.project_code }}</span><h2>{{ project.client.business_name }}</h2><p>Hoja centralizada tipo Excel: páginas, condados, servicios y ciudades. Nombre, keyword y slug son editables; complejidad y puntos se calculan internamente.</p></div>
+  <div>
+    <span class="eyebrow">
+      Desarrollo · {{ project.project_code }}
+      {% if project.purchased_plan and project.purchased_plan.plan %}
+        · {{ project.purchased_plan.plan.name|upper }}
+      {% endif %}
+    </span>
+
+    <h2>{{ project.client.business_name }}</h2>
+
+    <p>
+      Hoja centralizada tipo Excel: páginas, condados, servicios y ciudades.
+      Nombre, keyword y slug son editables; complejidad y puntos se calculan internamente.
+    </p>
+  </div>
   <div class="actions"><a class="btn btn-secondary" href="{% url 'questionnaires:development_dashboard' %}">Desarrollo</a>{% if questionnaire %}<a class="btn btn-secondary" href="{% url 'questionnaires:fill' questionnaire.pk %}">Ficha técnica</a>{% endif %}<a class="btn btn-primary" href="{% url 'handoff:summary' project.pk %}">Resumen</a></div>
 </div>
 
@@ -40,24 +54,496 @@
 
 {% if balance_rows or unassigned_points %}<div class="card production-balance"><div class="card-head"><div><h3>Distribución del equipo</h3><p>La carga se calcula automáticamente; complejidad y puntos no son editables ni se muestran por fila.</p></div></div><div class="balance-grid">{% for item in balance_rows %}<div><strong>{{ item.name }}</strong><span>{{ item.items }} elementos asignados</span></div>{% endfor %}{% if unassigned_points %}<div class="warning-soft"><strong>Sin asignar</strong><span>Hay elementos pendientes de responsable</span></div>{% endif %}</div></div>{% endif %}
 
-<form method="post" class="production-workspace-v5" id="production-form">{% csrf_token %}<input type="hidden" name="action" value="save_all"><input type="hidden" name="row_id" value=""><input type="hidden" name="county_id" value="">
-  <div class="card header-structure-card"><div class="card-head"><div><h3>3. Estructura del header</h3><p>Una guía rápida del orden de navegación.</p></div><button type="button" class="btn btn-secondary btn-sm" id="header-default">Usar estructura base</button></div><textarea name="header_structure" rows="2" placeholder="Home | About | Services | Areas We Service | Gallery | Contact">{{ sheet.header_structure }}</textarea><div class="header-preview" id="header-preview"></div></div>
+
+<form method="post" class="card header-structure-card">
+
+  {% csrf_token %}
+
+  <input
+    type="hidden"
+    name="action"
+    value="save_general"
+  >
+
+  <div class="card-head">
+
+    <div>
+      <h3>3. Estructura del header</h3>
+      <p>
+        Una guía rápida del orden de navegación.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      id="header-default"
+    >
+      Usar estructura base
+    </button>
+
+  </div>
+
+  <textarea
+    name="header_structure"
+    rows="2"
+    placeholder="Home | About | Services | Areas We Service | Gallery | Contact"
+  >{{ sheet.header_structure }}</textarea>
+
+  <div
+    class="header-preview"
+    id="header-preview"
+  ></div>
+
+  <div class="production-item-footer">
+
+    <span>
+      Última edición:
+      {{ sheet.updated_at|date:'d/m/Y H:i' }}
+
+      {% if sheet.updated_by %}
+        · {{ sheet.updated_by.display_name }}
+      {% endif %}
+    </span>
+
+    <button
+      class="btn btn-primary"
+      type="submit"
+    >
+      Guardar configuración
+    </button>
+
+  </div>
+
+</form>
+
+<div class="production-workspace-v5" id="production-form">
 
   <datalist id="service-catalog">{% for item in service_catalog %}<option value="{{ item.name }}"></option>{% endfor %}</datalist>
 
-  <div class="production-section-head"><div><span class="eyebrow">04</span><h3>Páginas principales</h3><p>Edita nombre, keyword, slug, metas y responsable.</p></div><button class="btn btn-secondary" type="submit" name="action" value="add_page">＋ Añadir página</button></div>
-  <div class="production-stack-v5">
-  {% for p in pages %}<details class="production-edit-card row-page-card" {% if forloop.first %}open{% endif %}><summary><div><span class="production-type">{{ p.get_page_type_display }}</span><strong>{{ p.name|default:'Página' }}</strong></div><span class="binary-badge {% if p.state == 'complete' %}yes{% else %}no{% endif %}">{% if p.state == 'complete' %}Lista{% else %}Pendiente{% endif %}</span></summary>
-    <div class="production-edit-grid">
-      <div class="field"><label>Nombre</label><input name="p_{{ p.pk }}_name" value="{{ p.name }}"></div><div class="field"><label>Responsable</label><select name="p_{{ p.pk }}_responsible"><option value="">Sin asignar</option>{% for u in developers %}<option value="{{ u.pk }}" {% if p.responsible_id == u.pk %}selected{% endif %}>{{ u.display_name }}</option>{% endfor %}</select></div>
-      <div class="field copy-field"><label>Keyword</label><div><input id="p-kw-{{ p.pk }}" class="keyword-source" data-slug-target="p-slug-{{ p.pk }}" name="p_{{ p.pk }}_keyword" value="{{ p.keyword }}"><button type="button" class="copy-mini" data-copy="p-kw-{{ p.pk }}">Copiar</button></div></div><div class="field copy-field"><label>Slug</label><div><input id="p-slug-{{ p.pk }}" class="slug-edit" name="p_{{ p.pk }}_slug" value="{{ p.slug }}"><button type="button" class="copy-mini" data-copy="p-slug-{{ p.pk }}">Copiar</button></div></div>
-      <div class="field form-wide"><label>Keywords secundarias</label><textarea rows="2" name="p_{{ p.pk }}_secondary_keywords">{{ p.secondary_keywords }}</textarea></div><div class="field copy-field form-wide"><label>Meta Title</label><div><input id="p-title-{{ p.pk }}" name="p_{{ p.pk }}_meta_title" value="{{ p.meta_title }}"><button type="button" class="copy-mini" data-copy="p-title-{{ p.pk }}">Copiar</button></div></div><div class="field copy-field form-wide"><label>Meta Description</label><div><textarea id="p-desc-{{ p.pk }}" rows="2" name="p_{{ p.pk }}_meta_description">{{ p.meta_description }}</textarea><button type="button" class="copy-mini" data-copy="p-desc-{{ p.pk }}">Copiar</button></div></div>
-      {% include 'operations/partials/edit_binary_fields.html' with row=p prefix='p' %}<div class="field form-wide"><label>Notas</label><textarea rows="2" name="p_{{ p.pk }}_notes">{{ p.notes }}</textarea></div>
-    </div><div class="production-item-footer"><span>Última edición: {{ p.updated_at|date:'d/m/Y H:i' }}{% if p.updated_by %} · {{ p.updated_by.display_name }}{% endif %}</span><button class="btn btn-danger-soft btn-sm" type="submit" name="action" value="delete_page" onclick="this.form.row_id.value='{{ p.pk }}';return confirm('¿Eliminar esta página?')">Eliminar</button></div>
-  </details>{% empty %}<div class="empty card">No hay páginas.</div>{% endfor %}
+  <div class="production-section-head">
+
+  <div>
+    <span class="eyebrow">04</span>
+
+    <h3>Páginas principales</h3>
+
+    <p>
+      Cada página se guarda de manera independiente.
+    </p>
   </div>
 
-  <div class="production-section-head"><div><span class="eyebrow">05</span><h3>Condados → servicios → ciudades</h3><p>Todo queda agrupado por condado, como la jerarquía de la hoja de producción.</p></div><button class="btn btn-secondary" type="submit" name="action" value="add_county">＋ Añadir condado</button></div>
+  <form method="post">
+
+    {% csrf_token %}
+
+    <input
+      type="hidden"
+      name="action"
+      value="add_page"
+    >
+
+    <button
+      class="btn btn-secondary"
+      type="submit"
+    >
+      ＋ Añadir página
+    </button>
+
+  </form>
+
+</div>
+
+
+<div class="production-stack-v5">
+
+  {% for p in pages %}
+
+  <details
+    class="production-edit-card row-page-card"
+    {% if forloop.first %}open{% endif %}
+  >
+
+    <summary>
+
+      <div>
+        <span class="production-type">
+          {{ p.get_page_type_display }}
+        </span>
+
+        <strong>
+          {{ p.name|default:'Página' }}
+        </strong>
+      </div>
+
+      <span
+        class="binary-badge
+        {% if p.workflow_status == 'complete' %}
+          yes
+        {% elif p.workflow_status == 'in_review' %}
+          review
+        {% elif p.workflow_status == 'in_progress' %}
+          progress
+        {% else %}
+          no
+        {% endif %}"
+      >
+        {% if p.workflow_status == 'complete' %}
+          Completo
+        {% elif p.workflow_status == 'in_review' %}
+          En revisión
+        {% elif p.workflow_status == 'in_progress' %}
+          En progreso
+        {% else %}
+          Sin iniciar
+        {% endif %}
+      </span>
+
+    </summary>
+
+    <form
+      method="post"
+      class="production-page-form"
+    >
+
+      {% csrf_token %}
+
+      <input
+        type="hidden"
+        name="action"
+        value="save_page"
+      >
+
+      <input
+        type="hidden"
+        name="row_id"
+        value="{{ p.pk }}"
+      >
+
+      <div class="production-edit-grid">
+
+        <div class="field">
+          <label>Nombre</label>
+
+          <input
+            name="p_{{ p.pk }}_name"
+            value="{{ p.name }}"
+          >
+        </div>
+
+
+        <div class="field">
+          <label>Responsable</label>
+
+          <select
+            name="p_{{ p.pk }}_responsible"
+          >
+
+            <option value="">
+              Sin asignar
+            </option>
+
+            {% for u in developers %}
+            <option
+              value="{{ u.pk }}"
+              {% if p.responsible_id == u.pk %}
+                selected
+              {% endif %}
+            >
+              {{ u.display_name }}
+            </option>
+            {% endfor %}
+
+          </select>
+        </div>
+
+
+        <div class="field">
+          <label>Revisor</label>
+
+          <select
+            name="p_{{ p.pk }}_reviewer"
+          >
+
+            <option value="">
+              Sin asignar
+            </option>
+
+            {% for u in developers %}
+            <option
+              value="{{ u.pk }}"
+              {% if p.reviewer_id == u.pk %}
+                selected
+              {% endif %}
+            >
+              {{ u.display_name }}
+            </option>
+            {% endfor %}
+
+          </select>
+        </div>
+
+
+        <div class="field">
+          <label>Estado</label>
+
+          <select
+            name="p_{{ p.pk }}_workflow_status"
+          >
+
+            {% for value, label in production_statuses %}
+            <option
+              value="{{ value }}"
+              {% if p.workflow_status == value %}
+                selected
+              {% endif %}
+            >
+              {{ label }}
+            </option>
+            {% endfor %}
+
+          </select>
+        </div>
+
+
+        <div class="field copy-field">
+          <label>Keyword principal</label>
+
+          <div>
+            <input
+              id="p-kw-{{ p.pk }}"
+              class="keyword-source"
+              data-slug-target="p-slug-{{ p.pk }}"
+              name="p_{{ p.pk }}_keyword"
+              value="{{ p.keyword }}"
+            >
+
+            <button
+              type="button"
+              class="copy-mini"
+              data-copy="p-kw-{{ p.pk }}"
+            >
+              Copiar
+            </button>
+          </div>
+        </div>
+
+
+        <div class="field copy-field">
+          <label>Slug</label>
+
+          <div>
+            <input
+              id="p-slug-{{ p.pk }}"
+              value="{{ p.slug }}"
+              readonly
+            >
+
+            <button
+              type="button"
+              class="copy-mini"
+              data-copy="p-slug-{{ p.pk }}"
+            >
+              Copiar
+            </button>
+          </div>
+
+          <small>
+            Se genera automáticamente desde la keyword principal.
+          </small>
+        </div>
+
+
+        <div class="field form-wide">
+          <label>Keywords secundarias</label>
+
+          <textarea
+            rows="3"
+            name="p_{{ p.pk }}_secondary_keywords"
+          >{{ p.secondary_keywords }}</textarea>
+        </div>
+
+
+        <div class="field copy-field form-wide">
+          <label>Meta Title</label>
+
+          <div>
+            <input
+              id="p-title-{{ p.pk }}"
+              name="p_{{ p.pk }}_meta_title"
+              value="{{ p.meta_title }}"
+            >
+
+            <button
+              type="button"
+              class="copy-mini"
+              data-copy="p-title-{{ p.pk }}"
+            >
+              Copiar
+            </button>
+          </div>
+        </div>
+
+
+        <div class="field copy-field form-wide">
+          <label>Meta Description</label>
+
+          <div>
+            <textarea
+              id="p-desc-{{ p.pk }}"
+              rows="3"
+              name="p_{{ p.pk }}_meta_description"
+            >{{ p.meta_description }}</textarea>
+
+            <button
+              type="button"
+              class="copy-mini"
+              data-copy="p-desc-{{ p.pk }}"
+            >
+              Copiar
+            </button>
+          </div>
+        </div>
+
+
+        <div class="field">
+          <label>Revisión realizada</label>
+
+          <select
+            name="p_{{ p.pk }}_review_status"
+          >
+
+            <option
+              value="incomplete"
+              {% if p.review_status != 'complete' %}
+                selected
+              {% endif %}
+            >
+              No
+            </option>
+
+            <option
+              value="complete"
+              {% if p.review_status == 'complete' %}
+                selected
+              {% endif %}
+            >
+              Sí
+            </option>
+
+          </select>
+        </div>
+
+
+        <div class="field">
+          <label>Última modificación</label>
+
+          <input
+            value="{{ p.updated_at|date:'d/m/Y H:i' }}"
+            readonly
+          >
+        </div>
+
+
+        <div class="field">
+          <label>Modificado por</label>
+
+          <input
+            value="{% if p.updated_by %}{{ p.updated_by.display_name }}{% else %}—{% endif %}"
+            readonly
+          >
+        </div>
+
+
+        <div class="field form-wide">
+          <label>Notas</label>
+
+          <textarea
+            rows="3"
+            name="p_{{ p.pk }}_notes"
+          >{{ p.notes }}</textarea>
+        </div>
+
+      </div>
+
+
+      <div class="production-item-footer">
+
+        <span>
+          Última edición:
+          {{ p.updated_at|date:'d/m/Y H:i' }}
+
+          {% if p.updated_by %}
+            · {{ p.updated_by.display_name }}
+          {% endif %}
+        </span>
+
+        <div class="production-item-actions">
+
+          <button
+            class="btn btn-primary"
+            type="submit"
+          >
+            Guardar {{ p.name|default:'página' }}
+          </button>
+
+          <button
+            class="btn btn-danger-soft btn-sm"
+            type="submit"
+            name="action"
+            value="delete_page"
+            onclick="return confirm('¿Eliminar esta página?')"
+          >
+            Eliminar
+          </button>
+
+        </div>
+
+      </div>
+
+    </form>
+
+  </details>
+
+  {% empty %}
+
+  <div class="empty card">
+    No hay páginas.
+  </div>
+
+  {% endfor %}
+
+</div>
+
+
+  <div class="production-section-head">
+
+  <div>
+    <span class="eyebrow">05</span>
+    <h3>Condados → servicios → ciudades</h3>
+    <p>
+      Todo queda agrupado por condado, como la jerarquía de la hoja de producción.
+    </p>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <input
+      type="hidden"
+      name="action"
+      value="add_county"
+    >
+
+    <button
+      class="btn btn-secondary"
+      type="submit"
+    >
+      ＋ Añadir condado
+    </button>
+  </form>
+
+</div>
   <div class="production-stack-v5">
   {% for c in counties %}<div class="county-work-block">
     <details class="production-edit-card row-county-card"><summary><div><span class="production-type">Condado {{ forloop.counter }}</span><strong>{{ c.name }}</strong></div><span class="binary-badge {% if c.state == 'complete' %}yes{% else %}no{% endif %}">{% if c.state == 'complete' %}Listo{% else %}Pendiente{% endif %}</span></summary>
@@ -77,8 +563,7 @@
 
   {% if unassigned_cities %}<div class="production-section-head"><div><span class="eyebrow">06</span><h3>Ciudades sin condado</h3><p>Asígnalas a un condado para incorporarlas a la jerarquía.</p></div><button class="btn btn-secondary" type="submit" name="action" value="add_city">＋ Ciudad libre</button></div><div class="production-stack-v5">{% for city in unassigned_cities %}<details class="production-edit-card row-city-card"><summary><div><span class="production-type">Ciudad</span><strong>{{ city.name }}</strong></div></summary><div class="production-edit-grid"><div class="field"><label>Ciudad</label><input name="city_{{ city.pk }}_name" value="{{ city.name }}"></div><div class="field"><label>Condado</label><select name="city_{{ city.pk }}_county"><option value="">Sin condado</option>{% for c in counties %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}</select></div><div class="field copy-field"><label>Keyword</label><div><input id="city-kw-u-{{ city.pk }}" class="keyword-source" data-slug-target="city-slug-u-{{ city.pk }}" name="city_{{ city.pk }}_keyword" value="{{ city.keyword }}"><button type="button" class="copy-mini" data-copy="city-kw-u-{{ city.pk }}">Copiar</button></div></div><div class="field copy-field"><label>Slug</label><div><input id="city-slug-u-{{ city.pk }}" class="slug-edit" name="city_{{ city.pk }}_slug" value="{{ city.slug }}"><button type="button" class="copy-mini" data-copy="city-slug-u-{{ city.pk }}">Copiar</button></div></div><div class="field"><label>Responsable</label><select name="city_{{ city.pk }}_responsible"><option value="">Sin asignar</option>{% for u in developers %}<option value="{{ u.pk }}" {% if city.responsible_id == u.pk %}selected{% endif %}>{{ u.display_name }}</option>{% endfor %}</select></div>{% include 'operations/partials/edit_binary_fields.html' with row=city prefix='city' %}<div class="field form-wide"><label>Notas</label><textarea rows="2" name="city_{{ city.pk }}_notes">{{ city.notes }}</textarea></div></div></details>{% endfor %}</div>{% endif %}
 
-  <div class="card production-savebar-v5"><div><strong>Notas generales</strong><textarea name="sheet_notes" rows="2" placeholder="Notas de producción...">{{ sheet.notes }}</textarea></div><div class="save-progress"><strong>{{ completed_percent }}%</strong><span>Páginas listas</span></div><button class="btn btn-primary btn-lg" type="submit">Guardar toda la producción</button></div>
-</form>
+</div>
 
 <script>
 (function(){
@@ -90,7 +575,17 @@
  function countyName(id){return form.querySelector(`.county-name-input[data-county="${id}"]`)?.value.trim()||''}
  document.querySelectorAll('.service-selector').forEach(input=>input.addEventListener('change',()=>{const row=input.closest('.production-edit-grid');const name=row?.querySelector('.service-page-name');if(name&&input.value&&!name.dataset.touched)name.value=`${input.value} ${countyName(input.dataset.county)}`.trim()}));
  document.querySelectorAll('.service-page-name').forEach(el=>el.addEventListener('input',()=>el.dataset.touched='1'));
- const header=form.querySelector('[name="header_structure"]'),preview=document.getElementById('header-preview');function renderHeader(){if(!preview)return;preview.innerHTML='';(header.value||'').split('|').map(x=>x.trim()).filter(Boolean).forEach(x=>{const s=document.createElement('span');s.textContent=x;preview.appendChild(s)})}header?.addEventListener('input',renderHeader);document.getElementById('header-default')?.addEventListener('click',()=>{header.value='Home | About | Services | Areas We Service | Gallery | Contact | Free Estimate';renderHeader()});renderHeader();
+const header = document.querySelector(
+  '.header-structure-card [name="header_structure"]'
+);
+
+const preview = document.getElementById(
+  'header-preview'
+);
+function renderHeader(){
+  if(!preview || !header) return;
+  
+  preview.innerHTML='';(header.value||'').split('|').map(x=>x.trim()).filter(Boolean).forEach(x=>{const s=document.createElement('span');s.textContent=x;preview.appendChild(s)})}header?.addEventListener('input',renderHeader);document.getElementById('header-default')?.addEventListener('click',()=>{header.value='Home | About | Services | Areas We Service | Gallery | Contact | Free Estimate';renderHeader()});renderHeader();
  document.querySelectorAll('[data-copy-text]').forEach(btn=>btn.addEventListener('click',async()=>{const text=btn.dataset.copyText||'';try{await navigator.clipboard.writeText(text);const old=btn.textContent;btn.textContent='✓';setTimeout(()=>btn.textContent=old,700)}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove()}}));
  document.querySelectorAll('.quick-status-form select').forEach(sel=>sel.addEventListener('change',()=>sel.form.submit()));
 })();

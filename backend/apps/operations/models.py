@@ -2,6 +2,7 @@ from decimal import Decimal
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db import models
+from django.utils.text import slugify
 from apps.core.models import TimestampedModel
 
 
@@ -153,7 +154,11 @@ class SeoComplexity(models.TextChoices):
     SIMPLE = "S", "Simple"
     MEDIUM = "M", "Media"
     COMPLEX = "C", "Compleja"
-
+class ProductionWorkStatus(models.TextChoices):
+    NOT_STARTED = "not_started", "Sin iniciar"
+    IN_PROGRESS = "in_progress", "En progreso"
+    IN_REVIEW = "in_review", "En revisión"
+    COMPLETE = "complete", "Completo"
 
 class WebProductionSheet(TimestampedModel):
     project = models.OneToOneField("projects.Project", on_delete=models.CASCADE, related_name="web_production_sheet")
@@ -177,22 +182,146 @@ class WebProductionSheet(TimestampedModel):
 
 
 class ProductionSeoBase(TimestampedModel):
-    """Campos comunes SEO. Complejidad, puntos y slug se calculan automáticamente."""
-    name = models.CharField(max_length=180, blank=True, verbose_name="Página")
-    complexity = models.CharField(max_length=2, choices=SeoComplexity.choices, default=SeoComplexity.SIMPLE)
-    points = models.PositiveSmallIntegerField(default=1)
-    slug = models.CharField(max_length=220, blank=True)
-    keyword = models.CharField(max_length=255, blank=True)
-    secondary_keywords = models.TextField(blank=True, verbose_name="Palabras secundarias")
-    meta_title = models.CharField(max_length=255, blank=True)
-    meta_description = models.TextField(blank=True)
-    responsible = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    review_status = models.CharField(max_length=20, choices=CompleteStatus.choices, default=CompleteStatus.INCOMPLETE, verbose_name="Revisión realizada")
-    seo_status = models.CharField(max_length=20, choices=CompleteStatus.choices, default=CompleteStatus.INCOMPLETE, verbose_name="SEO legacy")
-    state = models.CharField(max_length=20, choices=CompleteStatus.choices, default=CompleteStatus.INCOMPLETE, verbose_name="Página lista")
-    notes = models.TextField(blank=True)
-    order = models.PositiveIntegerField(default=0)
-    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    """
+    Campos comunes para páginas SEO de producción.
+
+    - El slug se genera automáticamente desde la keyword principal.
+    - updated_at proviene de TimestampedModel.
+    - workflow_status controla el flujo visual de producción.
+    - state se mantiene por compatibilidad con el dashboard actual.
+    """
+
+    name = models.CharField(
+        max_length=180,
+        blank=True,
+        verbose_name="Página",
+    )
+
+    complexity = models.CharField(
+        max_length=2,
+        choices=SeoComplexity.choices,
+        default=SeoComplexity.SIMPLE,
+    )
+
+    points = models.PositiveSmallIntegerField(
+        default=1,
+    )
+
+    slug = models.CharField(
+        max_length=220,
+        blank=True,
+        editable=False,
+    )
+
+    keyword = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Keyword principal",
+    )
+
+    secondary_keywords = models.TextField(
+        blank=True,
+        verbose_name="Palabras secundarias",
+    )
+
+    meta_title = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    meta_description = models.TextField(
+        blank=True,
+    )
+
+    responsible = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="Responsable",
+    )
+
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="Revisor",
+    )
+
+    workflow_status = models.CharField(
+        max_length=20,
+        choices=ProductionWorkStatus.choices,
+        default=ProductionWorkStatus.NOT_STARTED,
+        verbose_name="Estado de producción",
+    )
+
+    review_status = models.CharField(
+        max_length=20,
+        choices=CompleteStatus.choices,
+        default=CompleteStatus.INCOMPLETE,
+        verbose_name="Revisión realizada",
+    )
+
+    seo_status = models.CharField(
+        max_length=20,
+        choices=CompleteStatus.choices,
+        default=CompleteStatus.INCOMPLETE,
+        verbose_name="SEO legacy",
+    )
+
+    state = models.CharField(
+        max_length=20,
+        choices=CompleteStatus.choices,
+        default=CompleteStatus.INCOMPLETE,
+        verbose_name="Página lista",
+    )
+
+    notes = models.TextField(
+        blank=True,
+    )
+
+    order = models.PositiveIntegerField(
+        default=0,
+    )
+
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        abstract = True
+        ordering = [
+            "order",
+            "id",
+        ]
+
+    def save(self, *args, **kwargs):
+
+        if self.keyword:
+            self.slug = slugify(
+                self.keyword
+            )
+        else:
+            self.slug = ""
+
+        self.state = (
+            CompleteStatus.COMPLETE
+            if self.workflow_status
+            == ProductionWorkStatus.COMPLETE
+            else CompleteStatus.INCOMPLETE
+        )
+
+        super().save(
+            *args,
+            **kwargs
+        )
 
     class Meta:
         abstract = True
@@ -250,3 +379,92 @@ class WebProductionCity(ProductionSeoBase):
 
     def __str__(self):
         return self.name or f"Ciudad {self.pk or ''}"
+
+class WebProductionInternalSection(
+    TimestampedModel
+):
+
+    sheet = models.ForeignKey(
+        WebProductionSheet,
+        on_delete=models.CASCADE,
+        related_name="internal_sections",
+    )
+
+    name = models.CharField(
+        max_length=180,
+        verbose_name="Sección",
+    )
+
+    complexity = models.CharField(
+        max_length=2,
+        choices=SeoComplexity.choices,
+        default=SeoComplexity.SIMPLE,
+    )
+
+    points = models.PositiveSmallIntegerField(
+        default=1,
+    )
+
+    responsible = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="Responsable",
+    )
+
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="Revisor",
+    )
+
+    workflow_status = models.CharField(
+        max_length=20,
+        choices=ProductionWorkStatus.choices,
+        default=ProductionWorkStatus.NOT_STARTED,
+        verbose_name="Estado",
+    )
+
+    created = models.BooleanField(
+        default=False,
+        verbose_name="Creada",
+    )
+
+    notes = models.TextField(
+        blank=True,
+        verbose_name="Notas",
+    )
+
+    order = models.PositiveIntegerField(
+        default=0,
+    )
+
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = [
+            "order",
+            "id",
+        ]
+
+        verbose_name = (
+            "Sección interna de producción"
+        )
+
+        verbose_name_plural = (
+            "Secciones internas de producción"
+        )
+
+    def __str__(self):
+        return self.name

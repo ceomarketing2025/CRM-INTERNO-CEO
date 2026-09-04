@@ -34,10 +34,12 @@
 <div class="card seo-import-card">
 
   <form
-    method="post"
-    enctype="multipart/form-data"
-    class="seo-import-form"
-  >
+  id="seo-import-form"
+  method="post"
+  action="{% url 'questionnaires:seo_status_import' %}"
+  enctype="multipart/form-data"
+  class="seo-import-form"
+>
 
     {% csrf_token %}
 
@@ -62,220 +64,258 @@
     </div>
 
     <button
-      type="submit"
-      class="btn btn-primary"
-    >
-      Cargar vista previa
-    </button>
+  type="submit"
+  form="seo-import-form"
+  class="btn btn-primary"
+>
+  Cargar vista previa
+</button>
 
   </form>
 
 </div>
 
-
 {% if preview %}
 
-<div class="seo-import-preview">
+<form
+  method="post"
+  action="{% url 'questionnaires:seo_status_import' %}"
+  class="seo-import-save-form"
+>
 
-  <div class="seo-import-preview-head">
+  {% csrf_token %}
 
-    <span class="eyebrow">
-      Vista previa
-    </span>
+  <input
+    type="hidden"
+    name="action"
+    value="save_import"
+  >
 
-    <h3>
-      Hojas detectadas
-    </h3>
 
-    <p>
-      Revisa la información antes de importarla.
-    </p>
+  <div class="seo-import-preview">
+
+   <div class="seo-import-preview-head">
+
+  <span class="eyebrow">
+    Vista previa
+  </span>
+
+  <h3>
+    Hojas detectadas
+  </h3>
+
+  <p>
+    Relaciona cada hoja con el proyecto correcto antes de guardar.
+  </p>
+
+  <div class="seo-import-save-actions">
+
+    <a
+      href="{% url 'questionnaires:seo_status_import' %}"
+      class="btn btn-secondary"
+    >
+      Cancelar
+    </a>
+
+    <button
+      type="submit"
+      class="btn btn-primary btn-lg"
+    >
+      Guardar importación
+    </button>
 
   </div>
 
+</div>
 
-  {% for sheet in preview %}
 
-  <div class="card seo-import-sheet">
+    {% for sheet in preview %}
 
-    <div class="seo-import-sheet-head">
+    <div class="card seo-import-sheet">
 
-      <div>
+      <div class="seo-import-sheet-head">
 
-        <span class="seo-import-sheet-name">
-          {{ sheet.sheet_name }}
-        </span>
+        <div>
 
-        <h3>
-          {{ sheet.project_name }}
-        </h3>
-
-        <div class="seo-import-meta">
-
-          {% if sheet.domain %}
-
-          <span>
-            <strong>Dominio:</strong>
-            {{ sheet.domain }}
+          <span class="seo-import-sheet-name">
+            {{ sheet.sheet_name }}
           </span>
 
-          {% endif %}
+          <h3>
+            {{ sheet.project_name }}
+          </h3>
+
+          <div class="seo-import-meta">
+
+            {% if sheet.domain %}
+
+            <span>
+              <strong>Dominio:</strong>
+              {{ sheet.domain }}
+            </span>
+
+            {% endif %}
 
 
-          {% if sheet.sitemap_url %}
+            {% if sheet.sitemap_url %}
 
-          <span>
-            <strong>Sitemap:</strong>
-            {{ sheet.sitemap_url }}
-          </span>
+            <span>
+              <strong>Sitemap:</strong>
+              {{ sheet.sitemap_url }}
+            </span>
 
-          {% endif %}
+            {% endif %}
 
 
-          <span>
-            <strong>URLs detectadas:</strong>
-            {{ sheet.total_urls }}
-          </span>
+            <span>
+              <strong>URLs detectadas:</strong>
+              {{ sheet.total_urls }}
+            </span>
+
+          </div>
 
         </div>
 
       </div>
 
-    </div>
 
+      <div class="seo-import-project-select">
 
-    <div class="seo-import-project-select">
+        <label
+          for="project_id_{{ forloop.counter0 }}"
+        >
+          Relacionar con proyecto CRM
+        </label>
 
-      <label>
-        Relacionar con proyecto CRM
-      </label>
+        <select
+          name="project_id_{{ forloop.counter0 }}"
+          id="project_id_{{ forloop.counter0 }}"
+        >
 
-      <select
-        name="project_{{ forloop.counter0 }}"
-        disabled
-      >
+          <option value="">
+            No importar esta hoja
+          </option>
 
-        <option value="">
-          Seleccionar proyecto
-        </option>
+          {% for project in projects %}
 
-        {% for project in projects %}
-
-        <option value="{{ project.pk }}">
-          {{ project.client.business_name }}
-          ·
-          {{ project.project_code }}
-        </option>
-
-        {% endfor %}
-
-      </select>
-
-      <small>
-        La asignación se habilitará en el siguiente paso.
-      </small>
-
-    </div>
-
-
-    <div class="seo-import-table-scroll">
-
-      <table class="seo-import-table">
-
-        <thead>
-
-          <tr>
-            <th>Fecha</th>
-            <th>Página</th>
-            <th>URL</th>
-            <th>Objetivo</th>
-            <th>Estado</th>
-            <th>Posición actual</th>
-            <th>Posición anterior</th>
-            <th>Acción pendiente</th>
-          </tr>
-
-        </thead>
-
-
-        <tbody>
-
-          {% for row in sheet.rows|slice:":10" %}
-
-          <tr>
-
-            <td>
-              {{ row.entry_date|default:"—" }}
-            </td>
-
-            <td>
-              {{ row.page_name|default:"—" }}
-            </td>
-
-            <td class="seo-import-url">
-              {{ row.url|default:"—" }}
-            </td>
-
-            <td>
-              {{ row.objective|default:"—" }}
-            </td>
-
-            <td>
-              {{ row.status|default:"—" }}
-            </td>
-
-            <td>
-              {{ row.current_position|default:"—" }}
-            </td>
-
-            <td>
-              {{ row.previous_position|default:"—" }}
-            </td>
-
-            <td>
-              {{ row.pending_action|default:"—" }}
-            </td>
-
-          </tr>
-
-          {% empty %}
-
-          <tr>
-
-            <td
-              colspan="8"
-              class="seo-import-empty"
-            >
-              No se detectaron URLs en esta hoja.
-            </td>
-
-          </tr>
+          <option value="{{ project.pk }}">
+            {{ project.client.business_name }}
+            ·
+            {{ project.project_code }}
+          </option>
 
           {% endfor %}
 
-        </tbody>
+        </select>
 
-      </table>
+        <small>
+          Selecciona el proyecto que corresponde a esta hoja.
+        </small>
+
+      </div>
+
+
+      <div class="seo-import-table-scroll">
+
+        <table class="seo-import-table">
+
+          <thead>
+
+            <tr>
+              <th>Fecha</th>
+              <th>Página</th>
+              <th>URL</th>
+              <th>Objetivo</th>
+              <th>Estado</th>
+              <th>Posición actual</th>
+              <th>Posición anterior</th>
+              <th>Acción pendiente</th>
+            </tr>
+
+          </thead>
+
+
+          <tbody>
+
+            {% for row in sheet.rows|slice:":10" %}
+
+            <tr>
+
+              <td>
+                {{ row.entry_date|default:"—" }}
+              </td>
+
+              <td>
+                {{ row.page_name|default:"—" }}
+              </td>
+
+              <td class="seo-import-url">
+                {{ row.url|default:"—" }}
+              </td>
+
+              <td>
+                {{ row.objective|default:"—" }}
+              </td>
+
+              <td>
+                {{ row.status|default:"—" }}
+              </td>
+
+              <td>
+                {{ row.current_position|default:"—" }}
+              </td>
+
+              <td>
+                {{ row.previous_position|default:"—" }}
+              </td>
+
+              <td>
+                {{ row.pending_action|default:"—" }}
+              </td>
+
+            </tr>
+
+            {% empty %}
+
+            <tr>
+
+              <td
+                colspan="8"
+                class="seo-import-empty"
+              >
+                No se detectaron URLs en esta hoja.
+              </td>
+
+            </tr>
+
+            {% endfor %}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+
+      {% if sheet.total_urls > 10 %}
+
+      <div class="seo-import-more">
+        Mostrando las primeras 10 de {{ sheet.total_urls }} URLs.
+      </div>
+
+      {% endif %}
 
     </div>
 
+    {% endfor %}
 
-    {% if sheet.total_urls > 10 %}
 
-    <div class="seo-import-more">
-      Mostrando las primeras 10 de {{ sheet.total_urls }} URLs.
-    </div>
-
-    {% endif %}
 
   </div>
 
-  {% endfor %}
-
-</div>
+</form>
 
 {% endif %}
-
 
 <style>
 
@@ -438,7 +478,17 @@
   font-weight:700;
 }
 
+.seo-import-save-form{
+  width:100%;
+}
 
+.seo-import-save-actions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:12px;
+  padding:18px 0 4px;
+}
 @media(max-width:700px){
 
   .seo-import-form{

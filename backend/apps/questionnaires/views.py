@@ -1,6 +1,8 @@
 import json
 
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
+
 from django.contrib import messages
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
@@ -26,7 +28,6 @@ from apps.reminders.models import Reminder
 from .services import (
     WEBSITE_TEMPLATE_CODE,
     save_key_answer,
-    sync_website_shared_to_marketing,
     website_answer_payload,
     website_questionnaire_progress,
 )
@@ -38,7 +39,143 @@ def _clean(value):
 
 def _yes_no(value):
     return value if value in {"yes", "no"} else ""
+def _seo_parse_date(value):
+    if not value:
+        return None
 
+    if isinstance(value, datetime):
+        return value.date()
+
+    if isinstance(value, date):
+        return value
+
+    text = str(value).strip()
+
+    if not text:
+        return None
+
+    formats = (
+        "%Y-%m-%d",
+        "%Y-%m-%d %H:%M:%S",
+        "%m/%d/%Y",
+        "%d/%m/%Y",
+    )
+
+    for date_format in formats:
+        try:
+            return datetime.strptime(
+                text,
+                date_format,
+            ).date()
+        except ValueError:
+            continue
+
+    return None
+
+
+def _seo_parse_decimal(value):
+    if value in {
+        None,
+        "",
+        "-",
+    }:
+        return None
+
+    try:
+        return Decimal(
+            str(value)
+            .replace(",", "")
+            .strip()
+        )
+    except (
+        InvalidOperation,
+        ValueError,
+        TypeError,
+    ):
+        return None
+
+
+def _seo_normalize_status(value):
+    text = (
+        str(value or "")
+        .strip()
+        .lower()
+    )
+
+    normalized = (
+        text
+        .replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
+    )
+
+    if normalized in {
+        "indexed",
+        "indexada",
+        "indexado",
+        "si",
+        "yes",
+    }:
+        return "indexed"
+
+    if normalized in {
+        "not indexed",
+        "not_indexed",
+        "no indexada",
+        "no indexado",
+        "no",
+    }:
+        return "not_indexed"
+
+    if normalized in {
+        "pending",
+        "pendiente",
+        "en proceso",
+    }:
+        return "pending"
+
+    return "unknown"
+
+
+def _seo_normalize_alert(value):
+    text = (
+        str(value or "")
+        .strip()
+        .lower()
+    )
+
+    normalized = (
+        text
+        .replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
+    )
+
+    if normalized in {
+        "ok",
+        "sin alerta",
+        "bien",
+    }:
+        return "ok"
+
+    if normalized in {
+        "attention",
+        "atencion",
+    }:
+        return "attention"
+
+    if normalized in {
+        "critical",
+        "critica",
+        "critico",
+    }:
+        return "critical"
+
+    return "monitor"
 
 def _indexed_rows(request, prefix, fields):
     """Read dynamic rows sent as prefix_<field>[] while preserving row position."""
@@ -212,91 +349,6 @@ def _website_save(questionnaire, request):
     )
 
 
-    # ==========================================
-    # ESTRUCTURA WEB
-    # ==========================================
-
-    website_pages = [
-        _clean(value)
-        for value in request.POST.getlist(
-            "website_pages"
-        )
-        if _clean(value)
-    ]
-
-    save_key_answer(
-        questionnaire=questionnaire,
-        key="website_structure",
-        user=user,
-        value_text="\n".join(
-            website_pages
-        ),
-        value_json={
-            "pages": website_pages
-        },
-        complete=bool(website_pages),
-    )
-
-
-    # ==========================================
-    # RECURSOS
-    # ==========================================
-
-    resources_url = _clean(
-        request.POST.get("resources_url")
-    )
-
-    resources_status = _clean(
-        request.POST.get("resources_status")
-    )
-
-    resources_notes = _clean(
-        request.POST.get("resources_notes")
-    )
-
-    resources_complete = (
-        resources_status in {
-            "pending",
-            "na",
-        }
-        or
-        (
-            resources_status == "received"
-            and bool(resources_url)
-        )
-    )
-
-    resource_lines = []
-
-    if resources_url:
-        resource_lines.append(
-            f"Carpeta: {resources_url}"
-        )
-
-    if resources_status:
-        resource_lines.append(
-            f"Estado: {resources_status}"
-        )
-
-    if resources_notes:
-        resource_lines.append(
-            f"Notas: {resources_notes}"
-        )
-
-    save_key_answer(
-        questionnaire=questionnaire,
-        key="resources",
-        user=user,
-        value_text="\n".join(
-            resource_lines
-        ),
-        value_json={
-            "url": resources_url,
-            "status": resources_status,
-            "notes": resources_notes,
-        },
-        complete=resources_complete,
-    )
 
 
     # ==========================================
@@ -434,43 +486,117 @@ def _website_save(questionnaire, request):
         }, complete=mission_complete, negative=False,
     )
 
-    team_scope = _clean(
-    request.POST.get("team_scope")
-    )
+        # ==========================================
+    # ABOUT Y TEAM
+    # ==========================================
 
-    team_other = _clean(
-        request.POST.get("team_other")
-    )
-
-    team_notes = _clean(
-        request.POST.get("team_notes")
-    )
-
-    team_labels = {
-        "owner_text": "Texto sobre el dueño",
-        "team_photo": "Foto con el equipo",
-        "group_photos": "Fotos por equipos o grupos",
-        "other": team_other or "Otro",
-    }
-
-    team_complete = bool(
-        team_scope
-    ) and (
-        team_scope != "other"
-        or bool(team_other)
-    )
-
-    team_summary = (
-        team_labels.get(
-            team_scope,
-            ""
+    team_include = _yes_no(
+        request.POST.get(
+            "team_include"
         )
     )
 
-    if team_notes:
+    team_scope = _clean(
+        request.POST.get(
+            "team_scope"
+        )
+    )
+
+    team_other = _clean(
+        request.POST.get(
+            "team_other"
+        )
+    )
+
+    team_notes = _clean(
+        request.POST.get(
+            "team_notes"
+        )
+    )
+
+
+    allowed_team_scopes = {
+        "owner_photo",
+        "team_photo",
+        "group_photos",
+        "no_photo",
+        "other",
+    }
+
+
+    if team_scope not in allowed_team_scopes:
+        team_scope = ""
+
+
+    if team_include == "no":
+
+        team_scope = ""
+        team_other = ""
+        team_notes = ""
+
+        team_complete = True
+
         team_summary = (
-            f"{team_summary}\nNotas: {team_notes}"
-        ).strip()
+            "No incluir contenido de About / Team"
+        )
+
+
+    elif team_include == "yes":
+
+        if team_scope == "other":
+
+            team_complete = bool(
+                team_other
+            )
+
+        else:
+
+            team_complete = (
+                team_scope
+                in allowed_team_scopes
+                and team_scope != "other"
+            )
+
+
+        team_labels = {
+            "owner_photo":
+                "Foto del dueño",
+
+            "team_photo":
+                "Foto con el team",
+
+            "group_photos":
+                "Fotos por grupos",
+
+            "no_photo":
+                "Sin foto",
+
+            "other":
+                team_other or "Otro",
+        }
+
+
+        team_summary = (
+            team_labels.get(
+                team_scope,
+                ""
+            )
+        )
+
+
+        if team_notes:
+
+            team_summary = (
+                f"{team_summary}\n"
+                f"Notas: {team_notes}"
+            ).strip()
+
+
+    else:
+
+        team_complete = False
+        team_summary = ""
+
 
     save_key_answer(
         questionnaire=questionnaire,
@@ -478,11 +604,15 @@ def _website_save(questionnaire, request):
         user=user,
         value_text=team_summary,
         value_json={
+            "include": team_include,
             "scope": team_scope,
             "other": team_other,
             "notes": team_notes,
         },
         complete=team_complete,
+        negative=(
+            team_include == "no"
+        ),
     )
     service_names = [
         _clean(name)
@@ -632,8 +762,13 @@ def _website_save(questionnaire, request):
             "excluded_services": excluded_services,
         },
         complete=bool(
-            service_names
+            business_type
+            and service_names
             and found_primary
+            and (
+                business_type != "other"
+                or business_type_other
+            )
         ),
     )
 
@@ -662,16 +797,6 @@ def _website_save(questionnaire, request):
     )
 
 
-    seo_strategy = request.POST.get("seo_page_strategy", "")
-    seo_complete = seo_strategy in {"study", "client_services"}
-    seo_text = {
-        "study": "Realizar estudio y crear páginas según tendencia / oportunidad SEO",
-        "client_services": "Crear páginas con los servicios indicados por el cliente",
-    }.get(seo_strategy, "")
-    save_key_answer(
-        questionnaire=questionnaire, key="seo_page_strategy", user=user,
-        value_text=seo_text, value_json={"strategy": seo_strategy}, complete=seo_complete,
-    )
 
     # ==========================================
     # HORARIO Y ATENCION 24/7
@@ -958,16 +1083,25 @@ def _website_save(questionnaire, request):
         value_text=experience_years, value_json={"years": experience_years}, complete=experience_complete,
     )
 
-    internal_notes = _clean(request.POST.get("internal_meeting_notes"))
-    save_key_answer(
-        questionnaire=questionnaire, key="internal_meeting_notes", user=user,
-        value_text=internal_notes, complete=bool(internal_notes),
+    
+
+    progress = website_questionnaire_progress(
+        questionnaire
+)
+
+    questionnaire.status = (
+        QuestionnaireStatus.COMPLETE
+        if progress["percent"] == 100
+        else QuestionnaireStatus.IN_PROGRESS
     )
 
-    progress = website_questionnaire_progress(questionnaire)
-    questionnaire.status = QuestionnaireStatus.COMPLETE if progress["percent"] == 100 else QuestionnaireStatus.IN_PROGRESS
-    questionnaire.save(update_fields=["status", "updated_at"])
-    sync_website_shared_to_marketing(questionnaire, user)
+    questionnaire.save(
+        update_fields=[
+            "status",
+            "updated_at",
+        ]
+    )
+
     return progress
 
 
@@ -1130,12 +1264,293 @@ def seo_status(request):
 def seo_status_import(request):
 
     if request.method == "GET":
+
+        preview = request.session.get(
+            "seo_import_preview",
+            [],
+        )
+
         return render(
             request,
             "questionnaires/seo_status_import.html",
+            {
+                "preview": preview,
+                "projects": (
+                    Project.objects
+                    .select_related(
+                        "client"
+                    )
+                    .filter(
+                        project_type__in=[
+                            "website",
+                            "seo",
+                        ]
+                    )
+                    .order_by(
+                        "client__business_name"
+                    )
+                ),
+            },
         )
 
-    uploaded_file = request.FILES.get("seo_file")
+    action = _clean(
+        request.POST.get(
+            "action"
+        )
+    )
+
+    if action == "save_import":
+
+        preview = request.session.get(
+            "seo_import_preview",
+            [],
+        )
+
+        if not preview:
+            messages.error(
+                request,
+                "No existe una importación pendiente para guardar.",
+            )
+
+            return redirect(
+                "questionnaires:seo_status_import"
+            )
+
+        saved_projects = 0
+        saved_urls = 0
+
+        with transaction.atomic():
+
+            for index, sheet_data in enumerate(
+                preview
+            ):
+
+                project_id = _clean(
+                    request.POST.get(
+                        f"project_id_{index}"
+                    )
+                )
+
+                if not project_id:
+                    continue
+
+                project = get_object_or_404(
+                    Project,
+                    pk=project_id,
+                    project_type__in=[
+                        "website",
+                        "seo",
+                    ],
+                )
+
+                seo_project, created = (
+                    SEOProjectStatus.objects
+                    .get_or_create(
+                        project=project,
+                        defaults={
+                            "created_by":
+                                request.user,
+                        },
+                    )
+                )
+
+                seo_project.sitemap_url = (
+                    sheet_data.get(
+                        "sitemap_url",
+                        "",
+                    )
+                    or ""
+                )
+
+                seo_project.last_sitemap_read = (
+                    _seo_parse_date(
+                        sheet_data.get(
+                            "last_sitemap_read"
+                        )
+                    )
+                )
+
+                if (
+                    created
+                    and not seo_project.created_by
+                ):
+                    seo_project.created_by = (
+                        request.user
+                    )
+
+                seo_project.save()
+
+                saved_projects += 1
+
+                rows = (
+                    sheet_data.get(
+                        "rows",
+                        []
+                    )
+                    or []
+                )
+
+                for order, row in enumerate(
+                    rows
+                ):
+
+                    url = _clean(
+                        row.get(
+                            "url"
+                        )
+                    )
+
+                    if not url:
+                        continue
+
+                    page_name = (
+                        _clean(
+                            row.get(
+                                "page_name"
+                            )
+                        )
+                        or url
+                    )
+
+                    defaults = {
+                        "entry_date":
+                            _seo_parse_date(
+                                row.get(
+                                    "entry_date"
+                                )
+                            ),
+
+                        "page_name":
+                            page_name,
+
+                        "objective":
+                            _clean(
+                                row.get(
+                                    "objective"
+                                )
+                            ),
+
+                        "status":
+                            _seo_normalize_status(
+                                row.get(
+                                    "status"
+                                )
+                            ),
+
+                        "current_position":
+                            _seo_parse_decimal(
+                                row.get(
+                                    "current_position"
+                                )
+                            ),
+
+                        "previous_position":
+                            _seo_parse_decimal(
+                                row.get(
+                                    "previous_position"
+                                )
+                            ),
+
+                        "last_update":
+                            _seo_parse_date(
+                                row.get(
+                                    "last_update"
+                                )
+                            ),
+
+                        "last_sitemap_read":
+                            _seo_parse_date(
+                                row.get(
+                                    "last_sitemap_read"
+                                )
+                            ),
+
+                        "pending_action":
+                            _clean(
+                                row.get(
+                                    "pending_action"
+                                )
+                            ),
+
+                        "observations":
+                            _clean(
+                                row.get(
+                                    "observations"
+                                )
+                            ),
+
+                        "alert":
+                            _seo_normalize_alert(
+                                row.get(
+                                    "alert"
+                                )
+                            ),
+
+                        "order":
+                            order,
+
+                        "updated_by":
+                            request.user,
+                    }
+
+                    seo_url, url_created = (
+                        SEOUrlStatus.objects
+                        .update_or_create(
+                            seo_project=
+                                seo_project,
+                            url=url,
+                            defaults=defaults,
+                        )
+                    )
+
+                    if (
+                        url_created
+                        and not seo_url.created_by
+                    ):
+                        seo_url.created_by = (
+                            request.user
+                        )
+
+                        seo_url.save(
+                            update_fields=[
+                                "created_by",
+                            ]
+                        )
+
+                    saved_urls += 1
+
+        if not saved_projects:
+
+            messages.error(
+                request,
+                "Selecciona al menos un proyecto para guardar la importación.",
+            )
+
+            return redirect(
+                "questionnaires:seo_status_import"
+            )
+
+        request.session.pop(
+            "seo_import_preview",
+            None,
+        )
+
+        messages.success(
+            request,
+            (
+                f"Importación guardada: "
+                f"{saved_projects} proyecto(s) y "
+                f"{saved_urls} URL(s)."
+            ),
+        )
+
+        return redirect(
+            "questionnaires:seo_status"
+        )
+
+    uploaded_file = request.FILES.get(
+        "seo_file"
+    )
 
     if not uploaded_file:
         messages.error(
@@ -1280,7 +1695,16 @@ def seo_status_import(request):
         })
 
 
-    request.session["seo_import_preview"] = preview
+    preview = json.loads(
+        json.dumps(
+            preview,
+            default=str,
+        )
+    )
+
+    request.session[
+        "seo_import_preview"
+    ] = preview
 
 
     return render(
@@ -1301,6 +1725,246 @@ def seo_status_import(request):
                 ),
         },
     )
+@role_required("developer")
+def seo_status_detail(
+    request,
+    project_pk,
+):
+    project = get_object_or_404(
+        Project.objects.select_related(
+            "client",
+            "purchased_plan__plan",
+        ),
+        pk=project_pk,
+        project_type__in=[
+            "website",
+            "seo",
+        ],
+    )
+
+    if not can_access_project(
+        request.user,
+        project,
+    ):
+        raise PermissionDenied(
+            "Este proyecto no está asignado a Desarrollo."
+        )
+
+    seo_project = get_object_or_404(
+        SEOProjectStatus.objects
+        .select_related(
+            "project",
+            "project__client",
+            "created_by",
+        )
+        .prefetch_related(
+            "urls__created_by",
+            "urls__updated_by",
+        ),
+        project=project,
+    )
+
+    if request.method == "POST":
+
+        action = _clean(
+            request.POST.get("action")
+        )
+
+        if action == "save_url":
+
+            url_id = _clean(
+                request.POST.get("url_id")
+            )
+
+            seo_url = get_object_or_404(
+                SEOUrlStatus,
+                pk=url_id,
+                seo_project=seo_project,
+            )
+
+            seo_url.page_name = _clean(
+                request.POST.get("page_name")
+            )
+
+            seo_url.url = _clean(
+                request.POST.get("url")
+            )
+
+            seo_url.entry_date = _seo_parse_date(
+                request.POST.get("entry_date")
+            )
+
+            seo_url.objective = _clean(
+                request.POST.get("objective")
+            )
+
+            seo_url.status = _seo_normalize_status(
+                request.POST.get("status")
+            )
+
+            seo_url.current_position = _seo_parse_decimal(
+                request.POST.get("current_position")
+            )
+
+            seo_url.previous_position = _seo_parse_decimal(
+                request.POST.get("previous_position")
+            )
+
+            seo_url.last_update = _seo_parse_date(
+                request.POST.get("last_update")
+            )
+
+            seo_url.last_sitemap_read = _seo_parse_date(
+                request.POST.get("last_sitemap_read")
+            )
+
+            seo_url.pending_action = _clean(
+                request.POST.get("pending_action")
+            )
+
+            seo_url.observations = _clean(
+                request.POST.get("observations")
+            )
+
+            seo_url.alert = _seo_normalize_alert(
+                request.POST.get("alert")
+            )
+
+            seo_url.updated_by = request.user
+
+            seo_url.save()
+
+            messages.success(
+                request,
+                f"{seo_url.page_name} actualizada correctamente.",
+            )
+
+            return redirect(
+                "questionnaires:seo_status_detail",
+                project_pk=project.pk,
+            )
+
+    urls = list(
+        seo_project.urls.all()
+        .select_related(
+            "created_by",
+            "updated_by",
+        )
+        .order_by(
+            "order",
+            "id",
+        )
+    )
+
+    total_urls = len(urls)
+
+    indexed_urls = sum(
+        1
+        for item in urls
+        if item.status == "indexed"
+    )
+
+    not_indexed_urls = sum(
+        1
+        for item in urls
+        if item.status == "not_indexed"
+    )
+
+    pending_urls = sum(
+        1
+        for item in urls
+        if item.status == "pending"
+    )
+
+    unknown_urls = sum(
+        1
+        for item in urls
+        if item.status == "unknown"
+    )
+
+    top_10_count = sum(
+        1
+        for item in urls
+        if (
+            item.current_position is not None
+            and Decimal("1") <= item.current_position <= Decimal("10")
+        )
+    )
+
+    top_20_count = sum(
+        1
+        for item in urls
+        if (
+            item.current_position is not None
+            and Decimal("11") <= item.current_position <= Decimal("20")
+        )
+    )
+
+    over_20_count = sum(
+        1
+        for item in urls
+        if (
+            item.current_position is not None
+            and item.current_position > Decimal("20")
+        )
+    )
+
+    improved_count = sum(
+        1
+        for item in urls
+        if item.evolution_type == "improved"
+    )
+
+    worsened_count = sum(
+        1
+        for item in urls
+        if item.evolution_type == "worsened"
+    )
+
+    stable_count = sum(
+        1
+        for item in urls
+        if item.evolution_type == "stable"
+    )
+
+    indexing_percent = (
+        round(
+            (
+                indexed_urls
+                / total_urls
+            )
+            * 100
+        )
+        if total_urls
+        else 0
+    )
+
+    return render(
+        request,
+        "questionnaires/seo_status_detail.html",
+        {
+            "project": project,
+            "seo_project": seo_project,
+            "urls": urls,
+
+            "total_urls": total_urls,
+            "indexed_urls": indexed_urls,
+            "not_indexed_urls": not_indexed_urls,
+            "pending_urls": pending_urls,
+            "unknown_urls": unknown_urls,
+
+            "indexing_percent": indexing_percent,
+
+            "top_10_count": top_10_count,
+            "top_20_count": top_20_count,
+            "over_20_count": over_20_count,
+
+            "improved_count": improved_count,
+            "worsened_count": worsened_count,
+            "stable_count": stable_count,
+        },
+    )
+
 @role_required("developer")
 def create_for_project(request, project_pk):
     project = get_object_or_404(Project, pk=project_pk)
@@ -1386,10 +2050,7 @@ def fill(request, pk):
                 "certifications",
                 "team",
                 "marketing",
-                "seo",
-                "resources",
                 "forms",
-                "internal",
             }
 
             with transaction.atomic():

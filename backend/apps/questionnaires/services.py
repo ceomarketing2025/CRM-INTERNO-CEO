@@ -6,28 +6,25 @@ from .models.choices import AnswerState, QuestionnaireStatus
 WEBSITE_TEMPLATE_CODE = "website-technical-v2"
 
 # Internal notes do not block completion.
-WEBSITE_PROGRESS_KEYS = [
+WEBSITE_DATA_KEYS = [
     "company_description",
-    "slogan",
-    "has_mission_vision",
-    "show_team",
+    "business_logic",
     "main_services",
     "service_areas",
     "coverage",
-    "future_expansion",
-    "seo_page_strategy",
     "business_hours",
     "is_24_7",
     "contact_numbers",
-    "has_social",
-    "has_webmail",
-    "has_gbp",
-    "has_website",
+    "quotes",
+    "slogan",
+    "has_mission_vision",
     "certifications",
     "warranties",
     "experience_years",
+    "show_team",
+    "has_social",
+    "website_forms",
 ]
-
 
 def _question_map(questionnaire):
     return {
@@ -63,7 +60,11 @@ def website_answer_payload(questionnaire):
     # Always expose every field expected by the dedicated website template.
     # This keeps brand-new questionnaires safe: templates can read
     # data.<key>.text/json/complete without VariableDoesNotExist.
-    known_keys = list(dict.fromkeys(WEBSITE_PROGRESS_KEYS + ["internal_meeting_notes"]))
+    known_keys = list(
+        dict.fromkeys(
+            WEBSITE_DATA_KEYS
+        )
+    )
     result = {
         key: {
             "text": "",
@@ -88,16 +89,178 @@ def website_answer_payload(questionnaire):
 
 
 def website_questionnaire_progress(questionnaire):
-    if not questionnaire or questionnaire.template.code != WEBSITE_TEMPLATE_CODE:
-        return {"complete": 0, "total": 0, "percent": 0}
-    answers = _answer_map(questionnaire)
-    completed = sum(
-        1 for key in WEBSITE_PROGRESS_KEYS
-        if key in answers and answers[key].state in {AnswerState.CONFIRMED, AnswerState.NO, AnswerState.NOT_APPLICABLE}
-    )
-    total = len(WEBSITE_PROGRESS_KEYS)
-    return {"complete": completed, "total": total, "percent": round((completed / total) * 100) if total else 0}
 
+    if (
+        not questionnaire
+        or questionnaire.template.code
+        != WEBSITE_TEMPLATE_CODE
+    ):
+        return {
+            "complete": 0,
+            "total": 11,
+            "percent": 0,
+        }
+
+    answers = _answer_map(
+        questionnaire
+    )
+
+    def answer_complete(key):
+
+        answer = answers.get(key)
+
+        if not answer:
+            return False
+
+        return answer.state in {
+            AnswerState.CONFIRMED,
+            AnswerState.NO,
+            AnswerState.NOT_APPLICABLE,
+        }
+
+
+    section_checks = {
+
+        "general": [
+            answer_complete(
+                "company_description"
+            ),
+        ],
+
+        "business": [
+            answer_complete(
+                "business_logic"
+            ),
+        ],
+
+        "services": [
+            answer_complete(
+                "main_services"
+            ),
+        ],
+
+        "coverage": [
+            answer_complete(
+                "service_areas"
+            ),
+            answer_complete(
+                "coverage"
+            ),
+        ],
+
+        "contact": [
+            answer_complete(
+                "business_hours"
+            ),
+            answer_complete(
+                "is_24_7"
+            ),
+            answer_complete(
+                "contact_numbers"
+            ),
+        ],
+
+        "quotes": [
+            answer_complete(
+                "quotes"
+            ),
+        ],
+
+        "brand": [
+            answer_complete(
+                "slogan"
+            ),
+            answer_complete(
+                "has_mission_vision"
+            ),
+        ],
+
+        "certifications": [
+            answer_complete(
+                "certifications"
+            ),
+            answer_complete(
+                "warranties"
+            ),
+            answer_complete(
+                "experience_years"
+            ),
+        ],
+
+        "team": [
+            answer_complete(
+                "show_team"
+            ),
+        ],
+
+        "marketing": [
+            answer_complete(
+                "has_social"
+            ),
+        ],
+
+        "forms": [
+            answer_complete(
+                "website_forms"
+            ),
+        ],
+
+    }
+
+
+    section_percentages = []
+
+    complete_sections = 0
+
+
+    for checks in section_checks.values():
+
+        completed_checks = sum(
+            1
+            for check in checks
+            if check
+        )
+
+        section_percent = (
+            round(
+                completed_checks
+                / len(checks)
+                * 100
+            )
+            if checks
+            else 0
+        )
+
+        section_percentages.append(
+            section_percent
+        )
+
+        if section_percent == 100:
+            complete_sections += 1
+
+
+    total_sections = len(
+        section_checks
+    )
+
+
+    overall_percent = (
+        round(
+            sum(
+                section_percentages
+            )
+            / total_sections
+        )
+        if total_sections
+        else 0
+    )
+
+
+    return {
+        "complete": complete_sections,
+        "total": total_sections,
+        "percent": overall_percent,
+    }
 
 def _join_services(items):
     return "\n".join(item.get("name", "").strip() for item in items if item.get("name", "").strip() and not item.get("excluded"))

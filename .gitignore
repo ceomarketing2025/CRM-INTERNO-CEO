@@ -8,3 +8,5 @@ backend/staticfiles/
 .vscode/
 .idea/
 .DS_Store
+
+backend/celerybeat-schedule

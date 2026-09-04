@@ -160,7 +160,7 @@ def build_general_audit_rows():
     # DISEÑO: tarea única o tarea recurrente con historial por periodo.
     design_tasks = DesignTask.objects.select_related(
         "project_plan__project__client", "project_plan__plan", "assigned_to"
-    ).prefetch_related("cycles").filter(project_plan__is_active=True)
+    ).prefetch_related("cycles__delivery_items").filter(project_plan__is_active=True)
     for task in design_tasks:
         project = task.project_plan.project
         category = task.project_plan.plan.name
@@ -197,7 +197,7 @@ def build_general_audit_rows():
                     source_progress=cycle.progress_percent,
                     source_status=cycle.state_label,
                     source_updated_at=cycle.updated_at,
-                    source_url=reverse("design:tasks"),
+                    source_url=reverse("design:project_tasks", args=[project.pk]),
                     detail="Periodo actual" if is_current else "Periodo histórico",
                     counts_for_progress=is_current,
                     historical=not is_current,
@@ -214,7 +214,7 @@ def build_general_audit_rows():
                 source_progress=state["progress"],
                 source_status=state["label"],
                 source_updated_at=task.updated_at,
-                source_url=reverse("design:task_edit", args=[task.pk]),
+                source_url=reverse("design:project_tasks", args=[project.pk]),
                 detail=task.description,
             ))
 

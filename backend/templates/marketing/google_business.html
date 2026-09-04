@@ -117,7 +117,6 @@
       {% if workspace.review_link %}
       <div class="actions">
         <button type="button" class="btn btn-secondary" id="copy-review-message">Copiar mensaje</button>
-        <button type="button" class="btn btn-secondary" id="open-review-whatsapp">Abrir WhatsApp con mensaje</button>
       </div>
       {% endif %}
 
@@ -471,13 +470,6 @@
     });
   }
 
-  var openWhatsapp = document.getElementById('open-review-whatsapp');
-  if (openWhatsapp) {
-    openWhatsapp.addEventListener('click', function () {
-      var message = reviewMessage ? reviewMessage.value : '';
-      window.open('https://wa.me/?text=' + encodeURIComponent(message), '_blank', 'noopener');
-    });
-  }
 })();
 </script>
 {% include 'marketing/_custom_dropdowns.html' %}

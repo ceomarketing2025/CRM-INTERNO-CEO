@@ -1,14 +1,27 @@
+<style>
+  .marketing-flow-step.flow-success{border-color:#a8dfbd;background:#f2fbf5;}
+  .marketing-flow-step.flow-success > span{background:#daf4e3;color:#19733a;}
+  .marketing-flow-step.flow-success strong{color:#176934;}
+  .marketing-flow-step.flow-wait{border-color:#f0b39b;background:#fff6f1;}
+  .marketing-flow-step.flow-wait > span{background:#ffe2d6;color:#b84b24;}
+  .marketing-flow-step.flow-wait strong{color:#9f3d1d;}
+  .marketing-flow-step.flow-danger{border-color:#f0b8b8;background:#fff5f5;}
+  .marketing-flow-step.flow-danger > span{background:#ffe1e1;color:#ba2f2f;}
+  .marketing-flow-step.flow-danger strong{color:#a52626;}
+  .marketing-flow-step.active{outline:2px solid #2f5ff2;outline-offset:-2px;}
+  .marketing-flow-step.locked-soft{opacity:.58;}
+</style>
 <div class="marketing-flow-nav">
-  <a class="marketing-flow-step {% if marketing_section == 'intake' %}active{% endif %}" href="{% url 'marketing:workspace' project.pk %}">
+  <a class="marketing-flow-step flow-{{ flow_statuses.intake|default:'danger' }} {% if marketing_section == 'intake' %}active{% endif %}" href="{% url 'marketing:workspace' project.pk %}">
     <span>01</span><div><strong>Reunión</strong><small>Información inicial</small></div>
   </a>
-  <a class="marketing-flow-step {% if marketing_section == 'business' %}active{% endif %} {% if not workspace.intake_ready %}locked-soft{% endif %}" href="{% url 'marketing:google_business' project.pk %}">
+  <a class="marketing-flow-step flow-{{ flow_statuses.business|default:'danger' }} {% if marketing_section == 'business' %}active{% endif %} {% if not workspace.intake_ready %}locked-soft{% endif %}" href="{% url 'marketing:google_business' project.pk %}">
     <span>02</span><div><strong>Google Business</strong><small>Perfil, reviews y QR</small></div>
   </a>
-  <a class="marketing-flow-step {% if marketing_section == 'lsa' %}active{% endif %} {% if not workspace.intake_ready %}locked-soft{% endif %}" href="{% url 'marketing:google_lsa' project.pk %}">
+  <a class="marketing-flow-step flow-{{ flow_statuses.lsa|default:'danger' }} {% if marketing_section == 'lsa' %}active{% endif %} {% if not workspace.intake_ready %}locked-soft{% endif %}" href="{% url 'marketing:google_lsa' project.pk %}">
     <span>03</span><div><strong>Google LSA</strong><small>Validación y seguimiento</small></div>
   </a>
-  <a class="marketing-flow-step {% if marketing_section == 'ads' %}active{% endif %} {% if not workspace.intake_ready %}locked-soft{% endif %}" href="{% url 'marketing:digital_ads' project.pk %}">
+  <a class="marketing-flow-step flow-{{ flow_statuses.ads|default:'danger' }} {% if marketing_section == 'ads' %}active{% endif %} {% if not workspace.intake_ready %}locked-soft{% endif %}" href="{% url 'marketing:digital_ads' project.pk %}">
     <span>04</span><div><strong>Publicidad digital</strong><small>Meta, Google, TikTok y tradicional</small></div>
   </a>
 </div>

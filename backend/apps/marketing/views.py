@@ -44,6 +44,7 @@ from .models import (
 )
 from .services import (
     ensure_workspace,
+    marketing_flow_statuses,
     review_campaign,
     save_advertising_account,
     save_campaign,
@@ -136,6 +137,7 @@ def workspace(request, project_pk):
         "workspace": obj,
         "form": form,
         "groups": _active_groups(obj),
+        "flow_statuses": marketing_flow_statuses(obj),
     })
 
 
@@ -159,6 +161,7 @@ def google_business(request, project_pk):
         "workspace": obj,
         "form": form,
         "checks": obj.checklist_items.filter(area="google_profile", active=True),
+        "flow_statuses": marketing_flow_statuses(obj),
     })
 
 
@@ -181,6 +184,7 @@ def google_lsa(request, project_pk):
         "lsa": lsa,
         "form": form,
         "checks": workspace_obj.checklist_items.filter(area="google_lsa", active=True),
+        "flow_statuses": marketing_flow_statuses(workspace_obj),
     })
 
 
@@ -230,6 +234,7 @@ def digital_ads(request, project_pk):
         "forms": forms,
         "campaign_map": campaign_map,
         "traditional_enabled": accounts["traditional"].enabled == "yes",
+        "flow_statuses": marketing_flow_statuses(workspace_obj),
     })
 
 
@@ -308,13 +313,13 @@ def campaign_create(request):
             messages.error(request, "Selecciona Meta Ads, Google Ads o TikTok Ads para crear la campaña.")
             return redirect("marketing:digital_ads", project_pk=project.pk)
         if not controller or controller.enabled != "yes":
-            messages.error(request, "Publicidad tradicional debe estar activada antes de crear campañas.")
+            messages.error(request, "Primero selecciona Sí en Publicidad tradicional y pulsa ‘Lanzar campaña’ para guardar ese control. Después se habilitarán Meta Ads, Google Ads y TikTok Ads.")
             return redirect("marketing:digital_ads", project_pk=project.pk)
         if not account or account.enabled != "yes":
             messages.error(request, f"Primero habilita {account.get_platform_display() if account else platform}.")
             return redirect("marketing:digital_ads", project_pk=project.pk)
         if account.campaigns_enabled != "yes":
-            messages.error(request, "La opción de campañas publicitarias debe estar en Sí para esta plataforma.")
+            messages.error(request, "Primero selecciona Sí en ‘¿Tiene / realizará campañas publicitarias?’ y guarda la configuración de esta plataforma. Después aparecerá ‘Crear campaña’.")
             return redirect("marketing:digital_ads", project_pk=project.pk)
 
     form = AdCampaignForm(request.POST or None, user=request.user, project=project, platform=platform)

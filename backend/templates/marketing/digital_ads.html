@@ -3,7 +3,7 @@
 {% block content %}
 {% with marketing_section='ads' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
 <div class="page-intro marketing-page-intro">
-  <div><span class="eyebrow">Publicidad Digital</span><h2>Publicidad tradicional + plataformas</h2><p>Primero define Publicidad tradicional. Solo cuando esté en Sí se habilitan Meta Ads, Google Ads y TikTok Ads. Cada plataforma valida sus propios checks.</p></div>
+  <div><span class="eyebrow">Publicidad Digital</span><h2>Publicidad tradicional + plataformas</h2><p>Publicidad tradicional funciona como control de este flujo. Selecciona Sí y pulsa “Lanzar campaña”; después se habilitan Meta Ads, Google Ads y TikTok Ads. Cada plataforma debe guardarse antes de crear su campaña.</p></div>
   <div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:campaign_list' %}">Todas las campañas</a><a class="btn btn-secondary" href="{% url 'marketing:social_plans' %}">Social Media</a></div>
 </div>
 <div class="semantic-banner is-danger"><strong>Validación obligatoria</strong><span>Ninguna campaña puede lanzarse sin revisión del administrador/Gerencia. Si se modifica información crítica después de aprobar, la aprobación se invalida.</span></div>
@@ -17,7 +17,7 @@
       <div class="field form-wide"><label>{{ forms.traditional.notes.label }}</label>{{ forms.traditional.notes }}{{ forms.traditional.notes.errors }}</div>
     </div>
     <div class="form-actions"><button class="btn btn-primary">Lanzar campaña</button></div>
-    <small>Este control habilita el flujo de plataformas. El lanzamiento real de cada campaña sigue requiriendo validación del administrador/Gerencia.</small>
+    <small>{% if traditional_enabled %}<b style="color:#19733a;">Configuración guardada:</b> las plataformas están habilitadas.{% else %}<b style="color:#b84b24;">Pendiente:</b> selecciona Sí y pulsa “Lanzar campaña” para guardar y habilitar las plataformas.{% endif %} El lanzamiento real de cada campaña sigue requiriendo validación del administrador/Gerencia.</small>
   </form>
 </section>
 
@@ -43,10 +43,12 @@
       </div>
       <div class="form-actions"><button class="btn btn-secondary">Guardar Meta Ads</button></div>
     </form>
-    <div class="campaigns-conditional" data-campaign-field="id_meta-campaigns_enabled">
+    {% if accounts.meta.enabled == 'yes' and accounts.meta.campaigns_enabled == 'yes' %}
+    <div class="campaigns-conditional" data-persisted-ready="yes">
       <div class="campaign-mini-head"><strong>Campañas Meta</strong><a class="btn btn-primary btn-small" href="{% url 'marketing:campaign_create' %}?project={{ project.pk }}&platform=meta">＋ Crear campaña</a></div>
       {% for c in campaign_map.meta %}{% include 'marketing/_campaign_row.html' with c=c %}{% empty %}<div class="empty-mini">Sin campañas Meta.</div>{% endfor %}
     </div>
+    {% else %}<div class="semantic-banner is-wait compact"><strong>Campañas Meta bloqueadas</strong><span>Selecciona Sí en plataforma y campañas publicitarias, luego pulsa “Guardar Meta Ads”.</span></div>{% endif %}
   </section>
 
   <section class="card ad-platform-card" data-platform-card="google">
@@ -66,10 +68,12 @@
       </div>
       <div class="form-actions"><button class="btn btn-secondary">Guardar Google Ads</button></div>
     </form>
-    <div class="campaigns-conditional" data-campaign-field="id_google-campaigns_enabled">
+    {% if accounts.google.enabled == 'yes' and accounts.google.campaigns_enabled == 'yes' %}
+    <div class="campaigns-conditional" data-persisted-ready="yes">
       <div class="campaign-mini-head"><strong>Campañas Google Ads</strong><a class="btn btn-primary btn-small" href="{% url 'marketing:campaign_create' %}?project={{ project.pk }}&platform=google">＋ Crear campaña</a></div>
       {% for c in campaign_map.google %}{% include 'marketing/_campaign_row.html' with c=c %}{% empty %}<div class="empty-mini">Sin campañas Google Ads.</div>{% endfor %}
     </div>
+    {% else %}<div class="semantic-banner is-wait compact"><strong>Campañas Google Ads bloqueadas</strong><span>Selecciona Sí en plataforma y campañas publicitarias, luego pulsa “Guardar Google Ads”.</span></div>{% endif %}
   </section>
 
   <section class="card ad-platform-card" data-platform-card="tiktok">
@@ -89,10 +93,12 @@
       </div>
       <div class="form-actions"><button class="btn btn-secondary">Guardar TikTok Ads</button></div>
     </form>
-    <div class="campaigns-conditional" data-campaign-field="id_tiktok-campaigns_enabled">
+    {% if accounts.tiktok.enabled == 'yes' and accounts.tiktok.campaigns_enabled == 'yes' %}
+    <div class="campaigns-conditional" data-persisted-ready="yes">
       <div class="campaign-mini-head"><strong>Campañas TikTok Ads</strong><a class="btn btn-primary btn-small" href="{% url 'marketing:campaign_create' %}?project={{ project.pk }}&platform=tiktok">＋ Crear campaña</a></div>
       {% for c in campaign_map.tiktok %}{% include 'marketing/_campaign_row.html' with c=c %}{% empty %}<div class="empty-mini">Sin campañas TikTok Ads.</div>{% endfor %}
     </div>
+    {% else %}<div class="semantic-banner is-wait compact"><strong>Campañas TikTok Ads bloqueadas</strong><span>Selecciona Sí en plataforma y campañas publicitarias, luego pulsa “Guardar TikTok Ads”.</span></div>{% endif %}
   </section>
 </div>
 </div>
@@ -104,15 +110,15 @@
 
 <script>
 (function(){
-  var master=document.getElementById('id_traditional-enabled');
   var area=document.getElementById('platforms-area');
-  function disableInside(panel,disabled){panel.querySelectorAll('input,select,textarea,button').forEach(function(el){el.disabled=disabled;});}
-  function showPanel(panel,show){panel.hidden=!show;panel.querySelectorAll('input,select,textarea').forEach(function(el){el.disabled=!show;});}
+  var masterPersisted={{ traditional_enabled|yesno:"true,false" }};
+  function disableInside(panel,disabled){if(!panel)return;panel.querySelectorAll('input,select,textarea,button').forEach(function(el){el.disabled=disabled;});}
+  function showPanel(panel,show){if(!panel)return;panel.hidden=!show;panel.querySelectorAll('input,select,textarea').forEach(function(el){el.disabled=!show;});}
   function refresh(){
-    if(master&&area){var open=master.value==='yes';area.hidden=!open;if(!open)disableInside(area,true);else disableInside(area,false);}
+    if(area){area.hidden=!masterPersisted;disableInside(area,!masterPersisted);}
+    if(!masterPersisted)return;
     document.querySelectorAll('[data-enabled-field]').forEach(function(panel){var s=document.getElementById(panel.dataset.enabledField);showPanel(panel,!!s&&s.value==='yes');});
     document.querySelectorAll('[data-show-yes]').forEach(function(panel){var s=document.getElementById(panel.dataset.showYes);showPanel(panel,!!s&&s.value==='yes');});
-    document.querySelectorAll('[data-campaign-field]').forEach(function(panel){var s=document.getElementById(panel.dataset.campaignField);var card=panel.closest('[data-platform-card]');var enabled=card?card.querySelector('select[id$="-enabled"]'):null;panel.hidden=!(s&&s.value==='yes'&&enabled&&enabled.value==='yes');});
   }
   document.addEventListener('change',refresh);refresh();
 })();

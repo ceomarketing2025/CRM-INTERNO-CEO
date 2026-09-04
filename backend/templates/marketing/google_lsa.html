@@ -115,7 +115,7 @@
         </div>
       </div>
 
-      <div id="social-followup-summary" class="semantic-banner is-wait compact" style="display:none; margin-top:12px;">
+      <div id="social-followup-summary" class="semantic-banner compact" style="display:none; margin-top:12px;">
         <strong id="social-followup-title"></strong>
         <span id="social-followup-text"></span>
       </div>
@@ -136,6 +136,10 @@
           <small>Desde esta fecha se genera un recordatorio cada 15 días para Marketing y Administración/Gerencia.</small>
           {{ form.photo_reminder_start_date.errors }}
         </div>
+      </div>
+      <div id="photo-followup-summary" class="semantic-banner compact" style="display:none; margin-top:12px;">
+        <strong id="photo-followup-title"></strong>
+        <span id="photo-followup-text"></span>
       </div>
     </div>
 
@@ -175,6 +179,9 @@
   var photo = document.getElementById('id_photo_reminder_enabled');
   var photoWrap = document.getElementById('photo-date-wrap');
   var photoInput = document.getElementById('id_photo_reminder_start_date');
+  var photoSummary = document.getElementById('photo-followup-summary');
+  var photoSummaryTitle = document.getElementById('photo-followup-title');
+  var photoSummaryText = document.getElementById('photo-followup-text');
 
   var verification = document.getElementById('id_verification_status');
   var weeklyCost = document.getElementById('id_weekly_cost');
@@ -186,8 +193,13 @@
     if (input) {
       input.disabled = !show;
       input.required = !!show;
-      if (!show) input.value = '';
     }
+  }
+
+  function setSemanticState(element, state) {
+    if (!element) return;
+    element.classList.remove('is-danger', 'is-wait', 'is-success');
+    element.classList.add(state === 'success' ? 'is-success' : (state === 'danger' ? 'is-danger' : 'is-wait'));
   }
 
   function refreshSocial() {
@@ -198,26 +210,52 @@
       showField(weeklyWrap, weeklyInput, true);
       showField(customWrap, customInput, false);
       summary.style.display = '';
-      summaryTitle.textContent = 'Revisión semanal activa';
-      summaryText.textContent = 'El CRM notificará cada 7 días a Marketing y Administración/Gerencia desde la fecha seleccionada.';
+      summaryTitle.textContent = weeklyInput && weeklyInput.value ? 'Revisión semanal configurada' : 'Falta fecha de revisión semanal';
+      summaryText.textContent = weeklyInput && weeklyInput.value
+        ? 'El CRM notificará cada 7 días a Marketing y Administración/Gerencia desde la fecha seleccionada.'
+        : 'Selecciona la primera fecha para poder crear los recordatorios semanales.';
+      setSemanticState(summary, weeklyInput && weeklyInput.value ? 'success' : 'danger');
     } else if (social.value === 'no') {
       mode.value = 'custom';
       showField(weeklyWrap, weeklyInput, false);
       showField(customWrap, customInput, true);
       summary.style.display = '';
-      summaryTitle.textContent = 'Recordatorio personalizado';
-      summaryText.textContent = 'Selecciona la fecha en que Marketing y Administración/Gerencia deben recibir la notificación.';
+      summaryTitle.textContent = customInput && customInput.value ? 'Recordatorio personalizado configurado' : 'Falta fecha personalizada';
+      summaryText.textContent = customInput && customInput.value
+        ? 'Marketing y Administración/Gerencia recibirán la notificación en la fecha seleccionada.'
+        : 'Selecciona la fecha personalizada para poder crear el recordatorio.';
+      setSemanticState(summary, customInput && customInput.value ? 'success' : 'danger');
     } else {
       mode.value = 'none';
       showField(weeklyWrap, weeklyInput, false);
       showField(customWrap, customInput, false);
-      summary.style.display = 'none';
+      summary.style.display = '';
+      summaryTitle.textContent = 'Social Media pendiente';
+      summaryText.textContent = 'Selecciona Sí o No para definir el tipo de seguimiento.';
+      setSemanticState(summary, 'danger');
     }
   }
 
   function refreshPhotos() {
     var enabled = photo && photo.value === 'yes';
     showField(photoWrap, photoInput, enabled);
+    if (!photoSummary || !photo) return;
+    photoSummary.style.display = '';
+    if (photo.value === 'yes') {
+      photoSummaryTitle.textContent = photoInput && photoInput.value ? 'Recordatorio de fotos configurado' : 'Falta primera fecha de fotos';
+      photoSummaryText.textContent = photoInput && photoInput.value
+        ? 'El CRM notificará cada 15 días a Marketing y Administración/Gerencia.'
+        : 'Selecciona la primera fecha para activar el recordatorio de fotos cada 15 días.';
+      setSemanticState(photoSummary, photoInput && photoInput.value ? 'success' : 'danger');
+    } else if (photo.value === 'no') {
+      photoSummaryTitle.textContent = 'Recordatorio de fotos desactivado';
+      photoSummaryText.textContent = 'No se crearán recordatorios de carga de fotos.';
+      setSemanticState(photoSummary, 'success');
+    } else {
+      photoSummaryTitle.textContent = 'Recordatorio de fotos pendiente';
+      photoSummaryText.textContent = 'Selecciona Sí o No.';
+      setSemanticState(photoSummary, 'danger');
+    }
   }
 
   function refreshVerification() {
@@ -227,7 +265,13 @@
   }
 
   if (social) social.addEventListener('change', refreshSocial);
+  if (weeklyInput) weeklyInput.addEventListener('input', refreshSocial);
+  if (weeklyInput) weeklyInput.addEventListener('change', refreshSocial);
+  if (customInput) customInput.addEventListener('input', refreshSocial);
+  if (customInput) customInput.addEventListener('change', refreshSocial);
   if (photo) photo.addEventListener('change', refreshPhotos);
+  if (photoInput) photoInput.addEventListener('input', refreshPhotos);
+  if (photoInput) photoInput.addEventListener('change', refreshPhotos);
   if (verification) verification.addEventListener('change', refreshVerification);
 
   refreshSocial();

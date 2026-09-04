@@ -218,6 +218,33 @@ def sync_workspace_checks(workspace):
             _set_check(workspace, key, False)
 
 
+def marketing_flow_statuses(workspace):
+    """Estado semántico de cada etapa para la navegación de Marketing.
+
+    success = todos los checks del área están completos.
+    wait = existe avance, pero todavía faltan checks.
+    danger = no hay avance / faltan datos obligatorios.
+    """
+    sync_workspace_checks(workspace)
+
+    def area_status(areas):
+        qs = workspace.checklist_items.filter(area__in=areas, active=True)
+        total = qs.count()
+        complete = qs.filter(status="complete").count()
+        if total and complete == total:
+            return "success"
+        if complete:
+            return "wait"
+        return "danger"
+
+    return {
+        "intake": area_status(["intake"]),
+        "business": area_status(["google_profile"]) if workspace.intake_ready else "danger",
+        "lsa": area_status(["google_lsa"]) if workspace.intake_ready else "danger",
+        "ads": area_status(["traditional", "meta_ads", "google_ads", "tiktok_ads"]) if workspace.intake_ready else "danger",
+    }
+
+
 def ensure_workspace(project):
     workspace, _ = MarketingWorkspace.objects.get_or_create(project=project)
 

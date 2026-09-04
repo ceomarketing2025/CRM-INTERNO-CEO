@@ -61,7 +61,6 @@ class MarketingIntakeForm(forms.ModelForm):
             "owner_name",
             "legal_business_name",
             "founding_date",
-            "social_links",
             "company_description",
             "contact_email",
             "email_account_mode",
@@ -74,7 +73,6 @@ class MarketingIntakeForm(forms.ModelForm):
         widgets = {
             "founding_date": DATE,
             "meeting_summary": TEXTAREA_4,
-            "social_links": TEXTAREA_3,
             "company_description": TEXTAREA_4,
             "notes": TEXTAREA_3,
         }

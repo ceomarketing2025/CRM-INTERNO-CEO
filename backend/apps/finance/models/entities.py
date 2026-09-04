@@ -38,3 +38,54 @@ class FinancialTransaction(TimestampedModel):
         indexes = [models.Index(fields=["status"]), models.Index(fields=["due_date"])]
 
     def __str__(self): return f"{self.get_transaction_type_display()} · {self.concept}"
+
+
+class PersonnelPayment(TimestampedModel):
+    """Manager-only payroll/control record for internal staff payments."""
+    employee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="personnel_payments",
+        verbose_name="Colaborador",
+    )
+    role_name = models.CharField(max_length=140, blank=True, verbose_name="Rol / cargo")
+    period = models.CharField(max_length=80, verbose_name="Periodo", help_text="Ej.: Septiembre 2026")
+    payment_date = models.DateField(null=True, blank=True, verbose_name="Fecha de pago")
+    base_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"), verbose_name="Sueldo / base")
+    extras = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"), verbose_name="Bonos / extras")
+    deductions = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"), verbose_name="Descuentos")
+    currency = models.CharField(max_length=8, default="USD")
+    status = models.CharField(max_length=20, choices=TransactionStatus.choices, default=TransactionStatus.PENDING)
+    payment_method = models.CharField(max_length=120, blank=True, verbose_name="Forma de pago")
+    payroll_receipt_url = models.URLField(blank=True, verbose_name="Rol de pago / recibo Drive")
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_personnel_payments",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_personnel_payments",
+    )
+
+    class Meta:
+        ordering = ["-payment_date", "-created_at"]
+        indexes = [models.Index(fields=["status"]), models.Index(fields=["payment_date"])]
+
+    @property
+    def total(self):
+        return max((self.base_amount or Decimal("0.00")) + (self.extras or Decimal("0.00")) - (self.deductions or Decimal("0.00")), Decimal("0.00"))
+
+    def save(self, *args, **kwargs):
+        if self.employee_id and not self.role_name:
+            self.role_name = self.employee.job_title or self.employee.get_role_display()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.employee.display_name} · {self.period}"

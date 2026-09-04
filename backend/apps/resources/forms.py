@@ -1,16 +1,12 @@
 from django import forms
-from .models import ImageReference, ProjectResourceLink
 
 
-class ProjectResourceLinkForm(forms.ModelForm):
-    class Meta:
-        model = ProjectResourceLink
-        fields = ["area", "kind", "label", "url", "notes"]
-        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+class DesignCoreLinksForm(forms.Form):
+    information_url = forms.URLField(required=False, label="Información / documento de respaldo", widget=forms.URLInput(attrs={"placeholder": "https://docs.google.com/..."}))
+    logo_url = forms.URLField(required=False, label="Logo", widget=forms.URLInput(attrs={"placeholder": "https://drive.google.com/..."}))
+    palette_url = forms.URLField(required=False, label="Paleta de colores", widget=forms.URLInput(attrs={"placeholder": "https://drive.google.com/..."}))
 
 
-class ImageReferenceForm(forms.ModelForm):
-    class Meta:
-        model = ImageReference
-        fields = ["category", "image_url", "source", "notes", "order"]
-        widgets = {"notes": forms.Textarea(attrs={"rows": 2})}
+class DesignPhotoLinkForm(forms.Form):
+    service_name = forms.CharField(max_length=140, label="Nombre del servicio", widget=forms.TextInput(attrs={"placeholder": "Ej.: Dumpster Rental"}))
+    url = forms.URLField(label="URL", widget=forms.URLInput(attrs={"placeholder": "https://drive.google.com/..."}))

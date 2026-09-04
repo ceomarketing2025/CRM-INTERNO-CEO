@@ -3,6 +3,10 @@ from .models import Project, ProjectAssignment, ProjectNote
 
 
 class ProjectForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["status"].choices = [("active", "Activo"), ("paused", "Pausado"), ("completed", "Completado"), ("cancelled", "Cancelado")]
+
     def clean(self):
         cleaned = super().clean()
         client = cleaned.get("client")

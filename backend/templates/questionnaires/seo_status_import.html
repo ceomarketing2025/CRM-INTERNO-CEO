@@ -1,0 +1,456 @@
+{% extends 'base.html' %}
+
+{% block page_heading %}Importar matriz SEO{% endblock %}
+
+{% block content %}
+
+<div class="page-intro">
+
+  <div>
+    <span class="eyebrow">SEO · Importación</span>
+
+    <h2>Importar matriz SEO</h2>
+
+    <p>
+      Sube tu archivo Excel para revisar las hojas y las URLs
+      antes de relacionarlas con un proyecto del CRM.
+    </p>
+  </div>
+
+  <div class="actions">
+
+    <a
+      href="{% url 'questionnaires:seo_status' %}"
+      class="btn btn-secondary"
+    >
+      Volver a Estado SEO
+    </a>
+
+  </div>
+
+</div>
+
+
+<div class="card seo-import-card">
+
+  <form
+    method="post"
+    enctype="multipart/form-data"
+    class="seo-import-form"
+  >
+
+    {% csrf_token %}
+
+    <div class="seo-import-field">
+
+      <label for="seo_file">
+        Archivo Excel
+      </label>
+
+      <input
+        type="file"
+        name="seo_file"
+        id="seo_file"
+        accept=".xlsx"
+        required
+      >
+
+      <small>
+        Formato permitido: .xlsx
+      </small>
+
+    </div>
+
+    <button
+      type="submit"
+      class="btn btn-primary"
+    >
+      Cargar vista previa
+    </button>
+
+  </form>
+
+</div>
+
+
+{% if preview %}
+
+<div class="seo-import-preview">
+
+  <div class="seo-import-preview-head">
+
+    <span class="eyebrow">
+      Vista previa
+    </span>
+
+    <h3>
+      Hojas detectadas
+    </h3>
+
+    <p>
+      Revisa la información antes de importarla.
+    </p>
+
+  </div>
+
+
+  {% for sheet in preview %}
+
+  <div class="card seo-import-sheet">
+
+    <div class="seo-import-sheet-head">
+
+      <div>
+
+        <span class="seo-import-sheet-name">
+          {{ sheet.sheet_name }}
+        </span>
+
+        <h3>
+          {{ sheet.project_name }}
+        </h3>
+
+        <div class="seo-import-meta">
+
+          {% if sheet.domain %}
+
+          <span>
+            <strong>Dominio:</strong>
+            {{ sheet.domain }}
+          </span>
+
+          {% endif %}
+
+
+          {% if sheet.sitemap_url %}
+
+          <span>
+            <strong>Sitemap:</strong>
+            {{ sheet.sitemap_url }}
+          </span>
+
+          {% endif %}
+
+
+          <span>
+            <strong>URLs detectadas:</strong>
+            {{ sheet.total_urls }}
+          </span>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="seo-import-project-select">
+
+      <label>
+        Relacionar con proyecto CRM
+      </label>
+
+      <select
+        name="project_{{ forloop.counter0 }}"
+        disabled
+      >
+
+        <option value="">
+          Seleccionar proyecto
+        </option>
+
+        {% for project in projects %}
+
+        <option value="{{ project.pk }}">
+          {{ project.client.business_name }}
+          ·
+          {{ project.project_code }}
+        </option>
+
+        {% endfor %}
+
+      </select>
+
+      <small>
+        La asignación se habilitará en el siguiente paso.
+      </small>
+
+    </div>
+
+
+    <div class="seo-import-table-scroll">
+
+      <table class="seo-import-table">
+
+        <thead>
+
+          <tr>
+            <th>Fecha</th>
+            <th>Página</th>
+            <th>URL</th>
+            <th>Objetivo</th>
+            <th>Estado</th>
+            <th>Posición actual</th>
+            <th>Posición anterior</th>
+            <th>Acción pendiente</th>
+          </tr>
+
+        </thead>
+
+
+        <tbody>
+
+          {% for row in sheet.rows|slice:":10" %}
+
+          <tr>
+
+            <td>
+              {{ row.entry_date|default:"—" }}
+            </td>
+
+            <td>
+              {{ row.page_name|default:"—" }}
+            </td>
+
+            <td class="seo-import-url">
+              {{ row.url|default:"—" }}
+            </td>
+
+            <td>
+              {{ row.objective|default:"—" }}
+            </td>
+
+            <td>
+              {{ row.status|default:"—" }}
+            </td>
+
+            <td>
+              {{ row.current_position|default:"—" }}
+            </td>
+
+            <td>
+              {{ row.previous_position|default:"—" }}
+            </td>
+
+            <td>
+              {{ row.pending_action|default:"—" }}
+            </td>
+
+          </tr>
+
+          {% empty %}
+
+          <tr>
+
+            <td
+              colspan="8"
+              class="seo-import-empty"
+            >
+              No se detectaron URLs en esta hoja.
+            </td>
+
+          </tr>
+
+          {% endfor %}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+
+    {% if sheet.total_urls > 10 %}
+
+    <div class="seo-import-more">
+      Mostrando las primeras 10 de {{ sheet.total_urls }} URLs.
+    </div>
+
+    {% endif %}
+
+  </div>
+
+  {% endfor %}
+
+</div>
+
+{% endif %}
+
+
+<style>
+
+.seo-import-card{
+  padding:22px;
+  margin-bottom:20px;
+}
+
+.seo-import-form{
+  display:flex;
+  align-items:flex-end;
+  gap:16px;
+  flex-wrap:wrap;
+}
+
+.seo-import-field{
+  min-width:280px;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.seo-import-field label{
+  color:#26364e;
+  font-weight:800;
+}
+
+.seo-import-field input[type="file"]{
+  width:100%;
+  padding:11px;
+  border:1px solid #dfe5ed;
+  border-radius:10px;
+  background:#fff;
+}
+
+.seo-import-field small{
+  color:#8994a6;
+}
+
+
+.seo-import-preview{
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+
+.seo-import-preview-head h3{
+  margin:4px 0;
+}
+
+
+.seo-import-sheet{
+  padding:0;
+  overflow:hidden;
+}
+
+.seo-import-sheet-head{
+  padding:20px 22px;
+  border-bottom:1px solid #e6eaf0;
+}
+
+.seo-import-sheet-name{
+  display:inline-block;
+  margin-bottom:4px;
+  color:#718097;
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+
+.seo-import-sheet-head h3{
+  margin:0 0 8px;
+}
+
+.seo-import-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:14px;
+  color:#68758a;
+  font-size:12px;
+}
+
+
+.seo-import-project-select{
+  padding:16px 22px;
+  border-bottom:1px solid #e8ecf2;
+  background:#fafbfd;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.seo-import-project-select label{
+  color:#27364e;
+  font-weight:800;
+}
+
+.seo-import-project-select select{
+  width:100%;
+  max-width:520px;
+  padding:10px 12px;
+  border:1px solid #dce3ec;
+  border-radius:9px;
+  background:#fff;
+}
+
+.seo-import-project-select small{
+  color:#909bad;
+}
+
+
+.seo-import-table-scroll{
+  width:100%;
+  overflow-x:auto;
+}
+
+.seo-import-table{
+  width:100%;
+  min-width:1350px;
+  border-collapse:collapse;
+}
+
+.seo-import-table th{
+  padding:11px 12px;
+  background:#f4f6f9;
+  border-bottom:1px solid #dfe4eb;
+  color:#5c697d;
+  text-align:left;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+
+.seo-import-table td{
+  padding:12px;
+  border-bottom:1px solid #edf0f4;
+  color:#38475d;
+  font-size:12px;
+  vertical-align:top;
+}
+
+.seo-import-url{
+  min-width:300px;
+  word-break:break-word;
+}
+
+.seo-import-empty{
+  padding:30px !important;
+  color:#8994a6 !important;
+  text-align:center;
+}
+
+
+.seo-import-more{
+  padding:12px 20px;
+  background:#fafbfd;
+  color:#7e8999;
+  font-size:11px;
+  font-weight:700;
+}
+
+
+@media(max-width:700px){
+
+  .seo-import-form{
+    align-items:stretch;
+  }
+
+  .seo-import-field{
+    min-width:100%;
+  }
+
+}
+
+</style>
+
+{% endblock %}

@@ -1,1 +1,1 @@
-from .entities import FinanceCategory, FinancialTransaction
+from .entities import FinanceCategory, FinancialTransaction, PersonnelPayment

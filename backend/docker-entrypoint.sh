@@ -2,8 +2,8 @@
 set -e
 
 python manage.py check
-# V2: si aún no existen migraciones, las genera para permitir levantar el demo inmediatamente.
-python manage.py makemigrations accounts clients plans projects domains questionnaires design resources marketing finance audit --noinput
+# V3: si aún no existen migraciones, las genera para permitir levantar el demo inmediatamente.
+python manage.py makemigrations accounts clients plans projects domains questionnaires design resources marketing operations reminders finance audit --noinput
 python manage.py migrate --noinput
 python manage.py seed_initial_data
 

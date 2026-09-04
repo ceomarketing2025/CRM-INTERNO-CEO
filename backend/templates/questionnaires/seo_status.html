@@ -1,0 +1,1054 @@
+{% extends 'base.html' %}
+
+{% block page_heading %}Estado SEO{% endblock %}
+
+{% block content %}
+
+<div class="page-intro seo-general-intro">
+
+  <div>
+    <span class="eyebrow">SEO · CONTROL GENERAL</span>
+
+    <h2>Estado SEO</h2>
+
+    <p>
+      Resumen general del estado SEO de los sitios web y acceso
+      a la matriz individual de cada proyecto.
+    </p>
+  </div>
+
+</div>
+
+
+<div class="seo-scope-tabs">
+
+  <a
+    href="?scope=all"
+    class="seo-scope-tab {% if scope == 'all' %}active{% endif %}"
+  >
+    Todos los proyectos
+  </a>
+
+  <a
+    href="?scope=mine"
+    class="seo-scope-tab {% if scope == 'mine' %}active{% endif %}"
+  >
+    Mis proyectos
+  </a>
+
+</div>
+
+
+<div class="seo-general-summary">
+
+  <div class="seo-general-summary-card">
+
+    <span>Sitios visibles</span>
+
+    <strong>
+      {{ rows|length }}
+    </strong>
+
+    <small>
+      Según el filtro seleccionado
+    </small>
+
+  </div>
+
+  <div class="seo-general-summary-card">
+
+    <span>Vista actual</span>
+
+    <strong class="seo-summary-text">
+
+      {% if scope == "mine" %}
+        Mis proyectos
+      {% else %}
+        Todos
+      {% endif %}
+
+    </strong>
+
+    <small>
+      Proyectos web y SEO
+    </small>
+
+  </div>
+
+  <div class="seo-general-summary-card">
+
+    <span>Semáforo ranking</span>
+
+    <div class="seo-summary-legend">
+
+      <span>
+        <i class="seo-dot green"></i>
+        1–10
+      </span>
+
+      <span>
+        <i class="seo-dot orange"></i>
+        11–20
+      </span>
+
+      <span>
+        <i class="seo-dot red"></i>
+        +20
+      </span>
+
+    </div>
+
+    <small>
+      Se calcula automáticamente
+    </small>
+
+  </div>
+
+</div>
+
+
+<div class="seo-general-matrix card">
+
+  <div class="seo-general-matrix-head">
+
+    <div>
+
+      <span class="eyebrow">
+        MATRIZ GENERAL
+      </span>
+
+      <h3>
+        Estado de sitios web
+      </h3>
+
+      <p>
+        Una fila representa un proyecto.
+        La matriz detallada de URLs se administra por separado.
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <div class="seo-general-table-scroll">
+
+    <table class="seo-general-table">
+
+      <thead>
+
+        <tr>
+
+          <th>
+            Proyecto
+          </th>
+
+          <th>
+            Sitemap
+          </th>
+
+          <th>
+            URLs
+          </th>
+
+          <th>
+            Indexadas
+          </th>
+
+          <th>
+            % Indexación
+          </th>
+
+          <th>
+            Top 10
+          </th>
+
+          <th>
+            Mejoraron
+          </th>
+
+          <th>
+            Empeoraron
+          </th>
+
+          <th>
+            Últ. lectura sitemap
+          </th>
+
+          <th>
+            Estado
+          </th>
+
+          <th>
+            Matriz SEO
+          </th>
+
+        </tr>
+
+      </thead>
+
+
+      <tbody>
+
+        {% for row in rows %}
+
+        <tr>
+
+          <td>
+
+            <div class="seo-project-cell">
+
+              <span class="seo-project-icon">
+                {{ forloop.counter }}
+              </span>
+
+              <div>
+
+                <strong>
+                  {{ row.project.client.business_name }}
+                </strong>
+
+                <small>
+                  {{ row.project.project_code }}
+                </small>
+
+              </div>
+
+            </div>
+
+          </td>
+
+
+          <td>
+
+            {% if row.seo_project and row.seo_project.sitemap_url %}
+
+              <a
+                href="{{ row.seo_project.sitemap_url }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="seo-sitemap-link"
+              >
+                {{ row.seo_project.sitemap_url }}
+              </a>
+
+            {% else %}
+
+              <span class="seo-empty-value">
+                Sin sitemap
+              </span>
+
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            <strong class="seo-number">
+              {{ row.total_urls }}
+            </strong>
+
+          </td>
+
+
+          <td>
+
+            <strong class="seo-number">
+              {{ row.indexed_urls }}
+            </strong>
+
+          </td>
+
+
+          <td>
+
+            <div class="seo-indexation-cell">
+
+              <strong>
+                {{ row.indexing_percent }}%
+              </strong>
+
+              <div class="seo-mini-progress">
+
+                <i
+                  style="width:{{ row.indexing_percent }}%"
+                ></i>
+
+              </div>
+
+            </div>
+
+          </td>
+
+
+          <td>
+
+            <span class="seo-count-badge top">
+              {{ row.top_10_count }}
+            </span>
+
+          </td>
+
+
+          <td>
+
+            <span class="seo-change-badge improved">
+
+              <span>
+                ↑
+              </span>
+
+              {{ row.improved_count }}
+
+            </span>
+
+          </td>
+
+
+          <td>
+
+            <span class="seo-change-badge worsened">
+
+              <span>
+                ↓
+              </span>
+
+              {{ row.worsened_count }}
+
+            </span>
+
+          </td>
+
+
+          <td>
+
+            {% if row.seo_project and row.seo_project.last_sitemap_read %}
+
+              <span class="seo-date">
+                {{ row.seo_project.last_sitemap_read|date:"d/m/Y" }}
+              </span>
+
+            {% else %}
+
+              <span class="seo-empty-value">
+                Sin lectura
+              </span>
+
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            {% if not row.seo_project %}
+
+              <span class="seo-project-state pending">
+                Sin matriz
+              </span>
+
+            {% elif row.total_urls == 0 %}
+
+              <span class="seo-project-state pending">
+                Sin URLs
+              </span>
+
+            {% elif row.worsened_count > row.improved_count %}
+
+              <span class="seo-project-state attention">
+                Atención
+              </span>
+
+            {% elif row.indexing_percent < 70 %}
+
+              <span class="seo-project-state attention">
+                Revisar
+              </span>
+
+            {% else %}
+
+              <span class="seo-project-state good">
+                Monitoreando
+              </span>
+
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            {% if row.seo_project %}
+
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm seo-matrix-action"
+                disabled
+                title="La vista individual será habilitada en el siguiente paso"
+              >
+                Ver matriz
+              </button>
+
+            {% else %}
+
+              <button
+                type="button"
+                class="btn btn-primary btn-sm seo-matrix-action"
+                disabled
+                title="La creación de matrices será habilitada en el siguiente paso"
+              >
+                Crear matriz
+              </button>
+
+            {% endif %}
+
+          </td>
+
+        </tr>
+
+        {% empty %}
+
+        <tr>
+
+          <td
+            colspan="11"
+            class="seo-general-empty"
+          >
+
+            <strong>
+              No hay proyectos disponibles.
+            </strong>
+
+            <span>
+              No se encontraron proyectos para este filtro.
+            </span>
+
+          </td>
+
+        </tr>
+
+        {% endfor %}
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+
+  <div class="seo-general-footer">
+
+    <span>
+      {{ rows|length }} proyectos visibles
+    </span>
+
+    <span>
+      El Estado SEO funciona de manera independiente al progreso de Desarrollo.
+    </span>
+
+  </div>
+
+</div>
+
+
+<style>
+
+.seo-general-intro{
+  margin-bottom:18px;
+}
+
+
+/* ==============================
+   FILTROS
+============================== */
+
+.seo-scope-tabs{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:18px;
+  padding:5px;
+  width:max-content;
+  max-width:100%;
+  border:1px solid #dfe5ee;
+  border-radius:13px;
+  background:#f4f6f9;
+}
+
+.seo-scope-tab{
+  padding:10px 16px;
+  border-radius:9px;
+  color:#68758a;
+  text-decoration:none;
+  font-size:13px;
+  font-weight:800;
+  transition:
+    background .16s ease,
+    color .16s ease,
+    box-shadow .16s ease;
+}
+
+.seo-scope-tab:hover{
+  color:#17243a;
+}
+
+.seo-scope-tab.active{
+  background:#fff;
+  color:#17243a;
+  box-shadow:0 1px 4px rgba(17,29,52,.08);
+}
+
+
+/* ==============================
+   RESUMEN
+============================== */
+
+.seo-general-summary{
+  display:grid;
+  grid-template-columns:
+    repeat(3,minmax(0,1fr));
+  gap:14px;
+  margin-bottom:20px;
+}
+
+.seo-general-summary-card{
+  min-height:118px;
+  padding:19px 20px;
+  border:1px solid #e2e7ef;
+  border-radius:16px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:5px;
+}
+
+.seo-general-summary-card > span{
+  color:#748197;
+  font-size:12px;
+  font-weight:800;
+}
+
+.seo-general-summary-card > strong{
+  color:#122039;
+  font-size:30px;
+  line-height:1.1;
+}
+
+.seo-general-summary-card .seo-summary-text{
+  font-size:20px;
+}
+
+.seo-general-summary-card small{
+  color:#909bad;
+  font-size:11px;
+}
+
+.seo-summary-legend{
+  display:flex;
+  align-items:center;
+  gap:13px;
+  min-height:34px;
+}
+
+.seo-summary-legend span{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  color:#3f4f68;
+  font-size:12px;
+  font-weight:800;
+}
+
+
+/* ==============================
+   SEMÁFOROS
+============================== */
+
+.seo-dot{
+  width:9px;
+  height:9px;
+  min-width:9px;
+  border-radius:50%;
+  display:inline-block;
+}
+
+.seo-dot.green{
+  background:#1cad63;
+}
+
+.seo-dot.orange{
+  background:#f1a52a;
+}
+
+.seo-dot.red{
+  background:#df4a4a;
+}
+
+.seo-dot.gray{
+  background:#a9b2c0;
+}
+
+
+/* ==============================
+   MATRIZ
+============================== */
+
+.seo-general-matrix{
+  padding:0;
+  overflow:hidden;
+}
+
+.seo-general-matrix-head{
+  padding:21px 23px;
+  border-bottom:1px solid #e5e9f0;
+}
+
+.seo-general-matrix-head h3{
+  margin:4px 0;
+  color:#132139;
+  font-size:21px;
+}
+
+.seo-general-matrix-head p{
+  max-width:720px;
+  margin:0;
+  color:#7a879b;
+  font-size:12px;
+  line-height:1.55;
+}
+
+
+/* ==============================
+   TABLE SCROLL
+============================== */
+
+.seo-general-table-scroll{
+  width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:thin;
+}
+
+.seo-general-table-scroll::-webkit-scrollbar{
+  height:9px;
+}
+
+.seo-general-table-scroll::-webkit-scrollbar-track{
+  background:#eef1f5;
+}
+
+.seo-general-table-scroll::-webkit-scrollbar-thumb{
+  background:#b9c3d2;
+  border-radius:50px;
+}
+
+
+/* ==============================
+   TABLA
+============================== */
+
+.seo-general-table{
+  width:100%;
+  min-width:1650px;
+  border-collapse:separate;
+  border-spacing:0;
+  background:#fff;
+}
+
+.seo-general-table th{
+  padding:13px 14px;
+  background:#f5f7fa;
+  border-right:1px solid #e4e8ef;
+  border-bottom:1px solid #dde3eb;
+  color:#59677d;
+  text-align:left;
+  vertical-align:middle;
+  font-size:10px;
+  font-weight:800;
+  line-height:1.35;
+  letter-spacing:.035em;
+  text-transform:uppercase;
+}
+
+.seo-general-table th:last-child{
+  border-right:0;
+}
+
+.seo-general-table td{
+  padding:14px;
+  border-right:1px solid #edf0f4;
+  border-bottom:1px solid #edf0f4;
+  color:#334158;
+  vertical-align:middle;
+  font-size:12px;
+  line-height:1.45;
+}
+
+.seo-general-table td:last-child{
+  border-right:0;
+}
+
+.seo-general-table tbody tr:last-child td{
+  border-bottom:0;
+}
+
+.seo-general-table tbody tr:hover td{
+  background:#fbfcfd;
+}
+
+
+/* ==============================
+   ANCHOS
+============================== */
+
+.seo-general-table th:nth-child(1){
+  min-width:220px;
+}
+
+.seo-general-table th:nth-child(2){
+  min-width:270px;
+}
+
+.seo-general-table th:nth-child(3){
+  min-width:80px;
+}
+
+.seo-general-table th:nth-child(4){
+  min-width:90px;
+}
+
+.seo-general-table th:nth-child(5){
+  min-width:170px;
+}
+
+.seo-general-table th:nth-child(6){
+  min-width:90px;
+}
+
+.seo-general-table th:nth-child(7){
+  min-width:110px;
+}
+
+.seo-general-table th:nth-child(8){
+  min-width:110px;
+}
+
+.seo-general-table th:nth-child(9){
+  min-width:155px;
+}
+
+.seo-general-table th:nth-child(10){
+  min-width:130px;
+}
+
+.seo-general-table th:nth-child(11){
+  min-width:140px;
+}
+
+
+/* ==============================
+   PROYECTO
+============================== */
+
+.seo-project-cell{
+  display:flex;
+  align-items:center;
+  gap:11px;
+}
+
+.seo-project-icon{
+  width:32px;
+  min-width:32px;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:9px;
+  background:#eef2f7;
+  color:#5c6b82;
+  font-size:11px;
+  font-weight:800;
+}
+
+.seo-project-cell > div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.seo-project-cell strong{
+  color:#17243b;
+  font-size:13px;
+}
+
+.seo-project-cell small{
+  color:#909aab;
+  font-size:10px;
+}
+
+
+/* ==============================
+   SITEMAP
+============================== */
+
+.seo-sitemap-link{
+  display:block;
+  max-width:260px;
+  color:#356ab7;
+  text-decoration:none;
+  word-break:break-all;
+  font-size:11px;
+  font-weight:650;
+}
+
+.seo-sitemap-link:hover{
+  text-decoration:underline;
+}
+
+
+/* ==============================
+   NÚMEROS
+============================== */
+
+.seo-number{
+  color:#18263d;
+  font-size:15px;
+}
+
+
+/* ==============================
+   INDEXACIÓN
+============================== */
+
+.seo-indexation-cell{
+  min-width:130px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.seo-indexation-cell strong{
+  width:40px;
+  color:#17253d;
+  font-size:13px;
+}
+
+.seo-mini-progress{
+  width:80px;
+  height:6px;
+  overflow:hidden;
+  border-radius:99px;
+  background:#e8edf3;
+}
+
+.seo-mini-progress i{
+  height:100%;
+  display:block;
+  border-radius:inherit;
+  background:#1cad63;
+}
+
+
+/* ==============================
+   CONTADORES
+============================== */
+
+.seo-count-badge{
+  min-width:32px;
+  padding:5px 8px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:8px;
+  font-size:12px;
+  font-weight:800;
+}
+
+.seo-count-badge.top{
+  background:#eaf8f0;
+  color:#16834a;
+}
+
+
+/* ==============================
+   EVOLUCIÓN
+============================== */
+
+.seo-change-badge{
+  min-width:48px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  padding:6px 9px;
+  border-radius:9px;
+  font-size:11px;
+  font-weight:800;
+}
+
+.seo-change-badge.improved{
+  color:#157d48;
+  background:#eaf8f0;
+  border:1px solid #c2e7d2;
+}
+
+.seo-change-badge.worsened{
+  color:#b43d3d;
+  background:#fff0f0;
+  border:1px solid #f0caca;
+}
+
+
+/* ==============================
+   FECHA
+============================== */
+
+.seo-date{
+  color:#59677c;
+  white-space:nowrap;
+  font-weight:650;
+}
+
+
+/* ==============================
+   ESTADO PROYECTO
+============================== */
+
+.seo-project-state{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:6px 9px;
+  border-radius:999px;
+  white-space:nowrap;
+  font-size:10px;
+  font-weight:800;
+}
+
+.seo-project-state.good{
+  background:#eaf8f0;
+  border:1px solid #bde4cd;
+  color:#167b47;
+}
+
+.seo-project-state.attention{
+  background:#fff5df;
+  border:1px solid #efd795;
+  color:#926c15;
+}
+
+.seo-project-state.pending{
+  background:#f0f2f5;
+  border:1px solid #dce2e9;
+  color:#6d798c;
+}
+
+
+/* ==============================
+   VACÍOS
+============================== */
+
+.seo-empty-value{
+  color:#9ba5b4;
+  font-size:11px;
+}
+
+.seo-general-empty{
+  padding:46px !important;
+  text-align:center;
+}
+
+.seo-general-empty strong,
+.seo-general-empty span{
+  display:block;
+}
+
+.seo-general-empty strong{
+  margin-bottom:4px;
+  color:#35445c;
+}
+
+.seo-general-empty span{
+  color:#8a95a6;
+}
+
+
+/* ==============================
+   ACCIONES
+============================== */
+
+.seo-matrix-action{
+  white-space:nowrap;
+}
+
+.seo-matrix-action:disabled{
+  opacity:.65;
+  cursor:not-allowed;
+}
+
+
+/* ==============================
+   FOOTER
+============================== */
+
+.seo-general-footer{
+  padding:12px 18px;
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  background:#fafbfd;
+  border-top:1px solid #e5e9ef;
+  color:#7d899a;
+  font-size:10px;
+  font-weight:700;
+}
+
+
+/* ==============================
+   RESPONSIVE
+============================== */
+
+@media(max-width:1000px){
+
+  .seo-general-summary{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .seo-general-summary-card:last-child{
+    grid-column:1 / -1;
+  }
+
+}
+
+
+@media(max-width:650px){
+
+  .seo-scope-tabs{
+    width:100%;
+  }
+
+  .seo-scope-tab{
+    flex:1;
+    text-align:center;
+  }
+
+  .seo-general-summary{
+    grid-template-columns:1fr;
+  }
+
+  .seo-general-summary-card:last-child{
+    grid-column:auto;
+  }
+
+  .seo-general-footer{
+    flex-direction:column;
+  }
+
+}
+
+</style>
+
+{% endblock %}

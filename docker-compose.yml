@@ -1,7 +1,7 @@
 services:
   backend:
     build: ./backend
-    container_name: gestion360_v2_backend
+    container_name: crm_ceo_v3_backend
     command: /app/docker-entrypoint.sh
     volumes:
       - ./backend:/app
@@ -18,8 +18,23 @@ services:
 
   celery:
     build: ./backend
-    container_name: gestion360_v2_celery
+    container_name: crm_ceo_v3_celery
     command: celery -A config worker -l info
+    volumes:
+      - ./backend:/app
+      - media_volume:/app/media
+    env_file:
+      - ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    build: ./backend
+    container_name: crm_ceo_v3_beat
+    command: celery -A config beat -l info
     volumes:
       - ./backend:/app
       - media_volume:/app/media
@@ -33,24 +48,24 @@ services:
 
   db:
     image: postgres:16-alpine
-    container_name: gestion360_v2_postgres
+    container_name: crm_ceo_v3_postgres
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-gestion360}
-      POSTGRES_USER: ${POSTGRES_USER:-gestion360}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gestion360_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-crm_ceo}
+      POSTGRES_USER: ${POSTGRES_USER:-crm_ceo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crm_ceo_dev}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gestion360} -d ${POSTGRES_DB:-gestion360}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crm_ceo} -d ${POSTGRES_DB:-crm_ceo}"]
       interval: 5s
       timeout: 5s
       retries: 15
 
   redis:
     image: redis:7-alpine
-    container_name: gestion360_v2_redis
+    container_name: crm_ceo_v3_redis
     ports:
       - "6379:6379"
     healthcheck:

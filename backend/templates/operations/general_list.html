@@ -1,0 +1,24 @@
+{% extends 'base.html' %}{% block page_heading %}Credenciales y compras web{% endblock %}{% block content %}
+<div class="page-intro">
+  <div><span class="eyebrow">Administración + Gerencia</span><h2>Credenciales, dominio y hosting</h2><p>Un solo módulo para compras web. Los tipos permitidos son únicamente Dominio y Host, Solo dominio o Solo host.</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'operations:credential_create' %}">＋ Acceso / renovación</a><a class="btn btn-primary" href="{% url 'operations:general_create' %}">＋ Compra dominio / host</a></div>
+</div>
+
+<div class="card">
+  <div class="card-head"><div><span class="eyebrow">01</span><h3>Compras de dominio y hosting</h3><p>Recibos, proveedor, costo y responsable.</p></div></div>
+  <form class="toolbar" method="get"><input name="q" value="{{ q }}" placeholder="Buscar cliente, detalle o G-0000"><button class="btn btn-secondary">Buscar</button></form>
+  <div class="table-wrap"><table><thead><tr><th>E</th><th>Fecha</th><th>Mes</th><th>Cliente</th><th>Nombre / Detalle</th><th>Tipo</th><th>Proveedor</th><th>Costo</th><th>Estado</th><th>Recibo</th><th>Responsable</th><th>Acciones</th></tr></thead><tbody>
+  {% for r in records %}<tr>
+    <td><code>{{ r.code }}</code></td><td>{{ r.date|date:'Y-m-d' }}</td><td>{{ r.month_name }}</td><td><strong>{{ r.client.business_name|default:'—' }}</strong></td><td>{{ r.detail_name|default:'—' }}</td><td><span class="badge">{{ r.get_service_type_display }}</span></td><td>{{ r.get_provider_display }}</td><td><strong>${{ r.cost|floatformat:2 }}</strong> {{ r.currency }}</td><td>{{ r.get_status_display }}</td><td>{% if r.receipt_drive_url %}<a class="text-link" target="_blank" href="{{ r.receipt_drive_url }}">Abrir ↗</a>{% else %}—{% endif %}</td><td>{{ r.responsible.display_name|default:'—' }}</td>
+    <td><div class="row-actions"><a class="icon-action" title="Ver información" href="{% url 'operations:general_detail' r.pk %}">◉</a><a class="icon-action" title="Editar" href="{% url 'operations:general_edit' r.pk %}">✎</a>{% if request.user.is_manager %}<form method="post" action="{% url 'operations:general_delete' r.pk %}" onsubmit="return confirm('¿Eliminar {{ r.code }}?')">{% csrf_token %}<button class="icon-action danger" type="submit" title="Eliminar">⌫</button></form>{% endif %}</div></td>
+  </tr>{% empty %}<tr><td colspan="12"><div class="empty">Todavía no hay compras registradas.</div></td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+
+<div class="card">
+  <div class="card-head"><div><span class="eyebrow">02</span><h3>Accesos y renovaciones</h3><p>Correo/usuario de referencia, vínculo seguro y renovación anual. Las contraseñas no se guardan en texto plano.</p></div><a class="btn btn-secondary btn-sm" href="{% url 'operations:credential_create' %}">＋ Registrar</a></div>
+  <div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Credencial / recurso</th><th>Proveedor</th><th>Compra</th><th>Renovación</th><th>Costo</th><th>Cuenta</th><th>Referencia segura</th><th>Recibo</th><th>Acciones</th></tr></thead><tbody>
+  {% for r in credential_records %}<tr><td><strong>{{ r.client.business_name }}</strong></td><td>{{ r.credential_name }}</td><td>{{ r.get_provider_display }}</td><td>{{ r.purchase_date|date:'Y-m-d' }}</td><td><span class="badge warning-soft">{{ r.renewal_date|date:'Y-m-d' }}</span></td><td>${{ r.cost|floatformat:2 }} {{ r.currency }}</td><td>{{ r.account_email|default:'—' }}</td><td>{% if r.secure_reference_url %}<a class="text-link" target="_blank" href="{{ r.secure_reference_url }}">Abrir ↗</a>{% else %}—{% endif %}</td><td>{% if r.receipt_drive_url %}<a class="text-link" target="_blank" href="{{ r.receipt_drive_url }}">Abrir ↗</a>{% else %}—{% endif %}</td><td><div class="row-actions"><a class="icon-action" title="Ver información" href="{% url 'operations:credential_detail' r.pk %}">◉</a><a class="icon-action" title="Editar" href="{% url 'operations:credential_edit' r.pk %}">✎</a>{% if request.user.is_manager %}<form method="post" action="{% url 'operations:credential_delete' r.pk %}" onsubmit="return confirm('¿Eliminar esta credencial?')">{% csrf_token %}<button class="icon-action danger" type="submit" title="Eliminar">⌫</button></form>{% endif %}</div></td></tr>{% empty %}<tr><td colspan="10"><div class="empty">Sin credenciales/renovaciones registradas.</div></td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+{% endblock %}

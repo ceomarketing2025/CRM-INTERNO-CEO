@@ -1,4 +1,5 @@
 from django import forms
+from django.utils import timezone
 from apps.plans.models import ServicePlan
 
 
@@ -10,6 +11,7 @@ class WebsiteClientIntakeForm(forms.Form):
     email = forms.EmailField(label="Correo (opcional)", required=False)
     business_name = forms.CharField(label="Nombre de la empresa", max_length=180)
     plan = forms.ModelChoiceField(label="Plan de página web", queryset=ServicePlan.objects.none(), empty_label=None)
+    start_date = forms.DateField(label="Fecha de inicio", initial=timezone.localdate, widget=forms.DateInput(attrs={"type":"date"}), help_text="Desde esta fecha se crea el control automático de 6 semanas.")
     notes = forms.CharField(label="Nota administrativa", required=False, widget=forms.Textarea(attrs={"rows": 3}))
 
     def __init__(self, *args, **kwargs):

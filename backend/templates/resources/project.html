@@ -1,1 +1,43 @@
-{% extends 'base.html' %}{% block page_heading %}Links e imágenes{% endblock %}{% block content %}<div class="page-intro"><div><span class="eyebrow">Recursos · {{ project.project_code }}</span><h2>{{ project.client.business_name }}</h2><p>Respaldo con links de Drive y referencias de imágenes organizadas por categoría.</p></div><div class="actions"><a class="btn btn-secondary" href="{% url 'projects:detail' project.pk %}">Proyecto</a><a class="btn btn-secondary" href="{% url 'handoff:summary' project.pk %}">Resumen</a></div></div><div class="two-col"><div class="card"><div class="card-head"><div><h3>Links de respaldo</h3><p>Ej.: Drive de paleta, resumen, logo o banco de fotos.</p></div></div><div class="list-stack">{% for item in project.resource_links.all %}<a class="list-row" href="{{ item.url }}" target="_blank" rel="noopener"><div><strong>{{ item.label }}</strong><span>{{ item.get_area_display }} · {{ item.get_kind_display }}</span></div><b>Abrir ↗</b></a>{% empty %}<div class="empty">Sin links de respaldo.</div>{% endfor %}</div><hr class="soft-line"><h3>Añadir link</h3><form method="post" class="form-stack">{% csrf_token %}<input type="hidden" name="action" value="add_link">{% for field in link_form %}<div class="field"><label>{{ field.label }}</label>{{ field }}</div>{% endfor %}<button class="btn btn-primary">Guardar link</button></form></div><div class="card"><div class="card-head"><div><h3>Imágenes por categoría</h3><p>Categoría + URL. Puedes añadir Roofing, Siding, Gutters y todas las que necesites.</p></div></div><div class="list-stack">{% for item in project.image_references.all %}<a class="list-row" href="{{ item.image_url }}" target="_blank" rel="noopener"><div><strong>{{ item.category }}</strong><span>{{ item.source|default:'URL de referencia' }}{% if item.notes %} · {{ item.notes }}{% endif %}</span></div><b>Ver ↗</b></a>{% empty %}<div class="empty">Sin referencias de imágenes.</div>{% endfor %}</div><hr class="soft-line"><h3>Añadir categoría / imagen</h3><form method="post" class="form-stack">{% csrf_token %}<input type="hidden" name="action" value="add_image">{% for field in image_form %}<div class="field"><label>{{ field.label }}</label>{{ field }}</div>{% endfor %}<button class="btn btn-primary">Guardar referencia</button></form></div></div>{% endblock %}
+{% extends 'base.html' %}
+{% block page_heading %}Links e imágenes{% endblock %}
+{% block content %}
+<div class="page-intro">
+  <div><span class="eyebrow">Diseño · {{ project.project_code }}</span><h2>{{ project.client.business_name }}</h2><p>Solo lo necesario: links fijos de respaldo y fotos organizadas por servicio.</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'design:list' %}">Diseño</a><a class="btn btn-secondary" href="{% url 'design:brief_edit' project.pk %}">Ficha de diseño</a><a class="btn btn-primary" href="{% url 'handoff:summary' project.pk %}">Resumen</a></div>
+</div>
+
+<div class="card resource-core-card">
+  <div class="card-head"><div><h3>Links principales</h3><p>Estos tres campos quedan definidos para todos los proyectos. No necesitas crear categorías ni tipos manualmente.</p></div></div>
+  <form method="post" class="form-grid">{% csrf_token %}<input type="hidden" name="action" value="save_core">
+    {% for field in core_form %}<div class="field form-wide"><label>{{ field.label }}</label>{{ field }}{% for e in field.errors %}<span class="field-error">{{ e }}</span>{% endfor %}</div>{% endfor %}
+    <div class="form-wide"><button class="btn btn-primary">Guardar links principales</button></div>
+  </form>
+</div>
+
+<div class="two-col resource-photo-columns">
+  <div class="card">
+    <div class="card-head"><div><h3>Fotos del cliente</h3><p>Nombre del servicio + URL. Puedes agregar todos los servicios que necesites.</p></div></div>
+    <div class="simple-resource-list">
+      {% for item in client_photos %}<div class="simple-resource-row"><div><strong>{{ item.category }}</strong><a href="{{ item.image_url }}" target="_blank" rel="noopener">{{ item.image_url|truncatechars:72 }}</a></div><form method="post">{% csrf_token %}<input type="hidden" name="action" value="delete_photo"><input type="hidden" name="photo_id" value="{{ item.pk }}"><button class="icon-danger" title="Eliminar" onclick="return confirm('¿Eliminar este link?')">×</button></form></div>{% empty %}<div class="empty">Sin fotos del cliente.</div>{% endfor %}
+      {% for item in other_photos %}<div class="simple-resource-row"><div><strong>{{ item.category }}</strong><a href="{{ item.image_url }}" target="_blank" rel="noopener">{{ item.image_url|truncatechars:72 }}</a></div><form method="post">{% csrf_token %}<input type="hidden" name="action" value="delete_photo"><input type="hidden" name="photo_id" value="{{ item.pk }}"><button class="icon-danger" title="Eliminar" onclick="return confirm('¿Eliminar este link?')">×</button></form></div>{% endfor %}
+    </div>
+    <hr class="soft-line">
+    <form method="post" class="simple-link-form">{% csrf_token %}<input type="hidden" name="action" value="add_client_photo">
+      {% for field in client_form %}<div class="field"><label>{{ field.label }}</label>{{ field }}{% for e in field.errors %}<span class="field-error">{{ e }}</span>{% endfor %}</div>{% endfor %}
+      <button class="btn btn-primary">＋ Añadir fotos cliente</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div><h3>Fotos Stock</h3><p>El mismo formato simple: servicio + URL del banco de imágenes.</p></div></div>
+    <div class="simple-resource-list">
+      {% for item in stock_photos %}<div class="simple-resource-row"><div><strong>{{ item.category }}</strong><a href="{{ item.image_url }}" target="_blank" rel="noopener">{{ item.image_url|truncatechars:72 }}</a></div><form method="post">{% csrf_token %}<input type="hidden" name="action" value="delete_photo"><input type="hidden" name="photo_id" value="{{ item.pk }}"><button class="icon-danger" title="Eliminar" onclick="return confirm('¿Eliminar este link?')">×</button></form></div>{% empty %}<div class="empty">Sin fotos Stock.</div>{% endfor %}
+    </div>
+    <hr class="soft-line">
+    <form method="post" class="simple-link-form">{% csrf_token %}<input type="hidden" name="action" value="add_stock_photo">
+      {% for field in stock_form %}<div class="field"><label>{{ field.label }}</label>{{ field }}{% for e in field.errors %}<span class="field-error">{{ e }}</span>{% endfor %}</div>{% endfor %}
+      <button class="btn btn-primary">＋ Añadir fotos Stock</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

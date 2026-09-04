@@ -11,15 +11,18 @@ class ProjectType(models.TextChoices):
 
 
 class ProjectStatus(models.TextChoices):
-    ADMINISTRATION = "administration", "Registro administrativo"
-    DESIGN_INTAKE = "design_intake", "Reunión de diseño"
-    DEVELOPMENT_INTAKE = "development_intake", "Levantamiento de desarrollo"
-    INFORMATION_READY = "information_ready", "Información lista"
-    IN_DEVELOPMENT = "in_development", "En desarrollo"
-    REVIEW = "review", "Revisión"
-    DELIVERED = "delivered", "Entregado"
+    ACTIVE = "active", "Activo"
     PAUSED = "paused", "Pausado"
+    COMPLETED = "completed", "Completado"
     CANCELLED = "cancelled", "Cancelado"
+    # Valores V2 conservados para no romper datos existentes al actualizar.
+    ADMINISTRATION = "administration", "Registro administrativo (V2)"
+    DESIGN_INTAKE = "design_intake", "Diseño (V2)"
+    DEVELOPMENT_INTAKE = "development_intake", "Desarrollo (V2)"
+    INFORMATION_READY = "information_ready", "Información lista (V2)"
+    IN_DEVELOPMENT = "in_development", "En desarrollo (V2)"
+    REVIEW = "review", "Revisión (V2)"
+    DELIVERED = "delivered", "Entregado (V2)"
 
 
 class Priority(models.TextChoices):

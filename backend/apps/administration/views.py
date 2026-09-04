@@ -17,6 +17,6 @@ def website_intake(request):
     form = WebsiteClientIntakeForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         client, client_plan, project = register_website_client(user=request.user, cleaned_data=form.cleaned_data)
-        messages.success(request, f"Cliente creado y enviado a Diseño: {client.business_name} · {client_plan.plan.name}.")
+        messages.success(request, f"Cliente creado: {client.business_name} · {client_plan.plan.name}. Se generaron recordatorios de 6 semanas y oferta Social Media.")
         return redirect("projects:detail", pk=project.pk)
     return render(request, "administration/intake.html", {"form": form})

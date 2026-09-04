@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block page_heading %}Desarrollo{% endblock %}
+{% block content %}
+<div class="page-intro">
+  <div>
+    <span class="eyebrow">Módulo de desarrollo</span>
+    <h2>Desarrollo</h2>
+    <p>Gestiona la ficha, la hoja de producción y los recordatorios de cada proyecto asignado.</p>
+  </div>
+</div>
+
+<div class="development-summary-grid">
+
+  <a href="{% url 'projects:list' %}" class="development-summary-card development-summary-link">
+    <span>Proyectos asignados</span>
+    <strong>{{ rows|length }}</strong>
+  </a>
+
+<button type="button" class="development-summary-card development-summary-link development-filter" data-filter="progress">
+  <span>En progreso</span>
+  <strong>{{ in_progress_count }}</strong>
+</button>
+
+<button type="button" class="development-summary-card development-summary-link development-filter" data-filter="completed">
+  <span>Completados</span>
+  <strong>{{ completed_count }}</strong>
+</button>
+
+  <a href="{% url 'reminders:list' %}" class="development-summary-card development-summary-link">
+    <span>Recordatorios</span>
+    <strong>{{ reminders_count }}</strong>
+  </a>
+  <button type="button" class="development-summary-card development-summary-link development-filter" data-filter="all">
+    <span>Todos</span>
+    <strong>{{ rows|length }}</strong>
+  </button>
+</div>
+<div id="development-projects"></div>
+
+{% for row in rows %}{% with p=row.project %}
+<div
+  class="project-card area-project-card development-card-v5"
+  data-status="{% if row.overall_percent == 100 %}completed{% elif row.overall_percent > 0 %}progress{% else %}pending{% endif %}"
+>
+    <div class="project-card-top"><span class="project-code">{{ p.project_code }}</span><span class="badge">{{ p.get_project_type_display }}</span></div>
+    <div class="development-title-row"><div><h3>{{ p.client.business_name }}</h3><p>{{ p.client.full_name }}{% if p.purchased_plan %} · {{ p.purchased_plan.plan.name }}{% endif %}</p></div><div class="progress-ring-text"><strong>{{ row.overall_percent }}%</strong><span>Desarrollo</span></div></div>
+    <div class="development-progress-block">
+      <div class="progress-label"><span>Ficha técnica</span><b>{{ row.technical_progress.percent }}%</b></div>
+      <div class="progress"><i style="width:{{ row.technical_progress.percent }}%"></i></div>
+      <small>{{ row.technical_progress.complete }}/{{ row.technical_progress.total }} bloques completos automáticamente</small>
+    </div>
+    <div class="development-progress-block">
+      <div class="progress-label"><span>Ficha de producción</span><b>{{ row.production_percent }}%</b></div>
+      <div class="progress"><i style="width:{{ row.production_percent }}%"></i></div>
+      <small>{% if row.sheet %}{{ row.production_complete }}/{{ row.production_total }} páginas/elementos marcados como listos{% else %}Todavía no se ha creado la estructura{% endif %}</small>
+    </div>
+    <div class="area-checks two-checks">
+      <span class="{% if row.technical_progress.percent == 100 %}done{% endif %}"><i></i> Ficha técnica {% if row.technical_progress.percent == 100 %}lista{% else %}en progreso{% endif %}</span>
+      <span class="{% if row.production_percent == 100 and row.production_total %}done{% endif %}"><i></i> Producción {% if row.production_percent == 100 and row.production_total %}lista{% else %}en progreso{% endif %}</span>
+    </div>
+    <div class="quick-action-grid">
+      {% if row.questionnaire %}<a href="{% url 'questionnaires:fill' row.questionnaire.pk %}"><b>Ficha técnica</b><small>{{ row.technical_progress.percent }}% · continuar</small></a>{% else %}<a href="{% url 'questionnaires:create_for_project' p.pk %}?auto=1"><b>Ficha técnica</b><small>Crear y llenar</small></a>{% endif %}
+      <a href="{% url 'operations:web_production_sheet' p.pk %}"><b>Ficha de producción</b><small>{% if row.sheet %}{{ row.production_percent }}% · abrir hoja{% else %}Generar estructura{% endif %}</small></a>
+      <a href="{% url 'handoff:summary' p.pk %}"><b>Resumen</b><small>Información sincronizada</small></a>
+    </div>
+    <div class="project-footer"><span>{% if row.last_log %}Última: {{ row.last_log.user.display_name|default:'Sistema' }}{% else %}Sin actividad registrada{% endif %}</span><span>{% if row.last_log %}{{ row.last_log.created_at|date:'d/m H:i' }}{% endif %}</span></div>
+  </div>
+{% endwith %}{% empty %}<div class="card empty">No tienes proyectos asignados a Desarrollo.</div>{% endfor %}
+</div>
+{% endblock %}

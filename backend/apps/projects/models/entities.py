@@ -11,7 +11,7 @@ class Project(TimestampedModel):
     purchased_plan = models.ForeignKey("plans.ClientPlan", null=True, blank=True, on_delete=models.SET_NULL, related_name="projects")
     name = models.CharField(max_length=180)
     project_type = models.CharField(max_length=30, choices=ProjectType.choices)
-    status = models.CharField(max_length=30, choices=ProjectStatus.choices, default=ProjectStatus.ADMINISTRATION)
+    status = models.CharField(max_length=30, choices=ProjectStatus.choices, default=ProjectStatus.ACTIVE)
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
     progress = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(100)])
     start_date = models.DateField(null=True, blank=True)
@@ -33,14 +33,8 @@ class Project(TimestampedModel):
 
     @property
     def workflow_position(self):
-        stages = [
-            "administration", "design_intake", "development_intake",
-            "information_ready", "in_development", "review", "delivered"
-        ]
-        try:
-            return stages.index(self.status) + 1
-        except ValueError:
-            return 0
+        return self.progress
+
 
     def __str__(self):
         return f"{self.project_code or 'PRJ'} · {self.name}"

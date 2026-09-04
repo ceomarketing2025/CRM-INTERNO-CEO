@@ -1,0 +1,5933 @@
+{% extends 'base.html' %}{% load questionnaire_tags %}
+{% block page_heading %}Ficha técnica · Desarrollo{% endblock %}
+{% block content %}
+<div class="page-intro technical-intro">
+  <div><span class="eyebrow">Desarrollo · {{ questionnaire.project.project_code }}</span><h2>{{ questionnaire.project.client.business_name }}</h2><p>Formulario guiado. No hay estados manuales: cada bloque se marca en verde automáticamente cuando tiene la información necesaria.</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'questionnaires:development_dashboard' %}">Desarrollo</a><a class="btn btn-secondary" href="{% url 'projects:detail' questionnaire.project.pk %}">Proyecto</a><a class="btn btn-primary" href="{% url 'handoff:summary' questionnaire.project.pk %}">Resumen</a></div>
+</div>
+
+<div class="technical-progress-card card">
+  <div><span class="eyebrow">Avance de ficha</span><strong id="technical-percent">{{ progress.percent }}%</strong><small id="technical-count">{{ progress.complete }} de {{ progress.total }} bloques listos</small></div>
+  <div class="progress technical-progress"><i id="technical-progress-bar" style="width:{{ progress.percent }}%"></i></div>
+  <div class="sync-note">Google Business, webmail y sitio web están sincronizados con Marketing.</div>
+</div>
+
+<form method="post" id="technical-form" class="technical-form">
+  {% csrf_token %}
+
+  <div class="requirement-accordion">
+
+
+    <section class="requirement-card" data-requirement-section="general">
+
+      <button
+        type="button"
+        class="requirement-card-head"
+        data-requirement-toggle
+      >
+        <span class="requirement-number">01</span>
+
+        <span class="requirement-copy">
+          <strong>Cliente e información general</strong>
+          <small>
+            Datos del cliente, empresa, contacto, dirección y dominio.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress">
+            <i style="width:0%"></i>
+          </span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">
+          Sin iniciar
+        </span>
+
+        <span class="requirement-toggle-text">
+          Ver más
+        </span>
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div
+          class="tech-card {% if data.company_description.complete %}complete{% endif %}"
+          id="block-company"
+        >
+
+          <div class="tech-head">
+            <div>
+              <strong>
+                Breve descripción de la empresa
+              </strong>
+
+              <small>
+                ¿A qué se dedica la empresa?
+              </small>
+            </div>
+          </div>
+
+          <textarea
+            name="company_description"
+            rows="4"
+            placeholder="Descripción de la actividad..."
+          >{{ data.company_description.text }}</textarea>
+
+        </div>
+
+
+        <div class="section-save-actions">
+
+          <button
+            type="submit"
+            class="btn btn-secondary"
+          >
+            Guardar sección
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-primary requirement-save-close"
+          >
+            Guardar y cerrar
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="business">
+
+      <button
+        type="button"
+        class="requirement-card-head"
+        data-requirement-toggle
+      >
+
+        <span class="requirement-number">02</span>
+
+        <span class="requirement-copy">
+          <strong>Lógica del negocio</strong>
+          <small>
+            Actividad, tipo de cliente y objetivo comercial.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress">
+            <i style="width:0%"></i>
+          </span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">
+          Sin iniciar
+        </span>
+
+        <span class="requirement-toggle-text">
+          Ver más
+        </span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-card">
+
+          <div class="tech-head">
+            <div>
+              <strong>Tipo de cliente</strong>
+              <small>
+                Selecciona a quién atiende la empresa.
+              </small>
+            </div>
+          </div>
+
+         <div class="choice-pills">
+
+            <label>
+              <input
+                type="radio"
+                name="customer_type"
+                value="residential"
+                {% if data.business_logic.json.customer_type == 'residential' %}checked{% endif %}
+              >
+              Residencial
+            </label>
+
+            <label>
+              <input
+                type="radio"
+                name="customer_type"
+                value="commercial"
+                {% if data.business_logic.json.customer_type == 'commercial' %}checked{% endif %}
+              >
+              Comercial
+            </label>
+
+            <label>
+              <input
+                type="radio"
+                name="customer_type"
+                value="both"
+                {% if data.business_logic.json.customer_type == 'both' %}checked{% endif %}
+              >
+              Ambos
+            </label>
+
+            <label>
+              <input
+                type="radio"
+                name="customer_type"
+                value="na"
+                {% if data.business_logic.json.customer_type == 'na' %}checked{% endif %}
+              >
+              No aplica
+            </label>
+
+          </div>
+
+        </div>
+
+
+        <div class="tech-grid two">
+
+          <div class="tech-card">
+            <label>Qué vende</label>
+            <textarea
+              name="business_sells"
+              rows="2"
+            >{{ data.business_logic.json.sells|default:'' }}</textarea>
+          </div>
+
+          <div class="tech-card">
+            <label>A quién le vende</label>
+            <textarea
+              name="business_audience"
+              rows="2"
+            >{{ data.business_logic.json.audience|default:'' }}</textarea>
+          </div>
+
+          <div class="tech-card">
+            <label>Dónde vende</label>
+            <textarea
+              name="business_where"
+              rows="2"
+            >{{ data.business_logic.json.where|default:'' }}</textarea>
+          </div>
+
+          <div class="tech-card">
+            <label>Qué quiere vender más</label>
+            <textarea
+                  name="business_priority_sale"
+              rows="2"
+            >{{ data.business_logic.json.priority_sale|default:'' }}</textarea>
+          </div>
+
+        </div>
+
+
+        <div class="tech-card">
+          <label>
+            Qué acción queremos que realice el visitante
+          </label>
+
+          <select name="visitor_action">
+
+            <option value="">
+              Seleccionar
+            </option>
+
+            <option
+              value="call"
+              {% if data.business_logic.json.visitor_action == 'call' %}selected{% endif %}
+            >
+              Llamar
+            </option>
+
+            <option
+              value="quote"
+              {% if data.business_logic.json.visitor_action == 'quote' %}selected{% endif %}
+            >
+              Solicitar cotización
+            </option>
+
+            <option
+              value="estimate"
+              {% if data.business_logic.json.visitor_action == 'estimate' %}selected{% endif %}
+            >
+              Solicitar estimado
+            </option>
+
+            <option
+              value="contact"
+              {% if data.business_logic.json.visitor_action == 'contact' %}selected{% endif %}
+            >
+              Contactar
+            </option>
+
+            <option
+              value="book"
+              {% if data.business_logic.json.visitor_action == 'book' %}selected{% endif %}
+            >
+              Reservar
+            </option>
+
+            <option
+              value="other"
+              {% if data.business_logic.json.visitor_action == 'other' %}selected{% endif %}
+            >
+              Otro
+            </option>
+
+          </select>
+        </div>
+
+
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">
+            Guardar sección
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-primary requirement-save-close"
+          >
+            Guardar y cerrar
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="services">
+
+      <button
+        type="button"
+        class="requirement-card-head"
+        data-requirement-toggle
+      >
+
+        <span class="requirement-number">03</span>
+
+        <span class="requirement-copy">
+          <strong>Servicios</strong>
+          <small>
+            Servicio principal, categorías, complementarios y excluidos.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress">
+            <i style="width:0%"></i>
+          </span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">
+          Sin iniciar
+        </span>
+
+        <span class="requirement-toggle-text">
+          Ver más
+        </span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div
+          class="tech-card important-card {% if data.main_services.complete %}complete{% endif %}"
+          id="block-services"
+        >
+
+          <div class="tech-head">
+            <div>
+              <strong>Servicios de la empresa</strong>
+              <small>
+                Organiza los servicios por bloques y prioridad.
+              </small>
+            </div>
+          </div>
+
+
+          <div class="business-template-selector">
+
+            <label>Tipo de negocio</label>
+
+            <div class="choice-cards business-type-cards">
+
+              <label>
+                <input
+                  type="radio"
+                  name="business_type"
+                  value="tree_service"
+                  {% if data.main_services.json.business_type == 'tree_service' %}checked{% endif %}
+                >
+                <span>
+                  <b>Tree Service</b>
+                  <small>Servicios de árboles.</small>
+                </span>
+              </label>
+
+              <label>
+                <input
+                  type="radio"
+                  name="business_type"
+                  value="roofing"
+                  {% if data.main_services.json.business_type == 'roofing' %}checked{% endif %}
+                >
+                <span>
+                  <b>Roofing</b>
+                  <small>Servicios de techos.</small>
+                </span>
+              </label>
+
+              <label>
+                <input
+                  type="radio"
+                  name="business_type"
+                  value="remodeling"
+                  {% if data.main_services.json.business_type == 'remodeling' %}checked{% endif %}
+                >
+                <span>
+                  <b>Remodeling</b>
+                  <small>Remodelaciones y construcción.</small>
+                </span>
+              </label>
+
+              <label>
+                <input
+                  type="radio"
+                  name="business_type"
+                  value="other"
+                  {% if data.main_services.json.business_type == 'other' %}checked{% endif %}
+                >
+                <span>
+                  <b>Otro</b>
+                  <small>Crear categorías manualmente.</small>
+                </span>
+              </label>
+
+            </div>
+
+
+            <div
+              class="conditional-panel"
+              data-show-when="business_type:other"
+            >
+              <label>Tipo de negocio</label>
+
+              <input
+                type="text"
+                name="business_type_other"
+                value="{{ data.main_services.json.business_type_other|default:'' }}"
+                placeholder="Ej.: Masonry"
+              >
+            </div>
+
+          </div>
+
+
+          <div class="service-template-actions">
+
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              id="load-service-template"
+            >
+              Cargar categorías predeterminadas
+            </button>
+
+          </div>
+
+
+          <div class="service-main-area">
+
+            <div class="service-block-heading">
+              <div>
+                <strong>Servicio principal</strong>
+                <small>Solo puede existir uno.</small>
+              </div>
+            </div>
+
+            <div
+              id="primary-service-zone"
+              class="service-drop-zone primary-service-zone"
+              data-service-zone="primary"
+            >
+              <div class="service-zone-empty">
+                Arrastra aquí el servicio principal.
+              </div>
+            </div>
+
+          </div>
+
+
+          <div class="service-block-heading">
+
+            <div>
+              <strong>Categorías de servicios</strong>
+              <small>
+                Arrastra los bloques para definir su prioridad.
+              </small>
+            </div>
+
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              id="add-service-category"
+            >
+              Agregar categoría
+            </button>
+
+          </div>
+
+
+          <div
+            id="service-categories"
+            class="service-categories"
+          ></div>
+          {{ data.main_services.json|json_script:"saved-services-data" }}
+
+          <div class="excluded-services-area">
+
+            <div class="service-block-heading">
+
+              <div>
+                <strong>Servicios excluidos</strong>
+                <small>
+                  Servicios que no deben ofrecerse ni publicarse.
+                </small>
+              </div>
+
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                id="add-excluded-service"
+              >
+                Agregar servicio excluido
+              </button>
+
+            </div>
+
+            <div
+              id="excluded-services"
+              class="excluded-services-list"
+            >
+
+              {% for item in data.main_services.json.excluded_services %}
+
+              <div class="excluded-service-row">
+
+                <input
+                  type="text"
+                  name="excluded_service_name"
+                  value="{{ item }}"
+                >
+
+                <button
+                  type="button"
+                  class="row-remove"
+                >
+                  Eliminar
+                </button>
+
+              </div>
+
+              {% endfor %}
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="section-save-actions">
+
+          <button
+            type="submit"
+            class="btn btn-secondary"
+            name="section_focus"
+            value="services"
+          >
+            Guardar sección
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-primary requirement-save-close"
+          >
+            Guardar y cerrar
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="plan">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+
+        <span class="requirement-number">04</span>
+
+        <span class="requirement-copy">
+          <strong>Plan del cliente</strong>
+          <small>
+            Plan contratado y límites de cobertura.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress"><i style="width:0%"></i></span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">Sin iniciar</span>
+        <span class="requirement-toggle-text">Ver más</span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-card">
+
+          <label>Plan</label>
+
+          <input
+            type="text"
+            value="{{ questionnaire.project.purchased_plan.plan.name|default:'Sin plan' }}"
+            readonly
+          >
+
+        </div>
+
+        <div class="section-save-actions">
+          <button type="button" class="btn btn-primary requirement-close-only">
+            Cerrar sección
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="coverage">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+
+        <span class="requirement-number">05</span>
+
+        <span class="requirement-copy">
+          <strong>Cobertura geográfica</strong>
+          <small>
+            Dirección, radio, estados, counties y ciudades.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress"><i style="width:0%"></i></span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">Sin iniciar</span>
+        <span class="requirement-toggle-text">Ver más</span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-card {% if data.service_areas.complete %}complete{% endif %}" id="block-areas">
+
+          <div class="tech-head">
+            <div>
+              <strong>Áreas donde trabaja</strong>
+              <small>
+                Registra estados, counties y ciudades.
+              </small>
+            </div>
+          </div>
+
+          <div class="dynamic-list" id="areas-list">
+
+            {% for item in data.service_areas.json.items %}
+
+            <div class="dynamic-row area-row">
+
+              <select name="area_type">
+                <option value="state" {% if item.type == 'state' %}selected{% endif %}>Estado</option>
+                <option value="county" {% if item.type == 'county' %}selected{% endif %}>County</option>
+                <option value="city" {% if item.type == 'city' %}selected{% endif %}>Ciudad</option>
+              </select>
+
+              <input
+                type="text"
+                name="area_name"
+                value="{{ item.name }}"
+              >
+
+              <button type="button" class="row-remove">
+                Eliminar
+              </button>
+
+            </div>
+
+            {% empty %}
+
+            <div class="dynamic-row area-row">
+
+              <select name="area_type">
+                <option value="state">Estado</option>
+                <option value="county">County</option>
+                <option value="city">Ciudad</option>
+              </select>
+
+              <input
+                type="text"
+                name="area_name"
+                placeholder="Nombre del área"
+              >
+
+              <button type="button" class="row-remove">
+                Eliminar
+              </button>
+
+            </div>
+
+            {% endfor %}
+
+          </div>
+
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            data-add-row="area"
+          >
+            Añadir área
+          </button>
+
+        </div>
+
+
+        <div class="tech-card {% if data.coverage.complete %}complete{% endif %}" id="block-coverage">
+
+          <label>Radio de servicio</label>
+
+          <div class="input-suffix">
+            <input
+              type="number"
+              min="0"
+              name="coverage_miles"
+              value="{{ data.coverage.json.miles|default:'' }}"
+            >
+            <span>millas</span>
+          </div>
+
+        </div>
+
+
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">
+            Guardar sección
+          </button>
+
+          <button type="button" class="btn btn-primary requirement-save-close">
+            Guardar y cerrar
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="contact">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+
+        <span class="requirement-number">06</span>
+
+        <span class="requirement-copy">
+          <strong>Horarios y contacto</strong>
+          <small>
+            Horarios, teléfonos y disponibilidad.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress"><i style="width:0%"></i></span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">Sin iniciar</span>
+        <span class="requirement-toggle-text">Ver más</span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-grid two">
+
+          <div class="tech-card {% if data.business_hours.complete %}complete{% endif %}" id="block-hours">
+
+            <strong>Horario de trabajo</strong>
+
+            <div class="time-range">
+
+              <div>
+                <label>Desde</label>
+                <div>
+                  <input
+                    type="text"
+                    name="hours_start"
+                    value="{{ data.business_hours.json.start|default:'' }}"
+                  >
+
+                  <select name="hours_start_period">
+                    <option {% if data.business_hours.json.start_period != 'PM' %}selected{% endif %}>AM</option>
+                    <option {% if data.business_hours.json.start_period == 'PM' %}selected{% endif %}>PM</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label>Hasta</label>
+                <div>
+                  <input
+                    type="text"
+                    name="hours_end"
+                    value="{{ data.business_hours.json.end|default:'' }}"
+                  >
+
+                  <select name="hours_end_period">
+                    <option {% if data.business_hours.json.end_period == 'AM' %}selected{% endif %}>AM</option>
+                    <option {% if data.business_hours.json.end_period != 'AM' %}selected{% endif %}>PM</option>
+                  </select>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div class="tech-card {% if data.is_24_7.complete %}complete{% endif %}" id="block-247">
+
+            <strong>Atención 24/7</strong>
+
+            <div class="choice-pills">
+
+              <label>
+                <input type="radio" name="is_24_7" value="yes" {% if data.is_24_7.json.answer == 'yes' %}checked{% endif %}>
+                Sí
+              </label>
+
+              <label>
+                <input type="radio" name="is_24_7" value="no" {% if data.is_24_7.json.answer == 'no' %}checked{% endif %}>
+                No
+              </label>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="tech-card {% if data.contact_numbers.complete %}complete{% endif %}" id="block-phones">
+
+          <div class="tech-head">
+            <div>
+              <strong>Teléfonos</strong>
+              <small>
+                Cada número puede indicar si también usa WhatsApp.
+              </small>
+            </div>
+          </div>
+
+          <div class="dynamic-list" id="phones-list">
+
+            {% for item in data.contact_numbers.json.numbers %}
+
+            <div class="dynamic-row phone-row">
+
+              <input
+                type="tel"
+                name="phone_number"
+                value="{{ item.number }}"
+              >
+
+              <label class="mini-choice">
+                <input
+                  type="radio"
+                  name="phone_primary"
+                  value="{{ forloop.counter0 }}"
+                  {% if item.primary %}checked{% endif %}
+                >
+                Principal
+              </label>
+
+              <label class="mini-choice">
+                <input
+                  type="checkbox"
+                  name="phone_whatsapp"
+                  value="{{ forloop.counter0 }}"
+                  {% if item.whatsapp %}checked{% endif %}
+                >
+                WhatsApp
+              </label>
+
+              <button type="button" class="row-remove">
+                Eliminar
+              </button>
+
+            </div>
+
+            {% empty %}
+
+            <div class="dynamic-row phone-row">
+
+              <input
+                type="tel"
+                name="phone_number"
+                placeholder="Número"
+              >
+
+              <label class="mini-choice">
+                <input
+                  type="radio"
+                  name="phone_primary"
+                  value="0"
+                  checked
+                >
+                Principal
+              </label>
+
+              <label class="mini-choice">
+                <input
+                  type="checkbox"
+                  name="phone_whatsapp"
+                  value="0"
+                >
+                WhatsApp
+              </label>
+
+              <button type="button" class="row-remove">
+                Eliminar
+              </button>
+
+            </div>
+
+            {% endfor %}
+
+          </div>
+
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            data-add-row="phone"
+          >
+            Añadir teléfono
+          </button>
+
+        </div>
+
+
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">
+            Guardar sección
+          </button>
+
+          <button type="button" class="btn btn-primary requirement-save-close">
+            Guardar y cerrar
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="quotes">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+
+        <span class="requirement-number">07</span>
+
+        <span class="requirement-copy">
+          <strong>Cotizaciones</strong>
+          <small>
+            Estimados gratuitos, canales y proceso.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress"><i style="width:0%"></i></span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">Sin iniciar</span>
+        <span class="requirement-toggle-text">Ver más</span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-card">
+
+          <strong>Estimados gratuitos</strong>
+
+          <div class="choice-pills">
+
+  <label>
+    <input
+      type="radio"
+      name="free_estimates"
+      value="yes"
+      {% if data.quotes.json.free_estimates == 'yes' %}checked{% endif %}
+    >
+    Sí
+  </label>
+
+  <label>
+    <input
+      type="radio"
+      name="free_estimates"
+      value="no"
+      {% if data.quotes.json.free_estimates == 'no' %}checked{% endif %}
+    >
+    No
+  </label>
+
+  <label>
+    <input
+      type="radio"
+      name="free_estimates"
+      value="pending"
+      {% if data.quotes.json.free_estimates == 'pending' %}checked{% endif %}
+    >
+    Sin confirmar
+  </label>
+
+</div>
+
+        </div>
+
+
+        <div class="tech-card">
+
+          <strong>Canales para solicitar cotización</strong>
+
+          <div class="choice-pills">
+
+            <label>
+              <input type="checkbox" name="quote_channel" value="primary_phone">
+              Teléfono principal
+            </label>
+
+            <label>
+              <input type="checkbox" name="quote_channel" value="secondary_phone">
+              Teléfono secundario
+            </label>
+
+            <label>
+              <input type="checkbox" name="quote_channel" value="whatsapp">
+              WhatsApp
+            </label>
+
+            <label>
+              <input type="checkbox" name="quote_channel" value="form">
+              Formulario web
+            </label>
+
+            <label>
+              <input type="checkbox" name="quote_channel" value="onsite">
+              Evaluación presencial
+            </label>
+
+            <label>
+              <input type="checkbox" name="quote_channel" value="other">
+              Otro
+            </label>
+
+          </div>
+
+        </div>
+
+
+        <div class="tech-card">
+          <label>Proceso / notas</label>
+          <textarea
+            name="quote_notes"
+            rows="4"
+          >{{ data.quotes.json.notes|default:'' }}</textarea>
+        </div>
+
+
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">Guardar sección</button>
+          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="brand">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+
+        <span class="requirement-number">08</span>
+
+        <span class="requirement-copy">
+          <strong>Misión, visión y marca</strong>
+          <small>
+            Misión, visión, slogan e información de marca.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress"><i style="width:0%"></i></span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">Sin iniciar</span>
+        <span class="requirement-toggle-text">Ver más</span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-grid two">
+
+          <div class="tech-card {% if data.slogan.complete %}complete{% endif %}" id="block-slogan">
+
+            <strong>Slogan</strong>
+
+            <div class="choice-pills">
+              <label><input type="radio" name="slogan_mode" value="existing" {% if data.slogan.json.mode == 'existing' %}checked{% endif %}> Ya tiene</label>
+              <label><input type="radio" name="slogan_mode" value="create" {% if data.slogan.json.mode == 'create' %}checked{% endif %}> Crear uno</label>
+              <label><input type="radio" name="slogan_mode" value="none" {% if data.slogan.json.mode == 'none' %}checked{% endif %}> No crear</label>
+            </div>
+
+            <div id="slogan-detail" class="conditional-panel">
+              <input
+                type="text"
+                name="slogan_text"
+                value="{{ data.slogan.json.text|default:'' }}"
+              >
+            </div>
+
+          </div>
+
+
+          <div class="tech-card {% if data.has_mission_vision.complete %}complete{% endif %}" id="block-mission">
+
+            <strong>¿La empresa tiene misión y visión?</strong>
+
+            <div class="choice-pills">
+              <label><input type="radio" name="mission_has" value="yes" {% if data.has_mission_vision.json.has == 'yes' %}checked{% endif %}> Sí</label>
+              <label><input type="radio" name="mission_has" value="no" {% if data.has_mission_vision.json.has == 'no' %}checked{% endif %}> No</label>
+            </div>
+
+            <div class="conditional-panel" data-show-when="mission_has:yes">
+
+              <label>Misión original</label>
+              <textarea name="mission_text" rows="3">{{ data.has_mission_vision.json.mission|default:'' }}</textarea>
+
+              <label>Visión original</label>
+              <textarea name="vision_text" rows="3">{{ data.has_mission_vision.json.vision|default:'' }}</textarea>
+
+            </div>
+
+
+            <div class="conditional-panel" data-show-when="mission_has:no">
+
+              <label>¿Por qué nació la empresa?</label>
+              <textarea name="mission_origin" rows="2">{{ data.has_mission_vision.json.mission_origin|default:'' }}</textarea>
+
+              <label>¿A quién ayuda y qué la hace diferente?</label>
+              <textarea name="mission_clients" rows="2">{{ data.has_mission_vision.json.mission_clients|default:'' }}</textarea>
+
+              <label>¿Cómo imagina la empresa en 5 a 10 años?</label>
+              <textarea name="vision_future" rows="2">{{ data.has_mission_vision.json.vision_future|default:'' }}</textarea>
+
+              <label>¿Qué huella quiere dejar?</label>
+              <textarea name="vision_legacy" rows="2">{{ data.has_mission_vision.json.vision_legacy|default:'' }}</textarea>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">Guardar sección</button>
+          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="certifications">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+
+        <span class="requirement-number">09</span>
+
+        <span class="requirement-copy">
+          <strong>Certificaciones y garantías</strong>
+          <small>
+            Experiencia, certificaciones y garantías.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress"><i style="width:0%"></i></span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">Sin iniciar</span>
+        <span class="requirement-toggle-text">Ver más</span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-grid three">
+
+          <div class="tech-card {% if data.certifications.complete %}complete{% endif %}" id="block-certifications">
+            <strong>Certificaciones profesionales</strong>
+
+            <div class="choice-pills">
+              <label><input type="radio" name="certifications_has" value="yes" {% if data.certifications.json.has == 'yes' %}checked{% endif %}> Sí</label>
+              <label><input type="radio" name="certifications_has" value="no" {% if data.certifications.json.has == 'no' %}checked{% endif %}> No</label>
+            </div>
+
+            <div class="conditional-panel" data-show-when="certifications_has:yes">
+              <textarea name="certifications_detail" rows="3">{{ data.certifications.json.detail|default:'' }}</textarea>
+            </div>
+          </div>
+
+
+          <div class="tech-card {% if data.warranties.complete %}complete{% endif %}" id="block-warranties">
+
+            <strong>Garantías</strong>
+
+            <div class="choice-pills">
+              <label><input type="radio" name="warranties_has" value="yes" {% if data.warranties.json.has == 'yes' %}checked{% endif %}> Sí</label>
+              <label><input type="radio" name="warranties_has" value="no" {% if data.warranties.json.has == 'no' %}checked{% endif %}> No</label>
+            </div>
+
+            <div class="conditional-panel" data-show-when="warranties_has:yes">
+              <textarea name="warranties_detail" rows="3">{{ data.warranties.json.detail|default:'' }}</textarea>
+            </div>
+          </div>
+
+
+          <div class="tech-card {% if data.experience_years.complete %}complete{% endif %}" id="block-experience">
+
+            <label>Años de experiencia</label>
+
+            <input
+              type="number"
+              min="0"
+              name="experience_years"
+              value="{{ data.experience_years.text|default:'' }}"
+            >
+
+          </div>
+
+        </div>
+
+
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">Guardar sección</button>
+          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="team">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+
+        <span class="requirement-number">10</span>
+
+        <span class="requirement-copy">
+          <strong>Team</strong>
+          <small>
+            Define cómo presentar al dueño o al equipo.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress"><i style="width:0%"></i></span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">Sin iniciar</span>
+        <span class="requirement-toggle-text">Ver más</span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-card {% if data.show_team.complete %}complete{% endif %}" id="block-team">
+
+          <div class="choice-cards vertical">
+
+            <label>
+              <input type="radio" name="team_scope" value="owner_text" {% if data.show_team.json.scope == 'owner_text' %}checked{% endif %}>
+              <span>
+                <b>Texto sobre el dueño</b>
+              </span>
+            </label>
+
+            <label>
+              <input type="radio" name="team_scope" value="team_photo" {% if data.show_team.json.scope == 'team_photo' %}checked{% endif %}>
+              <span>
+                <b>Foto con el equipo</b>
+              </span>
+            </label>
+
+            <label>
+              <input type="radio" name="team_scope" value="group_photos" {% if data.show_team.json.scope == 'group_photos' %}checked{% endif %}>
+              <span>
+                <b>Fotos por equipos o grupos</b>
+              </span>
+            </label>
+
+            <label>
+              <input type="radio" name="team_scope" value="other" {% if data.show_team.json.scope == 'other' %}checked{% endif %}>
+              <span>
+                <b>Otro</b>
+              </span>
+            </label>
+
+          </div>
+
+
+          <div class="conditional-panel" data-show-when="team_scope:other">
+            <label>Especifique otra opción</label>
+            <input
+              type="text"
+              name="team_other"
+              value="{{ data.show_team.json.other|default:'' }}"
+            >
+          </div>
+
+
+          <label>Notas</label>
+
+          <textarea
+            name="team_notes"
+            rows="3"
+          >{{ data.show_team.json.notes|default:'' }}</textarea>
+
+        </div>
+
+
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">Guardar sección</button>
+          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="marketing">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+
+        <span class="requirement-number">11</span>
+
+        <span class="requirement-copy">
+          <strong>Redes y Google Business</strong>
+          <small>
+            Redes sociales y datos compartidos desde Marketing.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress"><i style="width:0%"></i></span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">Sin iniciar</span>
+        <span class="requirement-toggle-text">Ver más</span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-card {% if data.has_social.complete %}complete{% endif %}" id="block-social">
+
+          <strong>Redes sociales</strong>
+
+          <div class="choice-pills">
+            <label><input type="radio" name="social_has" value="yes" {% if data.has_social.json.has == 'yes' %}checked{% endif %}> Sí</label>
+            <label><input type="radio" name="social_has" value="no" {% if data.has_social.json.has == 'no' %}checked{% endif %}> No</label>
+          </div>
+
+          <div class="conditional-panel" data-show-when="social_has:yes">
+
+            <div class="social-network-grid">
+
+              {% for key,label in social_networks %}
+              {% with url=data.has_social.json.networks|get_item:key %}
+
+              <div class="social-network-item">
+
+                <label class="network-check">
+                  <input
+                    type="checkbox"
+                    name="social_enabled_{{ key }}"
+                    value="1"
+                    {% if url %}checked{% endif %}
+                  >
+                  {{ label }}
+                </label>
+
+                <input
+                  class="social-url"
+                  type="url"
+                  name="social_url_{{ key }}"
+                  value="{{ url|default:'' }}"
+                  placeholder="https://..."
+                >
+
+              </div>
+
+              {% endwith %}
+              {% endfor %}
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="tech-card shared-card">
+          <strong>Google Business</strong>
+          <small>
+            Esta información proviene del módulo de Marketing.
+          </small>
+
+          <div class="sync-note">
+            Consultar y editar desde Marketing.
+          </div>
+        </div>
+
+
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">Guardar sección</button>
+          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="seo">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+
+        <span class="requirement-number">12</span>
+
+        <span class="requirement-copy">
+          <strong>SEO y estructura web</strong>
+          <small>
+            Keywords, servicios prioritarios y páginas del sitio.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress"><i style="width:0%"></i></span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">Sin iniciar</span>
+        <span class="requirement-toggle-text">Ver más</span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-card {% if data.seo_page_strategy.complete %}complete{% endif %}" id="block-seo-strategy">
+
+          <strong>Estrategia de páginas de servicios</strong>
+
+          <div class="choice-cards vertical">
+
+            <label>
+              <input
+                type="radio"
+                name="seo_page_strategy"
+                value="study"
+                {% if data.seo_page_strategy.json.strategy == 'study' %}checked{% endif %}
+              >
+              <span>
+                <b>Hacer estudio</b>
+                <small>
+                  Definir las páginas según investigación SEO.
+                </small>
+              </span>
+            </label>
+
+            <label>
+              <input
+                type="radio"
+                name="seo_page_strategy"
+                value="client_services"
+                {% if data.seo_page_strategy.json.strategy == 'client_services' %}checked{% endif %}
+              >
+              <span>
+                <b>Usar servicios indicados</b>
+                <small>
+                  Crear páginas con los servicios indicados por el cliente.
+                </small>
+              </span>
+            </label>
+
+          </div>
+
+        </div>
+
+
+        <div class="tech-card">
+
+          <strong>Estructura web</strong>
+
+          <div class="choice-pills">
+            <label><input type="checkbox" name="website_pages" value="home"> Home</label>
+            <label><input type="checkbox" name="website_pages" value="about"> About</label>
+            <label><input type="checkbox" name="website_pages" value="services"> Services</label>
+            <label><input type="checkbox" name="website_pages" value="service_pages"> Individual Service Pages</label>
+            <label><input type="checkbox" name="website_pages" value="areas"> Areas We Service</label>
+            <label><input type="checkbox" name="website_pages" value="city_pages"> City Pages</label>
+            <label><input type="checkbox" name="website_pages" value="contact"> Contact</label>
+            <label><input type="checkbox" name="website_pages" value="quote"> Quote</label>
+            <label><input type="checkbox" name="website_pages" value="gallery"> Gallery</label>
+            <label><input type="checkbox" name="website_pages" value="projects"> Projects</label>
+            <label><input type="checkbox" name="website_pages" value="reviews"> Reviews</label>
+            <label><input type="checkbox" name="website_pages" value="faq"> FAQ</label>
+            <label><input type="checkbox" name="website_pages" value="blog"> Blog</label>
+            <label><input type="checkbox" name="website_pages" value="financing"> Financing</label>
+            <label><input type="checkbox" name="website_pages" value="careers"> Careers</label>
+          </div>
+
+        </div>
+
+
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">Guardar sección</button>
+          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="resources">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+
+        <span class="requirement-number">13</span>
+
+        <span class="requirement-copy">
+          <strong>Recursos</strong>
+          <small>
+            Enlace general a los materiales compartidos del proyecto.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress"><i style="width:0%"></i></span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">Sin iniciar</span>
+        <span class="requirement-toggle-text">Ver más</span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-card">
+
+          <label>Carpeta de recursos</label>
+          <input
+            type="url"
+            name="resources_url"
+            value="{{ data.resources.json.url|default:'' }}"
+            placeholder="https://..."
+          >
+
+          <label>Estado</label>
+          <select name="resources_status">
+
+            <option value="">
+              Seleccionar
+            </option>
+
+            <option
+              value="received"
+              {% if data.resources.json.status == 'received' %}selected{% endif %}
+            >
+              Recibido
+            </option>
+
+            <option
+              value="pending"
+              {% if data.resources.json.status == 'pending' %}selected{% endif %}
+            >
+              Pendiente
+            </option>
+
+            <option
+              value="na"
+              {% if data.resources.json.status == 'na' %}selected{% endif %}
+            >
+              No aplica
+            </option>
+
+          </select>
+
+          <label>Notas</label>
+          <textarea
+          name="resources_notes"
+          rows="3"
+        >{{ data.resources.json.notes|default:'' }}</textarea>
+
+        </div>
+
+
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">Guardar sección</button>
+          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="forms">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+
+        <span class="requirement-number">14</span>
+
+        <span class="requirement-copy">
+          <strong>Formularios</strong>
+          <small>
+            Campos y configuración del formulario web.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress"><i style="width:0%"></i></span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">Sin iniciar</span>
+        <span class="requirement-toggle-text">Ver más</span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-card">
+
+          <strong>Campos del formulario</strong>
+
+          <div class="choice-pills">
+            <label><input type="checkbox" name="form_fields" value="name"> Nombre</label>
+            <label><input type="checkbox" name="form_fields" value="phone"> Teléfono</label>
+            <label><input type="checkbox" name="form_fields" value="email"> Email</label>
+            <label><input type="checkbox" name="form_fields" value="address"> Dirección</label>
+            <label><input type="checkbox" name="form_fields" value="city"> Ciudad</label>
+            <label><input type="checkbox" name="form_fields" value="zip"> ZIP</label>
+            <label><input type="checkbox" name="form_fields" value="service"> Servicio</label>
+            <label><input type="checkbox" name="form_fields" value="date"> Fecha</label>
+            <label><input type="checkbox" name="form_fields" value="description"> Descripción</label>
+            <label><input type="checkbox" name="form_fields" value="photos"> Fotografías</label>
+            <label><input type="checkbox" name="form_fields" value="other"> Otro</label>
+          </div>
+
+          <label>Email receptor</label>
+          <input
+            type="email"
+            name="form_receiver_email"
+            value="{{ data.website_forms.json.receiver_email|default:'' }}"
+          >
+
+          <label>WhatsApp receptor</label>
+          <input
+              type="text"
+              name="form_receiver_whatsapp"
+              value="{{ data.website_forms.json.receiver_whatsapp|default:'' }}"
+            >
+
+          <label>Mensaje de confirmación</label>
+          <textarea
+              name="form_confirmation_message"
+              rows="2"
+            >{{ data.website_forms.json.confirmation_message|default:'' }}</textarea>
+
+          <label>Redirección</label>
+          <input
+              type="text"
+              name="form_redirect"
+              value="{{ data.website_forms.json.redirect|default:'' }}"
+            >
+
+        </div>
+
+
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">Guardar sección</button>
+          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="validation">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+
+        <span class="requirement-number">15</span>
+
+        <span class="requirement-copy">
+          <strong>Validación final</strong>
+          <small>
+            Resumen automático de información completada y pendiente.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress"><i style="width:0%"></i></span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">Automático</span>
+        <span class="requirement-toggle-text">Ver más</span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-card">
+
+          <strong>Resumen de validación</strong>
+
+          <div id="validation-summary">
+            La validación se calcula con la información registrada en las demás secciones.
+          </div>
+
+        </div>
+
+        <div class="section-save-actions">
+          <button type="button" class="btn btn-primary requirement-close-only">
+            Cerrar sección
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+
+    <section class="requirement-card" data-requirement-section="internal">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+
+        <span class="requirement-number">16</span>
+
+        <span class="requirement-copy">
+          <strong>Información interna</strong>
+          <small>
+            Control y notas internas del equipo.
+          </small>
+        </span>
+
+        <span class="requirement-progress-wrap">
+          <span class="requirement-progress"><i style="width:0%"></i></span>
+          <span class="requirement-percent">0%</span>
+        </span>
+
+        <span class="requirement-status">Interno</span>
+        <span class="requirement-toggle-text">Ver más</span>
+
+      </button>
+
+
+      <div class="requirement-card-body">
+
+        <div class="tech-card">
+
+          <label>Responsable</label>
+          <input
+            type="text"
+            value="{{ questionnaire.project.assigned_to|default:'' }}"
+            readonly
+          >
+
+          <label>Plan</label>
+          <input
+            type="text"
+            value="{{ questionnaire.project.purchased_plan.plan.name|default:'Sin plan' }}"
+            readonly
+          >
+
+          <label>Observaciones internas</label>
+
+          <textarea
+            name="internal_meeting_notes"
+            rows="4"
+          >{{ data.internal_meeting_notes.text }}</textarea>
+
+        </div>
+
+
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">
+            Guardar sección
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-primary requirement-save-close"
+          >
+            Guardar y cerrar
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+
+  </div>
+
+
+  <div class="technical-savebar card">
+
+    <div>
+      <strong>
+        Ficha técnica ·
+        <span id="technical-percent-bottom">
+          {{ progress.percent }}%
+        </span>
+      </strong>
+
+      <span>
+        La información se reutiliza en SEO, Diseño y Desarrollo.
+      </span>
+    </div>
+
+    <button
+      class="btn btn-primary btn-lg"
+      type="submit"
+    >
+      Guardar ficha técnica
+    </button>
+
+  </div>
+
+</form>
+
+<style>
+
+.requirement-accordion{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+
+/* CARD */
+
+.requirement-card{
+  width:100%;
+  margin:0;
+  overflow:hidden;
+  border:1px solid #e1e6ee;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(17,29,52,.03);
+}
+
+
+/* HEADER */
+
+.requirement-card-head{
+  appearance:none;
+  -webkit-appearance:none;
+  width:100%;
+  min-height:74px;
+  margin:0;
+  padding:14px 18px;
+  border:0;
+  outline:0;
+  background:#fff;
+  display:grid;
+  grid-template-columns:
+    38px
+    minmax(280px,1fr)
+    170px
+    120px
+    82px;
+  align-items:center;
+  gap:14px;
+  text-align:left;
+  cursor:pointer;
+  font:inherit;
+}
+
+.requirement-card-head:hover{
+  background:#fafbfd;
+}
+
+
+/* NUMBER */
+
+.requirement-number{
+  width:32px;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+  background:#edf4ff;
+  color:#2567d8;
+  font-size:11px;
+  font-weight:800;
+}
+
+
+/* COPY */
+
+.requirement-copy{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+
+.requirement-copy strong{
+  color:#17243a;
+  font-size:14px;
+  line-height:1.25;
+  font-weight:800;
+}
+
+.requirement-copy small{
+  color:#7e899a;
+  font-size:11px;
+  line-height:1.4;
+  font-weight:500;
+}
+
+
+/* PROGRESS */
+
+.requirement-progress-wrap{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+}
+
+.requirement-progress{
+  width:110px;
+  height:6px;
+  display:block;
+  overflow:hidden;
+  border-radius:999px;
+  background:#e7ecf2;
+}
+
+.requirement-progress i{
+  width:0;
+  height:100%;
+  display:block;
+  border-radius:inherit;
+  background:#2678ef;
+  transition:width .2s ease;
+}
+
+.requirement-percent{
+  min-width:32px;
+  color:#66758b;
+  font-size:11px;
+  font-weight:800;
+}
+
+
+/* STATUS */
+
+.requirement-status{
+  min-height:30px;
+  padding:6px 10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid #dfe5ec;
+  border-radius:999px;
+  background:#f2f4f7;
+  color:#6d7889;
+  font-size:10px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+
+/* TOGGLE */
+
+.requirement-toggle-text{
+  color:#286bc8;
+  text-align:right;
+  font-size:11px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+
+/* BODY: CLOSED BY DEFAULT */
+
+.requirement-card-body{
+  display:none !important;
+  padding:20px;
+  border-top:1px solid #e6eaf0;
+  background:#fbfcfe;
+}
+
+
+/* ONLY OPEN CARD */
+
+.requirement-card.is-open
+.requirement-card-body{
+  display:block !important;
+}
+
+
+/* OPEN HEADER */
+
+.requirement-card.is-open
+.requirement-card-head{
+  background:#f8faff;
+}
+
+
+/* SECTION ACTIONS */
+
+.section-save-actions{
+  margin-top:18px;
+  padding-top:16px;
+  border-top:1px solid #e2e7ee;
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:10px;
+}
+
+
+/* SERVICES */
+
+.business-template-selector{
+  margin-bottom:18px;
+}
+
+.business-type-cards{
+  margin-top:10px;
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+}
+
+.service-template-actions{
+  margin:14px 0 20px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.service-main-area{
+  margin-bottom:22px;
+}
+
+.service-block-heading{
+  margin-bottom:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:15px;
+}
+
+.service-block-heading > div{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.service-block-heading strong{
+  color:#17243a;
+  font-size:14px;
+}
+
+.service-block-heading small{
+  color:#7d899b;
+  font-size:11px;
+}
+
+
+/* PRIMARY ZONE */
+
+.primary-service-zone{
+  min-height:76px;
+  padding:12px;
+  border:1px dashed #95acd0;
+  border-radius:12px;
+  background:#f7faff;
+}
+
+.service-zone-empty{
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#8693a6;
+  font-size:12px;
+}
+
+
+/* CATEGORIES */
+
+.service-categories{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-bottom:22px;
+}
+
+.service-category{
+  padding:14px;
+  border:1px solid #dfe5ed;
+  border-radius:12px;
+  background:#fff;
+}
+
+.service-category-header{
+  display:grid;
+  grid-template-columns:
+    30px
+    minmax(220px,1fr)
+    110px
+    auto;
+  gap:10px;
+  align-items:center;
+  margin-bottom:12px;
+}
+
+.service-category-drag,
+.service-item-handle{
+  width:28px;
+  height:32px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  border:1px solid #dce3ec;
+  border-radius:7px;
+  cursor:grab;
+  background:#f6f8fb;
+}
+
+.service-category-drag span,
+.service-item-handle span{
+  width:12px;
+  height:2px;
+  display:block;
+  border-radius:99px;
+  background:#7f8da2;
+}
+
+.service-category-drag:active,
+.service-item-handle:active{
+  cursor:grabbing;
+}
+
+
+/* SERVICE ITEMS */
+
+.service-category-items{
+  min-height:48px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-bottom:10px;
+  padding:8px;
+  border:1px dashed #dde4ed;
+  border-radius:9px;
+  background:#fafbfd;
+}
+
+.service-item{
+  display:grid;
+  grid-template-columns:
+    30px
+    minmax(200px,1fr)
+    auto
+    auto;
+  align-items:center;
+  gap:9px;
+  padding:9px;
+  border:1px solid #e0e5ec;
+  border-radius:9px;
+  background:#fff;
+}
+
+.service-item.dragging{
+  opacity:.45;
+}
+
+.service-category.category-dragging{
+  opacity:.45;
+}
+
+
+/* EXCLUDED */
+
+.excluded-services-area{
+  margin-top:22px;
+  padding-top:18px;
+  border-top:1px solid #e4e8ef;
+}
+
+.excluded-services-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.excluded-service-row{
+  display:grid;
+  grid-template-columns:minmax(220px,1fr) auto;
+  gap:10px;
+  align-items:center;
+}
+
+
+/* BUTTONS INSIDE SERVICES */
+
+.service-remove,
+.service-category-remove,
+.service-make-primary,
+.excluded-service-row .row-remove{
+  min-height:36px;
+  padding:7px 11px;
+  border:1px solid #dce3ec;
+  border-radius:8px;
+  background:#fff;
+  color:#34445c;
+  font-family:inherit;
+  font-size:11px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.service-make-primary{
+  color:#215db9;
+  border-color:#bed2ef;
+  background:#f5f9ff;
+}
+
+.service-make-primary:disabled{
+  color:#176b45;
+  border-color:#c4e5d4;
+  background:#eef9f3;
+  cursor:default;
+}
+
+.validation-totals{
+  margin:14px 0 18px;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+
+.validation-totals > div{
+  padding:12px 14px;
+  border:1px solid #e0e6ee;
+  border-radius:10px;
+  background:#fff;
+  color:#34445c;
+  font-size:12px;
+  font-weight:700;
+}
+
+.validation-pending-list{
+  margin-top:10px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.validation-pending-item{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:10px 12px;
+  border:1px solid #e1e6ee;
+  border-radius:9px;
+  background:#fff;
+}
+
+.validation-pending-item span{
+  color:#425168;
+  font-size:12px;
+}
+
+.validation-pending-item b{
+  color:#286bc8;
+  font-size:12px;
+}
+
+@media(max-width:650px){
+  .validation-totals{
+    grid-template-columns:1fr;
+  }
+}
+/* RESPONSIVE */
+
+@media(max-width:1100px){
+
+  .requirement-card-head{
+    grid-template-columns:
+      38px
+      minmax(220px,1fr)
+      150px
+      110px
+      75px;
+  }
+
+  .business-type-cards{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+}
+
+
+@media(max-width:850px){
+
+  .requirement-card-head{
+    grid-template-columns:38px 1fr auto;
+  }
+
+  .requirement-progress-wrap{
+    grid-column:2;
+    justify-content:flex-start;
+  }
+
+  .requirement-status{
+    grid-column:3;
+    grid-row:1;
+  }
+
+  .requirement-toggle-text{
+    grid-column:3;
+    text-align:right;
+  }
+
+  .service-category-header{
+    grid-template-columns:30px 1fr;
+  }
+
+  .service-category-header select,
+  .service-category-remove{
+    grid-column:2;
+  }
+
+}
+
+
+@media(max-width:650px){
+
+  .requirement-card-head{
+    grid-template-columns:34px 1fr;
+  }
+
+  .requirement-status,
+  .requirement-toggle-text,
+  .requirement-progress-wrap{
+    grid-column:2;
+  }
+
+  .requirement-status{
+    width:max-content;
+  }
+
+  .requirement-toggle-text{
+    text-align:left;
+  }
+
+  .business-type-cards{
+    grid-template-columns:1fr;
+  }
+
+  .service-item{
+    grid-template-columns:28px 1fr;
+  }
+
+  .service-item
+  .service-make-primary,
+  .service-item
+  .service-remove{
+    grid-column:2;
+  }
+
+  .section-save-actions{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+}
+
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+
+  const cards = [
+    ...document.querySelectorAll(
+      '.requirement-card'
+    )
+  ];
+
+  function closeAll(except = null){
+
+    cards.forEach((card)=>{
+
+      if (card === except) {
+        return;
+      }
+
+      card.classList.remove(
+        'is-open'
+      );
+
+      const text =
+        card.querySelector(
+          '.requirement-toggle-text'
+        );
+
+      if (text) {
+        text.textContent =
+          'Ver más';
+      }
+
+    });
+
+  }
+
+
+  cards.forEach((card)=>{
+
+    const toggle =
+      card.querySelector(
+        '[data-requirement-toggle]'
+      );
+
+    toggle?.addEventListener(
+      'click',
+      ()=>{
+
+        const opening =
+          !card.classList.contains(
+            'is-open'
+          );
+
+        closeAll(
+          opening
+            ? card
+            : null
+        );
+
+        card.classList.toggle(
+          'is-open',
+          opening
+        );
+
+        const text =
+  card.querySelector(
+    '.requirement-toggle-text'
+  );
+
+    if (text) {
+      text.textContent =
+        opening
+          ? 'Ocultar'
+          : 'Ver más';
+    }
+
+      }
+    );
+
+
+
+  });
+
+document
+  .querySelectorAll(
+    '.section-save-actions .btn-secondary[type="submit"]'
+  )
+  .forEach((button)=>{
+
+    button.addEventListener(
+      'click',
+      ()=>{
+
+        const card =
+          button.closest(
+            '.requirement-card'
+          );
+
+        const form =
+          document.getElementById(
+            'technical-form'
+          );
+
+        if (!card || !form) {
+          return;
+        }
+
+        const section =
+          card.dataset.requirementSection || '';
+
+        form
+          .querySelectorAll(
+            '[data-generated-save-control]'
+          )
+          .forEach(
+            field => field.remove()
+          );
+
+        if (!section) {
+          return;
+        }
+
+        const sectionField =
+          document.createElement(
+            'input'
+          );
+
+        sectionField.type =
+          'hidden';
+
+        sectionField.name =
+          'section_focus';
+
+        sectionField.value =
+          section;
+
+        sectionField.dataset.generatedSaveControl =
+          '1';
+
+
+        const actionField =
+          document.createElement(
+            'input'
+          );
+
+        actionField.type =
+          'hidden';
+
+        actionField.name =
+          'save_action';
+
+        actionField.value =
+          'keep';
+
+        actionField.dataset.generatedSaveControl =
+          '1';
+
+
+        form.append(
+          sectionField,
+          actionField
+        );
+
+      }
+    );
+
+  });
+document
+  .querySelectorAll(
+    '.requirement-save-close'
+  )
+  .forEach((button)=>{
+
+    button.addEventListener(
+      'click',
+      ()=>{
+
+        const form =
+          document.getElementById(
+            'technical-form'
+          );
+
+        if (!form) {
+          return;
+        }
+
+
+        form
+          .querySelectorAll(
+            '[data-generated-save-control]'
+          )
+          .forEach(
+            field => field.remove()
+          );
+
+
+        const actionField =
+          document.createElement(
+            'input'
+          );
+
+        actionField.type =
+          'hidden';
+
+        actionField.name =
+          'save_action';
+
+        actionField.value =
+          'close';
+
+        actionField.dataset.generatedSaveControl =
+          '1';
+
+
+        form.appendChild(
+          actionField
+        );
+
+
+        form.requestSubmit();
+
+      }
+    );
+
+  }); 
+document
+  .querySelectorAll(
+    '.requirement-close-only'
+  )
+  .forEach((button)=>{
+
+    button.addEventListener(
+      'click',
+      ()=>{
+
+        const card =
+          button.closest(
+            '.requirement-card'
+          );
+
+        if (!card) return;
+
+        card.classList.remove(
+          'is-open'
+        );
+
+        const text =
+          card.querySelector(
+            '.requirement-toggle-text'
+          );
+
+        if (text) {
+          text.textContent =
+            'Ver más';
+        }
+
+      }
+    );
+
+  });
+  });
+</script>
+<script>
+(function(){
+
+  const form = document.getElementById('technical-form');
+
+  if (!form) return;
+
+
+  const q = (name) =>
+    form.querySelector(`[name="${name}"]`);
+
+  const qa = (name) =>
+    [...form.querySelectorAll(`[name="${name}"]`)];
+
+  const radio = (name) => {
+    const el = form.querySelector(
+      `[name="${name}"]:checked`
+    );
+
+    return el ? el.value : '';
+  };
+
+  const val = (name) =>
+    (q(name)?.value || '').trim();
+
+
+  const setDone = (id, done) => {
+
+    document
+      .getElementById(id)
+      ?.classList.toggle(
+        'complete',
+        Boolean(done)
+      );
+
+  };
+
+
+  /* ==========================================
+     CONDICIONALES
+  ========================================== */
+
+  function updateConditionals(){
+
+    form
+      .querySelectorAll('[data-show-when]')
+      .forEach((el)=>{
+
+        const condition =
+          el.dataset.showWhen || '';
+
+        const separator =
+          condition.indexOf(':');
+
+        if (separator === -1) {
+          return;
+        }
+
+        const name =
+          condition.slice(0, separator);
+
+        const expected =
+          condition.slice(separator + 1);
+
+        el.classList.toggle(
+          'visible',
+          radio(name) === expected
+        );
+
+      });
+
+
+    const sloganMode =
+      radio('slogan_mode');
+
+    document
+      .getElementById('slogan-detail')
+      ?.classList.toggle(
+        'visible',
+        sloganMode === 'existing' ||
+        sloganMode === 'create'
+      );
+
+
+    form
+      .querySelectorAll('.social-network-item')
+      .forEach((item)=>{
+
+        const checkbox =
+          item.querySelector(
+            'input[type="checkbox"]'
+          );
+
+        const url =
+          item.querySelector(
+            '.social-url'
+          );
+
+        if (!url) return;
+
+        url.style.display =
+          checkbox?.checked
+            ? 'block'
+            : 'none';
+
+      });
+
+  }
+
+
+  /* ==========================================
+     PROGRESO
+  ========================================== */
+function updateSectionProgress(){
+
+  const checked = (name) =>
+    form.querySelector(
+      `[name="${name}"]:checked`
+    ) !== null;
+
+  const checkedAny = (name) =>
+    form.querySelectorAll(
+      `[name="${name}"]:checked`
+    ).length > 0;
+
+  const hasValue = (name) =>
+    Boolean(
+      (
+        form.querySelector(
+          `[name="${name}"]`
+        )?.value || ''
+      ).trim()
+    );
+
+
+  const sectionData = {
+
+    general: [
+      hasValue('company_description')
+    ],
+
+    business: [
+      checked('customer_type'),
+      hasValue('business_sells'),
+      hasValue('business_audience'),
+      hasValue('business_where'),
+      hasValue('business_priority_sale'),
+      hasValue('visitor_action')
+    ],
+
+    services: [
+      checked('business_type'),
+
+      Boolean(
+        document.querySelector(
+          '#primary-service-zone .service-item [name="service_name"]'
+        )?.value.trim()
+      ),
+
+      [
+        ...document.querySelectorAll(
+          '.service-item [name="service_name"]'
+        )
+      ].some(
+        field => field.value.trim()
+      )
+    ],
+
+    plan: [
+        (()=>{
+
+          const value =
+            document.querySelector(
+              '[data-requirement-section="plan"] input[readonly]'
+            )?.value.trim() || '';
+
+          return Boolean(
+            value &&
+            value !== 'Sin plan'
+          );
+
+        })()
+      ],
+    coverage: [
+      qa('area_name').some(
+        field => field.value.trim()
+      ),
+      hasValue('coverage_miles')
+    ],
+
+    contact: [
+      hasValue('hours_start') &&
+      hasValue('hours_end'),
+      checked('is_24_7'),
+      qa('phone_number').some(
+        field => field.value.trim()
+      )
+    ],
+
+    quotes: [
+      checked('free_estimates'),
+      checkedAny('quote_channel')
+    ],
+
+    brand: [
+      document
+        .getElementById('block-slogan')
+        ?.classList.contains('complete') || false,
+
+      document
+        .getElementById('block-mission')
+        ?.classList.contains('complete') || false
+    ],
+
+    certifications: [
+      document
+        .getElementById('block-certifications')
+        ?.classList.contains('complete') || false,
+
+      document
+        .getElementById('block-warranties')
+        ?.classList.contains('complete') || false,
+
+      hasValue('experience_years')
+    ],
+
+    team: [
+      document
+        .getElementById('block-team')
+        ?.classList.contains('complete') || false
+    ],
+
+    marketing: [
+      document
+        .getElementById('block-social')
+        ?.classList.contains('complete') || false
+    ],
+
+    seo: [
+      checked('seo_page_strategy'),
+      checkedAny('website_pages')
+    ],
+
+    resources: [
+      hasValue('resources_status'),
+
+      (()=>{
+
+        const status =
+          form.querySelector(
+            '[name="resources_status"]'
+          )?.value || '';
+
+        if (!status) {
+          return false;
+        }
+
+        if (
+          status === 'pending' ||
+          status === 'na'
+        ) {
+          return true;
+        }
+
+        return hasValue(
+          'resources_url'
+        );
+
+      })()
+    ],
+
+    forms: [
+      checkedAny('form_fields'),
+      hasValue('form_receiver_email') ||
+      hasValue('form_receiver_whatsapp')
+    ],
+
+    internal: [
+      hasValue('internal_meeting_notes')
+    ]
+
+  };
+
+
+  document
+    .querySelectorAll(
+      '.requirement-card'
+    )
+    .forEach((card)=>{
+
+      const section =
+        card.dataset.requirementSection;
+
+      if (section === 'validation') {
+        return;
+      }
+
+      const checks =
+        sectionData[section];
+
+      if (!checks?.length) {
+        return;
+      }
+
+      const completed =
+        checks.filter(Boolean).length;
+
+      const percent =
+        Math.round(
+          completed /
+          checks.length *
+          100
+        );
+
+
+      const percentText =
+        card.querySelector(
+          '.requirement-percent'
+        );
+
+      const progressBar =
+        card.querySelector(
+          '.requirement-progress i'
+        );
+
+      const status =
+        card.querySelector(
+          '.requirement-status'
+        );
+
+
+      if (percentText) {
+        percentText.textContent =
+          `${percent}%`;
+      }
+
+      if (progressBar) {
+        progressBar.style.width =
+          `${percent}%`;
+      }
+
+      if (status) {
+
+        if (percent === 100) {
+          status.textContent =
+            'Completo';
+        }
+
+        else if (percent > 0) {
+          status.textContent =
+            'En progreso';
+        }
+
+        else {
+          status.textContent =
+            'Sin iniciar';
+        }
+
+      }
+
+    });
+
+}
+
+function updateValidationSummary(){
+
+  const sections = [
+    'general',
+    'business',
+    'services',
+    'plan',
+    'coverage',
+    'contact',
+    'quotes',
+    'brand',
+    'certifications',
+    'team',
+    'marketing',
+    'seo',
+    'resources',
+    'forms'
+  ];
+
+
+  const results =
+    sections
+      .map((section)=>{
+
+        const card =
+          document.querySelector(
+            `[data-requirement-section="${section}"]`
+          );
+
+        if (!card) {
+          return null;
+        }
+
+
+        const title =
+          card.querySelector(
+            '.requirement-copy strong'
+          )?.textContent.trim() || section;
+
+
+        const percentText =
+          card.querySelector(
+            '.requirement-percent'
+          )?.textContent || '0%';
+
+
+        const percent =
+          parseInt(
+            percentText,
+            10
+          ) || 0;
+
+
+        return {
+          section,
+          title,
+          percent
+        };
+
+      })
+      .filter(Boolean);
+
+
+  const complete =
+    results.filter(
+      item => item.percent === 100
+    );
+
+  const progress =
+    results.filter(
+      item =>
+        item.percent > 0 &&
+        item.percent < 100
+    );
+
+  const pending =
+    results.filter(
+      item => item.percent === 0
+    );
+
+
+  const average =
+    results.length
+      ? Math.round(
+          results.reduce(
+            (sum, item)=>
+              sum + item.percent,
+            0
+          ) /
+          results.length
+        )
+      : 0;
+
+
+  const validationCard =
+    document.querySelector(
+      '[data-requirement-section="validation"]'
+    );
+
+
+  if (validationCard) {
+
+    const percentText =
+      validationCard.querySelector(
+        '.requirement-percent'
+      );
+
+    const progressBar =
+      validationCard.querySelector(
+        '.requirement-progress i'
+      );
+
+    const status =
+      validationCard.querySelector(
+        '.requirement-status'
+      );
+
+
+    if (percentText) {
+      percentText.textContent =
+        `${average}%`;
+    }
+
+
+    if (progressBar) {
+      progressBar.style.width =
+        `${average}%`;
+    }
+
+
+    if (status) {
+
+      if (average === 100) {
+        status.textContent =
+          'Validado';
+      }
+
+      else if (average > 0) {
+        status.textContent =
+          'Pendiente';
+      }
+
+      else {
+        status.textContent =
+          'Sin iniciar';
+      }
+
+    }
+
+  }
+
+
+  const summary =
+    document.getElementById(
+      'validation-summary'
+    );
+
+  if (!summary) {
+    return;
+  }
+
+
+  summary.innerHTML = '';
+
+
+  const totals =
+    document.createElement(
+      'div'
+    );
+
+  totals.className =
+    'validation-totals';
+
+
+  const totalComplete =
+    document.createElement(
+      'div'
+    );
+
+  totalComplete.textContent =
+    `${complete.length} secciones completas`;
+
+
+  const totalProgress =
+    document.createElement(
+      'div'
+    );
+
+  totalProgress.textContent =
+    `${progress.length} secciones en progreso`;
+
+
+  const totalPending =
+    document.createElement(
+      'div'
+    );
+
+  totalPending.textContent =
+    `${pending.length} secciones sin iniciar`;
+
+
+  totals.append(
+    totalComplete,
+    totalProgress,
+    totalPending
+  );
+
+
+  summary.appendChild(
+    totals
+  );
+
+
+  const incomplete = [
+    ...progress,
+    ...pending
+  ];
+
+
+  if (incomplete.length) {
+
+    const title =
+      document.createElement(
+        'strong'
+      );
+
+    title.textContent =
+      'Pendientes';
+
+
+    const list =
+      document.createElement(
+        'div'
+      );
+
+    list.className =
+      'validation-pending-list';
+
+
+    incomplete.forEach(
+      (item)=>{
+
+        const row =
+          document.createElement(
+            'div'
+          );
+
+        row.className =
+          'validation-pending-item';
+
+
+        const name =
+          document.createElement(
+            'span'
+          );
+
+        name.textContent =
+          item.title;
+
+
+        const percent =
+          document.createElement(
+            'b'
+          );
+
+        percent.textContent =
+          `${item.percent}%`;
+
+
+        row.append(
+          name,
+          percent
+        );
+
+
+        list.appendChild(
+          row
+        );
+
+      }
+    );
+
+
+    summary.append(
+      title,
+      list
+    );
+
+  }
+
+  else {
+
+    const message =
+      document.createElement(
+        'div'
+      );
+
+    message.textContent =
+      'Todas las secciones requeridas están completas.';
+
+    summary.appendChild(
+      message
+    );
+
+  }
+
+}
+  function updateChecks(){
+
+    setDone(
+      'block-company',
+      Boolean(
+        val('company_description')
+      )
+    );
+
+
+    const sloganMode =
+      radio('slogan_mode');
+
+    setDone(
+      'block-slogan',
+      sloganMode === 'none' ||
+      (
+        (
+          sloganMode === 'existing' ||
+          sloganMode === 'create'
+        ) &&
+        Boolean(
+          val('slogan_text')
+        )
+      )
+    );
+
+
+    const missionMode =
+      radio('mission_has');
+
+    setDone(
+      'block-mission',
+      (
+        missionMode === 'yes' &&
+        Boolean(val('mission_text')) &&
+        Boolean(val('vision_text'))
+      ) ||
+      (
+        missionMode === 'no' &&
+        [
+          'mission_origin',
+          'mission_clients',
+          'vision_future',
+          'vision_legacy'
+        ].every(
+          (name) => Boolean(val(name))
+        )
+      )
+    );
+
+
+    /* TEAM */
+
+    const teamScope =
+      radio('team_scope');
+
+    const teamComplete =
+      Boolean(teamScope) &&
+      (
+        teamScope !== 'other' ||
+        Boolean(
+          val('team_other')
+        )
+      );
+
+    setDone(
+      'block-team',
+      teamComplete
+    );
+
+
+    /* SERVICIOS */
+
+    const serviceInputs = [
+      ...form.querySelectorAll(
+        '.service-item [name="service_name"]'
+      )
+    ];
+
+    const validServices =
+      serviceInputs.filter(
+        (input) =>
+          input.value.trim()
+      );
+
+    const primaryZone =
+      document.getElementById(
+        'primary-service-zone'
+      );
+
+    const primaryService =
+      primaryZone
+        ?.querySelector(
+          '.service-item [name="service_name"]'
+        );
+
+    const primaryName =
+      primaryService
+        ?.value
+        .trim();
+
+    setDone(
+      'block-services',
+      validServices.length >= 1 &&
+      Boolean(primaryName)
+    );
+
+
+    /* AREAS */
+
+    setDone(
+      'block-areas',
+      qa('area_name')
+        .some(
+          (input) =>
+            input.value.trim()
+        )
+    );
+
+
+    setDone(
+      'block-coverage',
+      Boolean(
+        val('coverage_miles')
+      )
+    );
+
+
+    const expansion =
+      radio('expansion_answer');
+
+    setDone(
+      'block-expansion',
+      expansion === 'no' ||
+      (
+        expansion === 'yes' &&
+        qa('expansion_name')
+          .some(
+            (input) =>
+              input.value.trim()
+          )
+      )
+    );
+
+
+    setDone(
+      'block-seo-strategy',
+      Boolean(
+        radio(
+          'seo_page_strategy'
+        )
+      )
+    );
+
+
+    /* HORARIO */
+
+    setDone(
+      'block-hours',
+      Boolean(
+        val('hours_start') &&
+        val('hours_end')
+      )
+    );
+
+
+    setDone(
+      'block-247',
+      Boolean(
+        radio('is_24_7')
+      )
+    );
+
+
+    /* TELEFONOS */
+
+    setDone(
+      'block-phones',
+      qa('phone_number')
+        .some(
+          (input) =>
+            input.value.trim()
+        )
+    );
+
+
+    /* REDES */
+
+    const socialMode =
+      radio('social_has');
+
+    const hasSocialUrl =
+      [
+        ...form.querySelectorAll(
+          '.social-url'
+        )
+      ].some(
+        (input) =>
+          input.offsetParent !== null &&
+          input.value.trim()
+      ) ||
+      qa('social_custom_url')
+        .some(
+          (input) =>
+            input.value.trim()
+        );
+
+
+    setDone(
+      'block-social',
+      socialMode === 'no' ||
+      (
+        socialMode === 'yes' &&
+        hasSocialUrl
+      )
+    );
+
+
+    /* WEBMAIL */
+
+    const webmailMode =
+      radio('webmail_has');
+
+    setDone(
+      'block-webmail',
+      webmailMode === 'no' ||
+      (
+        webmailMode === 'yes' &&
+        Boolean(
+          val('webmail_email')
+        )
+      )
+    );
+
+
+    /* GOOGLE BUSINESS */
+
+    const gbpMode =
+      radio('gbp_mode');
+
+    setDone(
+      'block-gbp',
+      gbpMode === 'create' ||
+      gbpMode === 'no' ||
+      (
+        gbpMode === 'existing' &&
+        Boolean(
+          val('gbp_link')
+        )
+      )
+    );
+
+
+    /* WEBSITE */
+
+    const websiteMode =
+      radio('website_has');
+
+    setDone(
+      'block-website',
+      websiteMode === 'no' ||
+      (
+        websiteMode === 'yes' &&
+        Boolean(
+          val('website_url')
+        )
+      )
+    );
+
+
+    /* CERTIFICACIONES */
+
+    const certifications =
+      radio('certifications_has');
+
+    setDone(
+      'block-certifications',
+      certifications === 'no' ||
+      (
+        certifications === 'yes' &&
+        Boolean(
+          val(
+            'certifications_detail'
+          )
+        )
+      )
+    );
+
+
+    /* GARANTIAS */
+
+    const warranties =
+      radio('warranties_has');
+
+    setDone(
+      'block-warranties',
+      warranties === 'no' ||
+      (
+        warranties === 'yes' &&
+        Boolean(
+          val('warranties_detail')
+        )
+      )
+    );
+
+
+    setDone(
+      'block-experience',
+      Boolean(
+        val('experience_years')
+      )
+    );
+/* ==========================================
+   PROGRESO POR SECCION
+========================================== */
+
+updateSectionProgress();
+
+updateValidationSummary();
+
+    /* PROGRESO TOTAL */
+
+    const blocks = [
+      ...form.querySelectorAll(
+        '.tech-card[id^="block-"]'
+      )
+    ];
+
+    const done =
+      blocks.filter(
+        (block) =>
+          block.classList.contains(
+            'complete'
+          )
+      ).length;
+
+    const percent =
+      blocks.length
+        ? Math.round(
+            done /
+            blocks.length *
+            100
+          )
+        : 0;
+
+
+    const top =
+      document.getElementById(
+        'technical-percent'
+      );
+
+    const bottom =
+      document.getElementById(
+        'technical-percent-bottom'
+      );
+
+    const count =
+      document.getElementById(
+        'technical-count'
+      );
+
+    const bar =
+      document.getElementById(
+        'technical-progress-bar'
+      );
+
+
+    if (top) {
+      top.textContent =
+        `${percent}%`;
+    }
+
+    if (bottom) {
+      bottom.textContent =
+        `${percent}%`;
+    }
+
+    if (count) {
+      count.textContent =
+        `${done} de ${blocks.length} bloques listos`;
+    }
+
+    if (bar) {
+      bar.style.width =
+        `${percent}%`;
+    }
+
+  }
+
+
+  /* ==========================================
+     TELEFONOS
+  ========================================== */
+
+function normalizePhoneOrder(){
+
+  const rows = [
+    ...form.querySelectorAll(
+      '#phones-list .phone-row'
+    )
+  ];
+
+  rows.forEach(
+    (row, index)=>{
+
+      const primary =
+        row.querySelector(
+          '[name="phone_primary"]'
+        );
+
+      const whatsapp =
+        row.querySelector(
+          '[name="phone_whatsapp"]'
+        );
+
+      if (primary) {
+        primary.value = index;
+      }
+
+      if (whatsapp) {
+        whatsapp.value = index;
+      }
+
+    }
+  );
+
+}
+
+    
+
+
+  /* ==========================================
+     REMOVE GENERAL
+  ========================================== */
+
+  function wireGeneralRemove(root){
+
+    root
+      .querySelectorAll(
+        '.dynamic-row .row-remove'
+      )
+      .forEach((button)=>{
+
+        if (
+          button.dataset.wiredRemove === '1'
+        ) {
+          return;
+        }
+
+        button.dataset.wiredRemove = '1';
+
+        button.addEventListener(
+          'click',
+          ()=>{
+
+            const row =
+              button.closest(
+                '.dynamic-row'
+              );
+
+            if (!row) return;
+
+            row.remove();
+
+            normalizePhoneOrder();
+
+            updateChecks();
+
+          }
+        );
+
+      });
+
+  }
+
+
+  /* ==========================================
+     SERVICIOS PREDEFINIDOS
+  ========================================== */
+
+  const serviceTemplates = {
+
+    tree_service: [
+
+      {
+        name:
+          'Tree Removal',
+        priority:
+          'high',
+        services: [
+          'Tree Removal'
+        ]
+      },
+
+      {
+        name:
+          'Tree Trimming & Pruning',
+        priority:
+          'high',
+        services: [
+          'Tree Trimming',
+          'Tree Pruning'
+        ]
+      },
+
+      {
+        name:
+          'Stump Services',
+        priority:
+          'medium',
+        services: [
+          'Stump Removal',
+          'Stump Grinding'
+        ]
+      },
+
+      {
+        name:
+          'Emergency & Storm Services',
+        priority:
+          'high',
+        services: [
+          'Emergency Tree Service',
+          'Storm Damage Cleanup'
+        ]
+      },
+
+      {
+        name:
+          'Land & Property Services',
+        priority:
+          'medium',
+        services: [
+          'Land Clearing',
+          'Property Cleanup'
+        ]
+      }
+
+    ],
+
+
+    roofing: [
+
+      {
+        name:
+          'Roof Installation',
+        priority:
+          'high',
+        services: [
+          'Roof Installation'
+        ]
+      },
+
+      {
+        name:
+          'Roof Replacement',
+        priority:
+          'high',
+        services: [
+          'Roof Replacement'
+        ]
+      },
+
+      {
+        name:
+          'Roof Repair',
+        priority:
+          'high',
+        services: [
+          'Roof Repair',
+          'Emergency Roof Repair',
+          'Roof Leak Repair'
+        ]
+      },
+
+      {
+        name:
+          'Roofing Systems',
+        priority:
+          'medium',
+        services: [
+          'Shingle Roofing',
+          'Metal Roofing',
+          'Flat Roofing'
+        ]
+      },
+
+      {
+        name:
+          'Additional Roofing Services',
+        priority:
+          'low',
+        services: [
+          'Roof Inspection',
+          'Gutter Services',
+          'Skylight Services'
+        ]
+      }
+
+    ],
+
+
+    remodeling: [
+
+      {
+        name:
+          'Interior Remodeling',
+        priority:
+          'high',
+        services: [
+          'Interior Remodeling',
+          'Basement Remodeling'
+        ]
+      },
+
+      {
+        name:
+          'Kitchen & Bathroom',
+        priority:
+          'high',
+        services: [
+          'Kitchen Remodeling',
+          'Bathroom Remodeling'
+        ]
+      },
+
+      {
+        name:
+          'Exterior Remodeling',
+        priority:
+          'medium',
+        services: [
+          'Exterior Remodeling'
+        ]
+      },
+
+      {
+        name:
+          'Home Additions',
+        priority:
+          'medium',
+        services: [
+          'Home Additions',
+          'Room Additions'
+        ]
+      },
+
+      {
+        name:
+          'Additional Services',
+        priority:
+          'low',
+        services: [
+          'Flooring',
+          'Painting',
+          'Drywall',
+          'Carpentry',
+          'Decks',
+          'Patios'
+        ]
+      }
+
+    ]
+
+  };
+
+
+  /* ==========================================
+     CREAR SERVICIO
+  ========================================== */
+
+  function createServiceRow(
+    name = ''
+  ){
+
+    const row =
+      document.createElement(
+        'div'
+      );
+
+    row.className =
+      'service-item';
+
+    row.draggable =
+      true;
+
+
+    row.innerHTML = `
+
+      <div
+        class="service-item-handle"
+        title="Arrastrar servicio"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+
+      <input
+        type="text"
+        name="service_name"
+        value=""
+        placeholder="Nombre del servicio"
+      >
+
+      <button
+        type="button"
+        class="service-make-primary"
+      >
+        Principal
+      </button>
+
+      <button
+        type="button"
+        class="service-remove"
+      >
+        Eliminar
+      </button>
+
+    `;
+
+
+    const input =
+      row.querySelector(
+        '[name="service_name"]'
+      );
+
+    if (input) {
+      input.value = name;
+    }
+
+
+    return row;
+
+  }
+
+
+  /* ==========================================
+     CREAR CATEGORIA
+  ========================================== */
+
+  function createCategory(
+    name = '',
+    services = [],
+    priority = 'medium'
+  ){
+
+    const category =
+      document.createElement(
+        'div'
+      );
+
+    category.className =
+      'service-category';
+
+    category.draggable =
+      true;
+
+
+    category.innerHTML = `
+
+      <div
+        class="service-category-header"
+      >
+
+        <div
+          class="service-category-drag"
+          title="Arrastrar categoría"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <input
+          type="text"
+          name="service_category_name"
+          placeholder="Nombre de categoría"
+        >
+
+        <select
+          name="service_category_priority"
+        >
+          <option value="high">
+            Alta
+          </option>
+
+          <option value="medium">
+            Media
+          </option>
+
+          <option value="low">
+            Baja
+          </option>
+        </select>
+
+        <button
+          type="button"
+          class="service-category-remove"
+        >
+          Eliminar categoría
+        </button>
+
+      </div>
+
+
+      <div
+        class="service-category-items service-drop-zone"
+        data-service-zone="category"
+      >
+      </div>
+
+
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm add-service-inside"
+      >
+        Agregar servicio
+      </button>
+
+    `;
+
+
+    const categoryName =
+      category.querySelector(
+        '[name="service_category_name"]'
+      );
+
+    if (categoryName) {
+      categoryName.value =
+        name;
+    }
+
+
+    const priorityField =
+      category.querySelector(
+        '[name="service_category_priority"]'
+      );
+
+    if (priorityField) {
+      priorityField.value =
+        priority;
+    }
+
+
+    const items =
+      category.querySelector(
+        '.service-category-items'
+      );
+
+
+    services.forEach(
+      (serviceName)=>{
+
+        items.appendChild(
+          createServiceRow(
+            serviceName
+          )
+        );
+
+      }
+    );
+
+
+    wireCategory(category);
+
+    return category;
+
+  }
+
+
+  /* ==========================================
+     CATEGORIA
+  ========================================== */
+
+  function wireCategory(category){
+
+    if (
+      category.dataset.wired === '1'
+    ) {
+      return;
+    }
+
+    category.dataset.wired =
+      '1';
+
+
+    category
+      .querySelector(
+        '.service-category-remove'
+      )
+      ?.addEventListener(
+        'click',
+        ()=>{
+
+          category.remove();
+
+          updateChecks();
+
+        }
+      );
+
+
+    category
+      .querySelector(
+        '.add-service-inside'
+      )
+      ?.addEventListener(
+        'click',
+        ()=>{
+
+          const zone =
+            category.querySelector(
+              '.service-category-items'
+            );
+
+          if (!zone) return;
+
+          zone.appendChild(
+            createServiceRow()
+          );
+
+          wireServiceItems();
+
+          updateChecks();
+
+        }
+      );
+
+  }
+
+
+  /* ==========================================
+     DRAG DE SERVICIOS
+  ========================================== */
+
+  let draggedService =
+    null;
+
+
+  function wireServiceItems(){
+
+    form
+      .querySelectorAll(
+        '.service-item'
+      )
+      .forEach((item)=>{
+
+        if (
+          item.dataset.serviceWired ===
+          '1'
+        ) {
+          return;
+        }
+
+        item.dataset.serviceWired =
+          '1';
+
+
+        item.addEventListener(
+          'dragstart',
+          (event)=>{
+
+            draggedService =
+              item;
+
+            item.classList.add(
+              'dragging'
+            );
+
+            if (
+              event.dataTransfer
+            ) {
+
+              event.dataTransfer
+                .setData(
+                  'text/plain',
+                  'service'
+                );
+
+              event.dataTransfer
+                .effectAllowed =
+                  'move';
+
+            }
+
+          }
+        );
+
+
+        item.addEventListener(
+          'dragend',
+          ()=>{
+
+            item.classList.remove(
+              'dragging'
+            );
+
+            draggedService =
+              null;
+
+            refreshPrimaryZone();
+
+            updateChecks();
+
+          }
+        );
+
+
+        item
+          .querySelector(
+            '.service-remove'
+          )
+          ?.addEventListener(
+            'click',
+            ()=>{
+
+              item.remove();
+
+              refreshPrimaryZone();
+
+              updateChecks();
+
+            }
+          );
+
+
+        item
+          .querySelector(
+            '.service-make-primary'
+          )
+          ?.addEventListener(
+            'click',
+            ()=>{
+
+              makePrimary(item);
+
+            }
+          );
+
+      });
+
+
+    wireServiceDropZones();
+
+  }
+
+
+  /* ==========================================
+     SERVICIO PRINCIPAL
+  ========================================== */
+
+  function makePrimary(item){
+
+    const primary =
+      document.getElementById(
+        'primary-service-zone'
+      );
+
+    if (!primary) return;
+
+
+    const existing =
+      primary.querySelector(
+        '.service-item'
+      );
+
+
+    if (
+      existing &&
+      existing !== item
+    ) {
+
+      const firstCategory =
+        document.querySelector(
+          '.service-category-items'
+        );
+
+      if (firstCategory) {
+
+        firstCategory.appendChild(
+          existing
+        );
+
+      }
+
+    }
+
+
+    primary
+      .querySelector(
+        '.service-zone-empty'
+      )
+      ?.remove();
+
+
+    primary.appendChild(
+      item
+    );
+
+
+    refreshPrimaryZone();
+
+    wireServiceItems();
+
+    updateChecks();
+
+  }
+
+
+  function refreshPrimaryZone(){
+
+    const primary =
+      document.getElementById(
+        'primary-service-zone'
+      );
+
+    if (!primary) return;
+
+
+    const item =
+      primary.querySelector(
+        '.service-item'
+      );
+
+
+    let empty =
+      primary.querySelector(
+        '.service-zone-empty'
+      );
+
+
+    if (!item) {
+
+      if (!empty) {
+
+        empty =
+          document.createElement(
+            'div'
+          );
+
+        empty.className =
+          'service-zone-empty';
+
+        empty.textContent =
+          'Arrastra aquí el servicio principal.';
+
+        primary.appendChild(
+          empty
+        );
+
+      }
+
+    } else if (empty) {
+
+      empty.remove();
+
+    }
+
+
+    form
+      .querySelectorAll(
+        '.service-item'
+      )
+      .forEach((service)=>{
+
+        const button =
+          service.querySelector(
+            '.service-make-primary'
+          );
+
+        if (!button) return;
+
+
+        if (
+          service.parentElement ===
+          primary
+        ) {
+
+          button.textContent =
+            'Servicio principal';
+
+          button.disabled =
+            true;
+
+        } else {
+
+          button.textContent =
+            'Principal';
+
+          button.disabled =
+            false;
+
+        }
+
+      });
+
+  }
+
+
+  /* ==========================================
+     DROP ZONES SERVICIOS
+  ========================================== */
+
+  function wireServiceDropZones(){
+
+    form
+      .querySelectorAll(
+        '.service-drop-zone'
+      )
+      .forEach((zone)=>{
+
+        zone.ondragover =
+          (event)=>{
+
+            if (!draggedService) {
+              return;
+            }
+
+            event.preventDefault();
+
+
+            const target =
+              event.target.closest(
+                '.service-item'
+              );
+
+            if (
+              !target ||
+              target === draggedService ||
+              target.parentElement !== zone
+            ) {
+              return;
+            }
+
+
+            const rect =
+              target
+                .getBoundingClientRect();
+
+
+            const after =
+              event.clientY >
+              rect.top +
+              rect.height / 2;
+
+
+            if (after) {
+
+              target.after(
+                draggedService
+              );
+
+            } else {
+
+              target.before(
+                draggedService
+              );
+
+            }
+
+          };
+
+
+        zone.ondrop =
+          (event)=>{
+
+            if (!draggedService) {
+              return;
+            }
+
+            event.preventDefault();
+
+
+            const primary =
+              zone.id ===
+              'primary-service-zone';
+
+
+            if (primary) {
+
+              const existing =
+                zone.querySelector(
+                  '.service-item'
+                );
+
+
+              if (
+                existing &&
+                existing !==
+                draggedService
+              ) {
+
+                const firstCategory =
+                  document.querySelector(
+                    '.service-category-items'
+                  );
+
+
+                if (firstCategory) {
+
+                  firstCategory.appendChild(
+                    existing
+                  );
+
+                }
+
+              }
+
+            }
+
+
+            const target =
+              event.target.closest(
+                '.service-item'
+              );
+
+
+            if (
+              target &&
+              target !==
+              draggedService &&
+              target.parentElement ===
+              zone
+            ) {
+
+              const rect =
+                target.getBoundingClientRect();
+
+              const after =
+                event.clientY >
+                rect.top +
+                rect.height / 2;
+
+
+              if (after) {
+
+                target.after(
+                  draggedService
+                );
+
+              } else {
+
+                target.before(
+                  draggedService
+                );
+
+              }
+
+            } else {
+
+              zone.appendChild(
+                draggedService
+              );
+
+            }
+
+
+            refreshPrimaryZone();
+
+            wireServiceItems();
+
+            updateChecks();
+
+          };
+
+      });
+
+  }
+
+
+  /* ==========================================
+     DRAG DE CATEGORIAS
+  ========================================== */
+
+  let draggedCategory =
+    null;
+
+
+  function wireCategorySorting(){
+
+    const container =
+      document.getElementById(
+        'service-categories'
+      );
+
+    if (!container) return;
+
+
+    container
+      .querySelectorAll(
+        '.service-category'
+      )
+      .forEach((category)=>{
+
+        if (
+          category.dataset.sortWired ===
+          '1'
+        ) {
+          return;
+        }
+
+        category.dataset.sortWired =
+          '1';
+
+
+        category.addEventListener(
+          'dragstart',
+          (event)=>{
+
+            if (
+              event.target.closest(
+                '.service-item'
+              )
+            ) {
+              return;
+            }
+
+            draggedCategory =
+              category;
+
+            category.classList.add(
+              'category-dragging'
+            );
+
+
+            if (
+              event.dataTransfer
+            ) {
+
+              event.dataTransfer
+                .setData(
+                  'text/plain',
+                  'category'
+                );
+
+              event.dataTransfer
+                .effectAllowed =
+                  'move';
+
+            }
+
+          }
+        );
+
+
+        category.addEventListener(
+          'dragend',
+          ()=>{
+
+            category.classList.remove(
+              'category-dragging'
+            );
+
+            draggedCategory =
+              null;
+
+          }
+        );
+
+      });
+
+
+    container.ondragover =
+      (event)=>{
+
+        if (
+          !draggedCategory ||
+          draggedService
+        ) {
+          return;
+        }
+
+        event.preventDefault();
+
+
+        const target =
+          event.target.closest(
+            '.service-category'
+          );
+
+
+        if (
+          !target ||
+          target ===
+          draggedCategory
+        ) {
+          return;
+        }
+
+
+        const rect =
+          target.getBoundingClientRect();
+
+
+        const after =
+          event.clientY >
+          rect.top +
+          rect.height / 2;
+
+
+        if (after) {
+
+          target.after(
+            draggedCategory
+          );
+
+        } else {
+
+          target.before(
+            draggedCategory
+          );
+
+        }
+
+      };
+
+  }
+
+
+  /* ==========================================
+     NUEVA CATEGORIA
+  ========================================== */
+
+  document
+    .getElementById(
+      'add-service-category'
+    )
+    ?.addEventListener(
+      'click',
+      ()=>{
+
+        const container =
+          document.getElementById(
+            'service-categories'
+          );
+
+        if (!container) return;
+
+
+        container.appendChild(
+          createCategory(
+            'Nueva categoría',
+            [],
+            'medium'
+          )
+        );
+
+
+        wireServiceItems();
+
+        wireCategorySorting();
+
+        updateChecks();
+
+      }
+    );
+
+
+  /* ==========================================
+     CARGAR PLANTILLA
+  ========================================== */
+
+  document
+    .getElementById(
+      'load-service-template'
+    )
+    ?.addEventListener(
+      'click',
+      ()=>{
+
+        const type =
+          radio('business_type');
+
+
+        if (!type) {
+
+          window.alert(
+            'Selecciona primero el tipo de negocio.'
+          );
+
+          return;
+
+        }
+
+
+        if (type === 'other') {
+
+          const container =
+            document.getElementById(
+              'service-categories'
+            );
+
+          if (
+            container &&
+            !container.children.length
+          ) {
+
+            container.appendChild(
+              createCategory(
+                'Nueva categoría'
+              )
+            );
+
+          }
+
+
+          wireServiceItems();
+
+          wireCategorySorting();
+
+          updateChecks();
+
+          return;
+
+        }
+
+
+        const template =
+          serviceTemplates[type];
+
+        if (!template) return;
+
+
+        const container =
+          document.getElementById(
+            'service-categories'
+          );
+
+        if (!container) return;
+
+
+        if (
+          container.children.length
+        ) {
+
+          const replace =
+            window.confirm(
+              'Ya existen categorías. ¿Deseas reemplazarlas por la plantilla seleccionada?'
+            );
+
+          if (!replace) {
+            return;
+          }
+
+        }
+
+
+        container.innerHTML =
+          '';
+
+
+        const primary =
+          document.getElementById(
+            'primary-service-zone'
+          );
+
+        const existingPrimary =
+          primary?.querySelector(
+            '.service-item'
+          );
+
+
+        if (existingPrimary) {
+          existingPrimary.remove();
+        }
+
+
+        template.forEach(
+          (item)=>{
+
+            container.appendChild(
+              createCategory(
+                item.name,
+                item.services,
+                item.priority
+              )
+            );
+
+          }
+        );
+
+
+        wireServiceItems();
+
+        wireCategorySorting();
+
+        refreshPrimaryZone();
+
+        updateChecks();
+
+      }
+    );
+
+
+  /* ==========================================
+     SERVICIOS EXCLUIDOS
+  ========================================== */
+
+  function wireExcludedServices(){
+
+    form
+      .querySelectorAll(
+        '#excluded-services .row-remove'
+      )
+      .forEach((button)=>{
+
+        if (
+          button.dataset.excludedWired ===
+          '1'
+        ) {
+          return;
+        }
+
+        button.dataset.excludedWired =
+          '1';
+
+
+        button.addEventListener(
+          'click',
+          ()=>{
+
+            button
+              .closest(
+                '.excluded-service-row'
+              )
+              ?.remove();
+
+            updateChecks();
+
+          }
+        );
+
+      });
+
+  }
+
+
+  document
+    .getElementById(
+      'add-excluded-service'
+    )
+    ?.addEventListener(
+      'click',
+      ()=>{
+
+        const container =
+          document.getElementById(
+            'excluded-services'
+          );
+
+        if (!container) return;
+
+
+        const row =
+          document.createElement(
+            'div'
+          );
+
+        row.className =
+          'excluded-service-row';
+
+
+        row.innerHTML = `
+
+          <input
+            type="text"
+            name="excluded_service_name"
+            placeholder="Servicio excluido"
+          >
+
+          <button
+            type="button"
+            class="row-remove"
+          >
+            Eliminar
+          </button>
+
+        `;
+
+
+        container.appendChild(
+          row
+        );
+
+
+        wireExcludedServices();
+
+        updateChecks();
+
+      }
+    );
+
+
+  /* ==========================================
+     FILAS GENERALES
+  ========================================== */
+
+  document
+    .querySelectorAll(
+      '[data-add-row]'
+    )
+    .forEach((button)=>{
+
+      button.addEventListener(
+        'click',
+        ()=>{
+
+          const type =
+            button.dataset.addRow;
+
+          let list =
+            null;
+
+          let html =
+            '';
+
+
+          if (
+            type === 'area' ||
+            type === 'expansion'
+          ) {
+
+            list =
+              document.getElementById(
+                type === 'area'
+                  ? 'areas-list'
+                  : 'expansion-list'
+              );
+
+
+            const prefix =
+              type === 'area'
+                ? 'area'
+                : 'expansion';
+
+
+            html = `
+
+              <div
+                class="dynamic-row area-row"
+              >
+
+                <select
+                  name="${prefix}_type"
+                >
+
+                  <option value="state">
+                    Estado
+                  </option>
+
+                  <option value="county">
+                    Condado
+                  </option>
+
+                  <option value="city">
+                    Ciudad
+                  </option>
+
+                </select>
+
+
+                <input
+                  type="text"
+                  name="${prefix}_name"
+                  placeholder="Nombre"
+                >
+
+
+                <button
+                  type="button"
+                  class="row-remove"
+                >
+                  Eliminar
+                </button>
+
+              </div>
+
+            `;
+
+          }
+
+
+          if (
+            type === 'phone'
+          ) {
+
+            list =
+              document.getElementById(
+                'phones-list'
+              );
+
+
+            const index =
+              list
+                ? list.children.length
+                : 0;
+
+
+            html = `
+
+              <div
+                class="dynamic-row phone-row"
+              >
+
+                <input
+                  type="tel"
+                  name="phone_number"
+                  placeholder="(845) 000-0000"
+                >
+
+
+                <label
+                  class="mini-choice"
+                >
+
+                  <input
+                    type="radio"
+                    name="phone_primary"
+                    value="${index}"
+                  >
+
+                  Principal
+
+                </label>
+
+
+                <label
+                  class="mini-choice"
+                >
+
+                  <input
+                    type="checkbox"
+                    name="phone_whatsapp"
+                    value="${index}"
+                  >
+
+                  WhatsApp
+
+                </label>
+
+
+                <button
+                  type="button"
+                  class="row-remove"
+                >
+                  Eliminar
+                </button>
+
+              </div>
+
+            `;
+
+          }
+
+
+          if (
+            type === 'social-custom'
+          ) {
+
+            list =
+              document.getElementById(
+                'social-custom-list'
+              );
+
+
+            html = `
+
+              <div
+                class="dynamic-row custom-social-row"
+              >
+
+                <input
+                  type="text"
+                  name="social_custom_name"
+                  placeholder="Otra red"
+                >
+
+                <input
+                  type="url"
+                  name="social_custom_url"
+                  placeholder="https://..."
+                >
+
+                <button
+                  type="button"
+                  class="row-remove"
+                >
+                  Eliminar
+                </button>
+
+              </div>
+
+            `;
+
+          }
+
+
+          if (
+            !list ||
+            !html
+          ) {
+            return;
+          }
+
+
+          list.insertAdjacentHTML(
+            'beforeend',
+            html
+          );
+
+
+          wireGeneralRemove(list);
+
+          normalizePhoneOrder();
+
+          updateConditionals();
+
+          updateChecks();
+
+        }
+      );
+
+    });
+
+
+  /* ==========================================
+     PREPARAR SERVICIOS PARA GUARDADO
+  ========================================== */
+
+  function prepareServicesForSubmit(){
+
+    form
+      .querySelectorAll(
+        '[data-generated-service-field]'
+      )
+      .forEach(
+        (field)=>field.remove()
+      );
+
+
+    const allServiceItems = [
+      ...form.querySelectorAll(
+        '.service-item'
+      )
+    ];
+
+
+    const primaryZone =
+      document.getElementById(
+        'primary-service-zone'
+      );
+
+
+    const primaryItem =
+      primaryZone
+        ?.querySelector(
+          '.service-item'
+        );
+
+
+    /*
+      service_name ya existe en cada
+      .service-item, por lo que Django
+      recibirá los nombres normalmente.
+    */
+
+
+    if (primaryItem) {
+
+      const index =
+        allServiceItems.indexOf(
+          primaryItem
+        );
+
+
+      if (index >= 0) {
+
+        const field =
+          document.createElement(
+            'input'
+          );
+
+        field.type =
+          'hidden';
+
+        field.name =
+          'service_primary';
+
+        field.value =
+          index;
+
+        field.dataset.generatedServiceField =
+          '1';
+
+        form.appendChild(
+          field
+        );
+
+      }
+
+    }
+
+
+    /*
+      Datos nuevos para el siguiente
+      cambio del backend.
+    */
+
+    const businessType =
+      radio('business_type');
+
+
+    if (businessType) {
+
+      const hidden =
+        document.createElement(
+          'input'
+        );
+
+      hidden.type =
+        'hidden';
+
+      hidden.name =
+        'services_business_type';
+
+      hidden.value =
+        businessType;
+
+      hidden.dataset.generatedServiceField =
+        '1';
+
+      form.appendChild(hidden);
+
+    }
+
+
+    const categories = [
+      ...document.querySelectorAll(
+        '#service-categories .service-category'
+      )
+    ];
+
+
+    const structure =
+      categories.map(
+        (category, categoryIndex)=>{
+
+          return {
+
+            name:
+              category
+                .querySelector(
+                  '[name="service_category_name"]'
+                )
+                ?.value
+                .trim() || '',
+
+            priority:
+              category
+                .querySelector(
+                  '[name="service_category_priority"]'
+                )
+                ?.value || 'medium',
+
+            order:
+              categoryIndex,
+
+            services:
+              [
+                ...category.querySelectorAll(
+                  '.service-item'
+                )
+              ].map(
+                (item, serviceIndex)=>({
+
+                  name:
+                    item
+                      .querySelector(
+                        '[name="service_name"]'
+                      )
+                      ?.value
+                      .trim() || '',
+
+                  order:
+                    serviceIndex
+
+                })
+              )
+
+          };
+
+        }
+      );
+
+
+    const structureField =
+      document.createElement(
+        'input'
+      );
+
+    structureField.type =
+      'hidden';
+
+    structureField.name =
+      'service_structure_json';
+
+    structureField.value =
+      JSON.stringify(
+        structure
+      );
+
+    structureField.dataset.generatedServiceField =
+      '1';
+
+    form.appendChild(
+      structureField
+    );
+
+  }
+
+/* ==========================================
+   RESTAURAR SELECCIONES MULTIPLES
+========================================== */
+
+function restoreMultiSelections(){
+
+  const savedQuoteChannels = [
+    {% for item in data.quotes.json.channels %}
+      "{{ item|escapejs }}",
+    {% endfor %}
+  ];
+
+  savedQuoteChannels.forEach((value)=>{
+
+    const field =
+      form.querySelector(
+        `[name="quote_channel"][value="${value}"]`
+      );
+
+    if (field) {
+      field.checked = true;
+    }
+
+  });
+
+
+  const savedWebsitePages = [
+    {% for item in data.website_structure.json.pages %}
+      "{{ item|escapejs }}",
+    {% endfor %}
+  ];
+
+  savedWebsitePages.forEach((value)=>{
+
+    const field =
+      form.querySelector(
+        `[name="website_pages"][value="${value}"]`
+      );
+
+    if (field) {
+      field.checked = true;
+    }
+
+  });
+
+
+  const savedFormFields = [
+    {% for item in data.website_forms.json.fields %}
+      "{{ item|escapejs }}",
+    {% endfor %}
+  ];
+
+  savedFormFields.forEach((value)=>{
+
+    const field =
+      form.querySelector(
+        `[name="form_fields"][value="${value}"]`
+      );
+
+    if (field) {
+      field.checked = true;
+    }
+
+  });
+
+}
+
+/* ==========================================
+   RESTAURAR SERVICIOS GUARDADOS
+========================================== */
+
+function restoreSavedServices(){
+
+  const node =
+    document.getElementById(
+      'saved-services-data'
+    );
+
+  if (!node) return;
+
+
+  let saved = {};
+
+  try {
+
+    saved =
+      JSON.parse(
+        node.textContent || '{}'
+      );
+
+  } catch (error) {
+
+    return;
+
+  }
+
+
+  const container =
+    document.getElementById(
+      'service-categories'
+    );
+
+  const primaryZone =
+    document.getElementById(
+      'primary-service-zone'
+    );
+
+
+  if (container) {
+
+    container.innerHTML = '';
+
+    const categories =
+      Array.isArray(
+        saved.categories
+      )
+        ? saved.categories
+        : [];
+
+
+    categories.forEach(
+      (category)=>{
+
+        const services =
+          Array.isArray(
+            category.services
+          )
+            ? category.services
+            : [];
+
+
+        const names =
+          services
+            .map(
+              (service)=>{
+
+                if (
+                  typeof service ===
+                  'string'
+                ) {
+                  return service;
+                }
+
+                return (
+                  service?.name || ''
+                );
+
+              }
+            )
+            .filter(Boolean);
+
+
+        container.appendChild(
+          createCategory(
+            category.name || '',
+            names,
+            category.priority ||
+            'medium'
+          )
+        );
+
+      }
+    );
+
+
+    /*
+      Compatibilidad con datos viejos
+      si todavía no existen categories
+    */
+
+    if (!categories.length) {
+
+      const legacyServices =
+        Array.isArray(
+          saved.items
+        )
+          ? saved.items
+          : [];
+
+
+      const secondaryNames =
+        legacyServices
+          .filter(
+            (item)=>
+              item &&
+              !item.primary &&
+              !item.excluded &&
+              item.name
+          )
+          .map(
+            (item)=>
+              item.name
+          );
+
+
+      if (
+        secondaryNames.length
+      ) {
+
+        container.appendChild(
+          createCategory(
+            'Servicios',
+            secondaryNames,
+            'medium'
+          )
+        );
+
+      }
+
+    }
+
+  }
+
+
+  if (primaryZone) {
+
+    primaryZone.innerHTML = '';
+
+
+    const items =
+      Array.isArray(
+        saved.items
+      )
+        ? saved.items
+        : [];
+
+
+    const primary =
+      items.find(
+        (item)=>
+          item &&
+          item.primary &&
+          !item.excluded &&
+          item.name
+      );
+
+
+    if (primary) {
+
+      primaryZone.appendChild(
+        createServiceRow(
+          primary.name
+        )
+      );
+
+    }
+
+  }
+
+
+  wireServiceItems();
+
+  wireCategorySorting();
+
+  refreshPrimaryZone();
+
+  updateChecks();
+
+}
+  /* ==========================================
+     EVENTOS GENERALES
+  ========================================== */
+
+  form.addEventListener(
+    'input',
+    ()=>{
+
+      updateConditionals();
+
+      updateChecks();
+
+    }
+  );
+
+
+  form.addEventListener(
+    'change',
+    ()=>{
+
+      updateConditionals();
+
+      updateChecks();
+
+    }
+  );
+
+
+  form.addEventListener(
+    'submit',
+    ()=>{
+
+      normalizePhoneOrder();
+
+      prepareServicesForSubmit();
+
+    }
+  );
+
+
+  /* ==========================================
+     INICIO
+  ========================================== */
+
+wireGeneralRemove(form);
+
+wireExcludedServices();
+
+restoreSavedServices();
+
+normalizePhoneOrder();
+
+restoreMultiSelections();
+
+updateConditionals();
+
+updateChecks();
+
+})();
+</script>
+{% endblock %}

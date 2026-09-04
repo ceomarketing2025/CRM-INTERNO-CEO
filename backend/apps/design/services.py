@@ -22,13 +22,8 @@ def complete_design_brief(*, brief, user):
     brief.completed_by = user
     brief.save(update_fields=["completed", "completed_at", "completed_by", "updated_at"])
     project = brief.project
-    if project.status in {"administration", "design_intake"}:
-        project.status = "development_intake"
-        project.progress = max(project.progress, 35)
-        project.summary = "Asesoría visual completada. Pendiente ficha técnica de Desarrollo."
-        project.save(update_fields=["status", "progress", "summary", "updated_at"])
-
-    # Deja preparada automáticamente la ficha que Desarrollo debe completar.
+    # V3: Diseño no cambia el estado ni bloquea a otras áreas.
+    # La ficha de Desarrollo se deja preparada por conveniencia, pero puede completarse antes o después.
     from apps.questionnaires.models import ProjectQuestionnaire, QuestionnaireTemplate
     template = QuestionnaireTemplate.objects.filter(code="website-technical-v2", is_active=True).first()
     if template and project.project_type == "website":

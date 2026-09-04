@@ -1,1 +1,21 @@
-{% extends 'base.html' %}{% block page_heading %}Proyectos{% endblock %}{% block content %}<div class="page-intro"><div><h2>Proyectos</h2><p>Seguimiento del flujo Administración → Diseño → Desarrollo → Resumen → Ejecución.</p></div>{% if current_role == 'administration' or request.user.is_manager %}<a class="btn btn-primary" href="{% url 'administration:website_intake' %}">+ Alta web</a>{% endif %}</div><div class="project-grid">{% for p in projects %}<a class="project-card" href="{% url 'projects:detail' p.pk %}"><div class="project-card-top"><span class="project-code">{{ p.project_code }}</span><span class="badge">{{ p.get_status_display }}</span></div><h3>{{ p.client.business_name }}</h3><p>{{ p.client.full_name }}{% if p.purchased_plan %} · {{ p.purchased_plan.plan.name }}{% endif %}</p><div class="progress"><i style="width:{{ p.progress }}%"></i></div><div class="project-footer"><span>{{ p.progress }}% completado</span><span>{{ p.updated_at|date:'d M Y' }}</span></div></a>{% empty %}<div class="empty card">No hay proyectos para esta área.</div>{% endfor %}</div>{% endblock %}
+{% extends 'base.html' %}
+{% block page_heading %}Proyectos{% endblock %}
+{% block content %}
+<div class="page-intro"><div><h2>Control de proyectos</h2><p>Vista general de qué falta, qué está listo y quién hizo la última modificación.</p></div>{% if current_role == 'administration' or request.user.is_manager %}<a class="btn btn-primary" href="{% url 'administration:website_intake' %}">＋ Alta web</a>{% endif %}</div>
+<div class="project-grid">
+{% for row in project_rows %}{% with p=row.project c=row.control %}
+<a class="project-card control-project-card" href="{% url 'projects:detail' p.pk %}">
+  <div class="project-card-top"><span class="project-code">{{ p.project_code }}</span><span class="badge">{{ p.get_status_display }}</span></div>
+  <div class="project-list-title"><div><h3>{{ p.client.business_name }}</h3><p>{{ p.client.full_name }}{% if p.purchased_plan %} · {{ p.purchased_plan.plan.name }}{% endif %}</p></div><strong class="project-percent">{{ c.overall_percent }}%</strong></div>
+  <div class="progress slim project-progress"><i style="width:{{ c.overall_percent }}%"></i></div>
+  <div class="project-control-mini">
+    <span class="{% if c.admin_done %}done{% endif %}"><i></i> Administración</span>
+    <span class="{% if c.design_done == 3 %}done{% endif %}"><i></i> Diseño {{ c.design_done }}/3</span>
+    <span class="{% if c.marketing_total and c.marketing_done == c.marketing_total %}done{% endif %}"><i></i> Marketing {{ c.marketing_done }}/{{ c.marketing_total }}</span>
+    <span class="{% if c.development_percent == 100 %}done{% endif %}"><i></i> Desarrollo {{ c.development_percent }}%</span>
+  </div>
+  <div class="project-footer"><span>{% if c.last_log %}{{ c.last_log.user.display_name|default:'Sistema' }} · {{ c.last_log.module }}{% else %}Sin actividad registrada{% endif %}</span><span>{% if c.last_log %}{{ c.last_log.created_at|date:'d/m/Y H:i' }}{% endif %}</span></div>
+</a>
+{% endwith %}{% empty %}<div class="empty card">No hay proyectos para esta área.</div>{% endfor %}
+</div>
+{% endblock %}

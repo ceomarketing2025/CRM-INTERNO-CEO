@@ -8,3 +8,6 @@ backend/staticfiles/
 .vscode/
 .idea/
 .DS_Store
+
+# Celery Beat - archivo runtime, no versionar
+backend/celerybeat-schedule*

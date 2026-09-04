@@ -41,7 +41,7 @@ class ServicePlanForm(forms.ModelForm):
         fields = [
             "name", "department", "service_type", "weekly_posts", "weekly_videos",
             "website_pages", "branding_pages", "scope_range", "base_price", "currency",
-            "description", "is_active",
+            "billing_cycle", "description", "is_active",
         ]
         widgets = {
             "weekly_posts": forms.NumberInput(attrs={"min": 0}),

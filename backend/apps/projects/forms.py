@@ -1,8 +1,9 @@
 from django import forms
 
 from apps.plans.models import ServicePlan
-from apps.plans.models.choices import PlanDepartment
+from apps.plans.models.choices import ServiceType
 from .models import Project, ProjectAssignment, ProjectNote, ProjectPlanAssignment
+
 
 class PlanMultipleChoiceField(forms.ModelMultipleChoiceField):
     def label_from_instance(self, obj):
@@ -10,25 +11,19 @@ class PlanMultipleChoiceField(forms.ModelMultipleChoiceField):
 
 
 class ProjectForm(forms.ModelForm):
-    administration_plans = PlanMultipleChoiceField(
-        queryset=ServicePlan.objects.none(), required=False, label="Administración"
-    )
-    design_plans = PlanMultipleChoiceField(
-        queryset=ServicePlan.objects.none(), required=False, label="Diseño"
-    )
-    marketing_plans = PlanMultipleChoiceField(
-        queryset=ServicePlan.objects.none(), required=False, label="Marketing"
-    )
-    development_plans = PlanMultipleChoiceField(
-        queryset=ServicePlan.objects.none(), required=False, label="Sitios web / Desarrollo"
-    )
+    """Proyecto + servicios contratados en una sola selección multiárea.
 
-    PLAN_FIELDS = {
-        "administration_plans": PlanDepartment.ADMINISTRATION,
-        "design_plans": PlanDepartment.DESIGN,
-        "marketing_plans": PlanDepartment.MARKETING,
-        "development_plans": PlanDepartment.DEVELOPMENT,
-    }
+    `project_type` se conserva en el modelo únicamente por compatibilidad histórica;
+    la interfaz ya no obliga a escoger un único tipo. El tipo legado se infiere de
+    los productos contratados para que los módulos antiguos sigan funcionando.
+    """
+
+    service_plans = PlanMultipleChoiceField(
+        queryset=ServicePlan.objects.none(),
+        required=False,
+        label="Servicios contratados",
+        widget=forms.CheckboxSelectMultiple(),
+    )
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -39,24 +34,19 @@ class ProjectForm(forms.ModelForm):
             ("completed", "Completado"),
             ("cancelled", "Cancelado"),
         ]
-        for field_name, department in self.PLAN_FIELDS.items():
-            self.fields[field_name].queryset = ServicePlan.objects.filter(
-                department=department, is_active=True
-            ).order_by("service_type", "name")
-            self.fields[field_name].widget = forms.CheckboxSelectMultiple()
+        self.fields["service_plans"].queryset = ServicePlan.objects.filter(
+            is_active=True
+        ).order_by("department", "service_type", "name")
 
         if self.instance and self.instance.pk:
-            assignments = self.instance.contracted_plans.select_related("plan").filter(is_active=True)
-            by_department = {}
-            for assignment in assignments:
-                by_department.setdefault(assignment.plan.department, []).append(assignment.plan_id)
-            for field_name, department in self.PLAN_FIELDS.items():
-                self.fields[field_name].initial = by_department.get(department, [])
+            self.fields["service_plans"].initial = list(
+                self.instance.contracted_plans.filter(is_active=True).values_list("plan_id", flat=True)
+            )
 
     class Meta:
         model = Project
         fields = [
-            "client", "name", "project_type", "status", "priority",
+            "client", "name", "status", "priority",
             "start_date", "due_date", "summary", "internal_notes",
         ]
         widgets = {
@@ -67,31 +57,55 @@ class ProjectForm(forms.ModelForm):
         }
         labels = {
             "name": "Nombre del proyecto",
-            "project_type": "Tipo principal",
             "start_date": "Fecha de inicio",
             "due_date": "Fecha objetivo",
         }
 
+    def selected_service_plan_ids(self):
+        """IDs seleccionados tanto en GET inicial como después de un POST inválido."""
+        if self.is_bound:
+            values = self.data.getlist("service_plans")
+            return {int(value) for value in values if str(value).isdigit()}
+        initial = self.fields["service_plans"].initial or []
+        return {int(getattr(value, "pk", value)) for value in initial}
+
+    def _infer_project_type(self, selected_plans):
+        service_types = {plan.service_type for plan in selected_plans}
+        if ServiceType.SOFTWARE in service_types:
+            return "software"
+        if service_types.intersection({ServiceType.WEBSITE, ServiceType.LANDING_PAGE, ServiceType.ECOMMERCE, ServiceType.WEBSITE_MAINTENANCE}):
+            return "website"
+        if ServiceType.SEO in service_types:
+            return "seo"
+        if ServiceType.SOCIAL_MEDIA in service_types:
+            return "social_media"
+        if service_types.intersection({ServiceType.BRANDING, ServiceType.GRAPHIC_DESIGN, ServiceType.JACKETS, ServiceType.CAPS, ServiceType.OTHER_DESIGN}):
+            return "branding"
+        return self.instance.project_type if self.instance and self.instance.pk else "other"
+
     def save(self, commit=True):
-        project = super().save(commit=commit)
+        project = super().save(commit=False)
+        selected_plans = list(self.cleaned_data.get("service_plans", []))
+        project.project_type = self._infer_project_type(selected_plans)
         if commit:
-            self.save_plan_assignments(project)
+            project.save()
+            self.save_plan_assignments(project, selected_plans=selected_plans)
         return project
 
-    def save_plan_assignments(self, project):
-        selected_ids = set()
-        for field_name in self.PLAN_FIELDS:
-            for plan in self.cleaned_data.get(field_name, []):
-                selected_ids.add(plan.pk)
-                ProjectPlanAssignment.objects.update_or_create(
-                    project=project,
-                    plan=plan,
-                    defaults={
-                        "agreed_price": plan.base_price,
-                        "is_active": True,
-                        "created_by": self.user if getattr(self.user, "is_authenticated", False) else None,
-                    },
-                )
+    def save_plan_assignments(self, project, selected_plans=None):
+        selected_plans = list(selected_plans if selected_plans is not None else self.cleaned_data.get("service_plans", []))
+        selected_ids = {plan.pk for plan in selected_plans}
+        actor = self.user if getattr(self.user, "is_authenticated", False) else None
+        for plan in selected_plans:
+            ProjectPlanAssignment.objects.update_or_create(
+                project=project,
+                plan=plan,
+                defaults={
+                    "agreed_price": plan.base_price,
+                    "is_active": True,
+                    "created_by": actor,
+                },
+            )
         project.contracted_plans.exclude(plan_id__in=selected_ids).update(is_active=False)
 
 

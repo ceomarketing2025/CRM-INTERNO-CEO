@@ -32,8 +32,8 @@
       </div>
       {% if plan.service_type == 'social_media' %}
       <div class="plan-deliverables">
-        <div><span>Posts</span><strong>{{ plan.weekly_posts }}</strong></div>
-        <div><span>Videos</span><strong>{{ plan.weekly_videos }}</strong></div>
+        <div><span>Posts / ciclo</span><strong>{{ plan.weekly_posts }}</strong></div>
+        <div><span>Videos / ciclo</span><strong>{{ plan.weekly_videos }}</strong></div>
       </div>
       {% elif plan.department == 'developer' %}
       <div class="plan-deliverables">
@@ -42,7 +42,7 @@
       </div>
       {% if plan.scope_range %}<p class="plan-scope-note">{{ plan.scope_range }}</p>{% endif %}
       {% endif %}
-      <div class="plan-price-v8"><strong>${{ plan.base_price }}</strong><span>{{ plan.currency }}</span></div>
+      <div class="plan-price-v8"><strong>${{ plan.base_price }}</strong><span>{{ plan.currency }} · {{ plan.get_billing_cycle_display }}</span></div>
       {% if plan.description %}<p class="plan-description-v9">{{ plan.description|truncatechars:130 }}</p>{% endif %}
       <div class="plan-meta-v8"><span>Creado {{ plan.created_at|date:'d/m/Y' }}</span>{% if plan.created_by %}<span>por {{ plan.created_by.display_name }}</span>{% endif %}</div>
       <div class="plan-card-actions"><a class="btn btn-secondary" href="{% url 'plans:edit' plan.pk %}">Editar</a></div>

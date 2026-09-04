@@ -297,3 +297,148 @@ def _sync_social_items(cycle, content_type, target):
         if item.ready or item.published_networks or item.notes:
             continue
         item.delete()
+
+
+# ---------------------------------------------------------------------------
+# Tareas operativas de Diseño V2: auto-creación + ciclos recurrentes.
+# ---------------------------------------------------------------------------
+
+def ensure_default_design_tasks_for_project(project, user=None):
+    """Crea una actividad base por cada producto de Diseño contratado.
+
+    Es idempotente: si el producto ya tiene una o más tareas, no agrega otra.
+    Social Media nace como contenido recurrente *sin configurar* para que Diseño
+    defina si se controlará semanal, quincenal o mensualmente.
+    """
+    from apps.design.models import DesignTask
+    from apps.plans.models.choices import PlanDepartment, ServiceType
+
+    assignments = project.contracted_plans.select_related("plan").filter(
+        is_active=True,
+        plan__department=PlanDepartment.DESIGN,
+    )
+    created = []
+    actor = user if getattr(user, "is_authenticated", False) else None
+    for assignment in assignments:
+        is_social = assignment.plan.service_type == ServiceType.SOCIAL_MEDIA
+        if is_social:
+            # Un servicio Social Media siempre necesita al menos un control de
+            # publicaciones, incluso si el equipo ya creó otras tareas manuales.
+            if assignment.design_tasks.filter(task_type=DesignTask.TaskType.CONTENT).exists():
+                continue
+        elif assignment.design_tasks.exists():
+            continue
+        task = DesignTask.objects.create(
+            project_plan=assignment,
+            title="Publicaciones / contenido" if is_social else assignment.plan.name,
+            description=(
+                "Configura la frecuencia de publicación para comenzar el control por periodos."
+                if is_social
+                else f"Actividad creada automáticamente al contratar {assignment.plan.name}."
+            ),
+            status=DesignTask.Status.TODO,
+            task_type=DesignTask.TaskType.CONTENT if is_social else DesignTask.TaskType.STANDARD,
+            recurrence_frequency=DesignTask.Recurrence.NONE,
+            recurrence_start_date=None,
+            configuration_required=is_social,
+            auto_generated=True,
+            created_by=actor,
+            updated_by=actor,
+        )
+        created.append(task)
+    return created
+
+
+def ensure_current_design_task_cycle(task, today=None):
+    """Devuelve/crea el periodo vigente para una tarea recurrente configurada."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.design.models import DesignTaskCycle
+    from apps.plans.services import current_cycle_bounds
+
+    today = today or timezone.localdate()
+    if not task.is_recurring or task.needs_configuration:
+        return None
+
+    period_start, next_start = current_cycle_bounds(
+        task.recurrence_start_date,
+        task.recurrence_frequency,
+        today=today,
+    )
+    if not next_start:
+        return None
+    period_end = next_start - timedelta(days=1)
+    label = design_cycle_label(task.recurrence_frequency, period_start, period_end)
+    cycle, _ = DesignTaskCycle.objects.get_or_create(
+        task=task,
+        period_start=period_start,
+        defaults={"period_end": period_end, "label": label},
+    )
+    changed = []
+    if cycle.period_end != period_end:
+        cycle.period_end = period_end
+        changed.append("period_end")
+    if cycle.label != label:
+        cycle.label = label
+        changed.append("label")
+    if changed:
+        cycle.save(update_fields=changed + ["updated_at"])
+    return cycle
+
+
+def design_cycle_label(frequency, start, end):
+    months = [
+        "", "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+        "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+    ]
+    if frequency == "weekly":
+        prefix = "Semana"
+    elif frequency == "biweekly":
+        prefix = "Quincena"
+    else:
+        return f"{months[start.month]} {start.year} · {start.day:02d}/{start.month:02d}–{end.day:02d}/{end.month:02d}"
+    return f"{prefix} · {start.day:02d}/{start.month:02d}–{end.day:02d}/{end.month:02d}"
+
+
+def design_task_progress(task, today=None):
+    """Estado normalizado 0–100 usado por Diseño y Auditoría General."""
+    if task.task_type == task.TaskType.CONTENT:
+        if task.needs_configuration:
+            return {
+                "progress": 0,
+                "state": "red",
+                "label": "Configurar renovación",
+                "cycle": None,
+                "needs_configuration": True,
+            }
+        cycle = ensure_current_design_task_cycle(task, today=today)
+        if not cycle:
+            return {
+                "progress": 0,
+                "state": "red",
+                "label": "Sin periodo activo",
+                "cycle": None,
+                "needs_configuration": False,
+            }
+        return {
+            "progress": cycle.progress_percent,
+            "state": cycle.state_code,
+            "label": cycle.state_label,
+            "cycle": cycle,
+            "needs_configuration": False,
+        }
+
+    progress = task.standard_progress_percent
+    if progress >= 100:
+        state = "green"
+    elif progress >= 50:
+        state = "yellow"
+    else:
+        state = "red"
+    return {
+        "progress": progress,
+        "state": state,
+        "label": task.get_status_display(),
+        "cycle": None,
+        "needs_configuration": False,
+    }

@@ -6,11 +6,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 import qrcode
 
-from apps.audit.models import ActivityLog
-from apps.audit.services import log_activity
+from apps.audit.models import ActivityLog, GeneralAuditCheck
+from apps.audit.services import build_general_audit_rows, log_activity, review_general_audit_check
 from apps.core.decorators import role_required
 from apps.projects.models import Project
-from apps.projects.selectors import can_access_project
+from apps.projects.selectors import can_access_project, projects_for_area
 
 from .forms import (
     AdCampaignForm,
@@ -38,6 +38,7 @@ from .models import (
     MarketingDocument,
     MarketingTask,
     MarketingWorkspace,
+    SocialMediaAudit,
     SocialMediaDailyLog,
     SocialMediaPlan,
     SocialMediaTracking,
@@ -73,7 +74,7 @@ def _active_groups(workspace):
 
 @role_required("marketing")
 def marketing_list(request):
-    projects = Project.objects.select_related("client", "purchased_plan__plan").filter(project_type__in=["social_media", "seo", "website"])
+    projects = projects_for_area("marketing").order_by("-updated_at", "-created_at")
     if not request.user.is_manager:
         projects = projects.filter(assignments__user=request.user, assignments__area="marketing").distinct()
     tasks_qs = MarketingTask.objects.select_related("project", "assigned_to")
@@ -389,10 +390,195 @@ def campaign_weekly_report(request, pk):
     })
 
 
-@role_required("marketing", "administration")
+@role_required("administration")
 def social_tracking_list(request):
-    records = SocialMediaTracking.objects.select_related("client", "project")
-    return render(request, "marketing/social_tracking.html", {"records": records})
+    """Auditoría General por proyecto. Solo Gerencia/Administración."""
+    from collections import OrderedDict
+    from apps.projects.models import Project
+    from apps.projects.selectors import project_area_flags
+    from apps.projects.services import sync_project_area_records
+
+    # La auditoría también repara proyectos antiguos: si fueron creados antes de
+    # la sincronización por servicios, prepara sus fichas/tareas de área de forma
+    # idempotente antes de calcular el dashboard.
+    for project in Project.objects.exclude(status="cancelled").select_related("client").prefetch_related("contracted_plans__plan"):
+        sync_project_area_records(project, request.user)
+
+    all_rows = build_general_audit_rows()
+    q = (request.GET.get("q") or "").strip().lower()
+    selected_area = (request.GET.get("area") or "all").strip().lower()
+    status = (request.GET.get("status") or "all").strip().lower()
+
+    def row_matches(row):
+        if q and not (
+            q in row["client"].business_name.lower()
+            or q in row["project"].project_code.lower()
+            or q in row["project"].name.lower()
+            or q in row["category"].lower()
+            or q in row["label"].lower()
+        ):
+            return False
+        if selected_area in {"design", "development", "marketing"} and row["area"] != selected_area:
+            return False
+        if status == "pending" and row["audit_current"]:
+            return False
+        if status == "audited" and not row["audit_current"]:
+            return False
+        if status == "changed" and not (row["check"].is_ready and not row["audit_current"]):
+            return False
+        if status == "source_pending" and row["source_progress"] >= 100:
+            return False
+        if status == "source_done" and row["source_progress"] < 100:
+            return False
+        return True
+
+    rows_by_project = OrderedDict()
+    for row in all_rows:
+        rows_by_project.setdefault(row["project"].pk, []).append(row)
+
+    area_meta = [
+        ("design", "Diseño"),
+        ("marketing", "Marketing"),
+        ("development", "Desarrollo"),
+    ]
+
+    def progress_state(progress, applies=True):
+        if not applies:
+            return "neutral"
+        if progress >= 100:
+            return "green"
+        if progress >= 50:
+            return "yellow"
+        return "red"
+
+    projects = []
+    total_current = source_progress_sum = audited_current = 0
+    area_totals = {key: {"progress_sum": 0, "projects": 0, "tasks": 0, "audited": 0} for key, _ in area_meta}
+
+    for project_id, project_rows in rows_by_project.items():
+        project = project_rows[0]["project"]
+        flags = project_area_flags(project)
+        area_cards = []
+        overall_parts = []
+        visible_project = False
+
+        for area_key, area_label in area_meta:
+            area_rows_all = [row for row in project_rows if row["area"] == area_key]
+            current_rows = [row for row in area_rows_all if row["counts_for_progress"]]
+            applies = bool(flags.get(area_key) or current_rows)
+            progress = round(sum(row["source_progress"] for row in current_rows) / len(current_rows)) if current_rows else 0
+            current_audited = sum(1 for row in current_rows if row["audit_current"])
+            audit_progress = round(current_audited * 100 / len(current_rows)) if current_rows else 0
+            if applies:
+                overall_parts.append(progress)
+                stats = area_totals[area_key]
+                stats["progress_sum"] += progress
+                stats["projects"] += 1
+                stats["tasks"] += len(current_rows)
+                stats["audited"] += current_audited
+
+            display_rows = [row for row in area_rows_all if row_matches(row)]
+            if display_rows:
+                visible_project = True
+
+            # Agrupa las tareas dentro del área por producto/categoría para lectura rápida.
+            categories = OrderedDict()
+            for row in display_rows:
+                categories.setdefault(row["category"], []).append(row)
+
+            area_cards.append({
+                "key": area_key,
+                "label": area_label,
+                "applies": applies,
+                "progress": progress,
+                "state": progress_state(progress, applies),
+                "audit_progress": audit_progress,
+                "current_total": len(current_rows),
+                "current_done": sum(1 for row in current_rows if row["source_progress"] >= 100),
+                "current_audited": current_audited,
+                "rows": display_rows,
+                "categories": [{"name": name, "rows": items} for name, items in categories.items()],
+            })
+
+        # Si no hay filtro de tareas, el proyecto siempre se muestra. Con filtros,
+        # solo aparece cuando al menos una fila coincide.
+        if not (q or selected_area != "all" or status != "all"):
+            visible_project = True
+        if not visible_project:
+            continue
+
+        overall = round(sum(overall_parts) / len(overall_parts)) if overall_parts else 0
+        current_project_rows = [row for row in project_rows if row["counts_for_progress"]]
+        total_current += len(current_project_rows)
+        source_progress_sum += sum(row["source_progress"] for row in current_project_rows)
+        audited_current += sum(1 for row in current_project_rows if row["audit_current"])
+        projects.append({
+            "project": project,
+            "areas": area_cards,
+            "overall": overall,
+            "overall_state": progress_state(overall, bool(overall_parts)),
+            "applicable_areas": len(overall_parts),
+            "current_tasks": len(current_project_rows),
+            "audited_tasks": sum(1 for row in current_project_rows if row["audit_current"]),
+        })
+
+    projects.sort(key=lambda item: item["project"].client.business_name.lower())
+    source_progress = round(source_progress_sum / total_current) if total_current else 0
+    audit_progress = round(audited_current * 100 / total_current) if total_current else 0
+    area_stats = []
+    for key, label in area_meta:
+        stat = area_totals[key]
+        area_stats.append({
+            "key": key,
+            "label": label,
+            "projects": stat["projects"],
+            "tasks": stat["tasks"],
+            "progress": round(stat["progress_sum"] / stat["projects"]) if stat["projects"] else 0,
+            "audit_progress": round(stat["audited"] * 100 / stat["tasks"]) if stat["tasks"] else 0,
+        })
+
+    return render(request, "marketing/social_tracking.html", {
+        "projects": projects,
+        "project_count": len(projects),
+        "total": total_current,
+        "source_progress": source_progress,
+        "audited": audited_current,
+        "audit_progress": audit_progress,
+        "needs_review": max(total_current - audited_current, 0),
+        "area_stats": area_stats,
+        "selected_area": selected_area,
+        "selected_status": status,
+        "search_query": request.GET.get("q", ""),
+    })
+
+
+@role_required("administration")
+def social_tracking_audit(request, pk):
+    if request.method != "POST":
+        return redirect("marketing:general_audit")
+    check = get_object_or_404(
+        GeneralAuditCheck.objects.select_related("project__client"),
+        pk=pk,
+    )
+    action = request.POST.get("action", "ready")
+    ready = action != "reopen"
+    review_general_audit_check(
+        check=check,
+        user=request.user,
+        ready=ready,
+        note=request.POST.get("note"),
+    )
+    log_activity(
+        request.user,
+        "audit",
+        "general_audit_ready" if ready else "general_audit_reopen",
+        check.project,
+        description=f"{check.project.client.business_name} · {check.area} · {check.label}",
+        metadata={"source_key": check.source_key, "audit_check_id": check.pk},
+    )
+    messages.success(request, "Tarea revisada." if ready else "Revisión reabierta.")
+    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER")
+    return redirect(next_url or "marketing:general_audit")
 
 
 @role_required("marketing")

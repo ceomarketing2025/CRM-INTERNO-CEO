@@ -59,7 +59,25 @@
           <small>Puedes registrar Facebook, Instagram, TikTok u otras redes; una por línea.</small>
           {{ form.business_profile_social_links.errors }}
         </div>
+      </div>
+    </div>
 
+    <div class="marketing-form-section">
+      <h4>Seguimiento operativo del perfil</h4>
+      <p class="section-help">Estos datos alimentan automáticamente el dashboard de Seguimiento Social Media. Aquí se actualiza la fuente; en Seguimiento solo se audita.</p>
+      <div class="form-grid">
+        <div class="field"><label>{{ form.business_profile_reviews_status.label }}</label>{{ form.business_profile_reviews_status }}{{ form.business_profile_reviews_status.errors }}</div>
+        <div class="field"><label>{{ form.business_profile_products_status.label }}</label>{{ form.business_profile_products_status }}{{ form.business_profile_products_status.errors }}</div>
+        <div class="field"><label>{{ form.business_profile_completion_status.label }}</label>{{ form.business_profile_completion_status }}{{ form.business_profile_completion_status.errors }}</div>
+        <div class="field"><label>{{ form.business_profile_website_status.label }}</label>{{ form.business_profile_website_status }}{{ form.business_profile_website_status.errors }}</div>
+        <div class="field"><label>{{ form.business_profile_last_post.label }}</label>{{ form.business_profile_last_post }}{{ form.business_profile_last_post.errors }}</div>
+        <div class="field"><label>{{ form.business_profile_photos_status.label }}</label>{{ form.business_profile_photos_status }}{{ form.business_profile_photos_status.errors }}</div>
+      </div>
+    </div>
+
+    <div class="marketing-form-section">
+      <h4>Notas de Google Business</h4>
+      <div class="form-grid">
         <div class="field form-wide">
           <label>{{ form.business_profile_notes.label }}</label>
           {{ form.business_profile_notes }}

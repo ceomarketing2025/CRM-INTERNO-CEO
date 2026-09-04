@@ -27,21 +27,32 @@ def _can_manage_plan(user, plan):
 
 @login_required
 def plan_list(request):
-    plans = ServicePlan.objects.select_related("created_by").all()
+    # IMPORTANTE: no filtrar las banderas del JSONField con ``exclude``.
+    # En PostgreSQL una clave inexistente produce NULL y el NOT del exclude
+    # también queda NULL, haciendo que desaparezcan del resultado planes sanos.
+    # Filtramos área en SQL y ocultamos SOLO las banderas explícitamente True
+    # en Python; así los planes nuevos/default siempre son visibles.
+    plans_qs = ServicePlan.objects.select_related("created_by").all()
     department = _department_for_user(request.user)
     selected_department = request.GET.get("department", "")
 
     if department:
-        plans = plans.filter(department=department)
+        plans_qs = plans_qs.filter(department=department)
         selected_department = department
     elif selected_department in {value for value, _ in PlanDepartment.choices}:
-        plans = plans.filter(department=selected_department)
+        plans_qs = plans_qs.filter(department=selected_department)
     else:
         selected_department = ""
 
+    plans = [
+        plan for plan in plans_qs
+        if not (plan.rules or {}).get("obsolete_wrong_seed", False)
+        and not (plan.rules or {}).get("retired_catalog_seed", False)
+    ]
+
     grouped = []
     for value, label in PlanDepartment.choices:
-        items = list(plans.filter(department=value))
+        items = [plan for plan in plans if plan.department == value]
         if items:
             grouped.append({"value": value, "label": label, "plans": items})
 

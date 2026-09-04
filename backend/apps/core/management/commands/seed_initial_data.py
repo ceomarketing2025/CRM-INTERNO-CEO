@@ -34,16 +34,139 @@ class Command(BaseCommand):
             FinanceCategory.objects.update_or_create(code=code, defaults={"name": name, "description": description, "is_active": True})
 
     def seed_plans(self):
-        plans = [
-            dict(code="website-basic", name="Página Web Básica", department="developer", service_type="website", description="Plan web básico.", base_price=Decimal("1200.00"), billing_cycle="one_time", rules={"level": "basic"}),
-            dict(code="website-medium", name="Página Web Media", department="developer", service_type="website", description="Plan web intermedio.", base_price=Decimal("2400.00"), billing_cycle="one_time", rules={"level": "medium"}),
-            dict(code="website-advanced", name="Página Web Avanzada", department="developer", service_type="website", description="Plan web avanzado.", base_price=Decimal("4000.00"), billing_cycle="one_time", rules={"level": "advanced"}),
-            dict(code="software-custom", name="Software Personalizado", department="developer", service_type="software", description="Base para cotizaciones y desarrollos de software a medida.", base_price=Decimal("0.00"), billing_cycle="one_time", rules={}),
-            dict(code="social-media-custom", name="Social Media", department="design", service_type="social_media", description="Base para planes de gestión de redes sociales.", base_price=Decimal("0.00"), billing_cycle="one_time", rules={}),
+        """Carga el catálogo comercial vigente sin pisar ediciones hechas en el CRM.
+
+        La fuente vigente es la hoja "Hoja de Producción CEO Marketing" recibida
+        el 04/09/2026. Los planes de referencia cargados por error en la versión
+        anterior se retiran del catálogo; si alguno ya fue usado por un proyecto
+        se conserva únicamente como registro histórico inactivo.
+        """
+        obsolete_reference_codes = [
+            "ref-live-studio-redes-1", "ref-live-studio-standard", "ref-live-studio-redes-3",
+            "ref-live-studio-tiktok-1", "ref-agency360-gestion-redes", "ref-since-mercurio",
+            "ref-since-jupiter", "ref-since-urano", "ref-interweb-landing",
+            "ref-interweb-corporativa-pymes", "ref-interweb-ecommerce", "ref-vayolet-landing",
+            "ref-vayolet-corporativa", "ref-vayolet-ecommerce", "ref-nmtech-landing",
+            "ref-nmtech-corporativa", "ref-nmtech-ecommerce", "ref-agency360-landing",
+            "ref-eaweb-seo", "ref-mgweb-seo", "ref-pablo-ronquillo-seo", "ref-since-seo",
+            "ref-apo-ads-single", "ref-apo-meta-google", "ref-since-ads",
         ]
+        for plan in ServicePlan.objects.filter(code__in=obsolete_reference_codes):
+            if not plan.purchases.exists() and not plan.project_assignments.exists():
+                plan.delete()
+                continue
+            rules = dict(plan.rules or {})
+            rules["obsolete_wrong_seed"] = True
+            rules["obsolete_reason"] = "Catálogo de referencia cargado desde el archivo equivocado."
+            plan.rules = rules
+            plan.is_active = False
+            plan.save(update_fields=["rules", "is_active", "updated_at"])
+
+        # Los placeholders antiguos de Web/Social ya tienen reemplazo comercial real.
+        # Se retiran si nunca se usaron; si tienen historial, se ocultan sin romper FKs.
+        retired_generic_codes = ["website-basic", "website-medium", "website-advanced", "social-media-custom"]
+        for plan in ServicePlan.objects.filter(code__in=retired_generic_codes):
+            if not plan.purchases.exists() and not plan.project_assignments.exists():
+                plan.delete()
+                continue
+            rules = dict(plan.rules or {})
+            rules["retired_catalog_seed"] = True
+            rules["obsolete_reason"] = "Placeholder histórico reemplazado por el catálogo comercial vigente."
+            plan.rules = rules
+            plan.is_active = False
+            plan.save(update_fields=["rules", "is_active", "updated_at"])
+
+        plans = [
+            # Software se mantiene como base porque la hoja comercial no trae un plan cerrado.
+            dict(code="software-custom", name="Software Personalizado", department="developer", service_type="software", description="Base para cotizaciones y desarrollos de software a medida.", base_price=Decimal("0.00"), billing_cycle="one_time", rules={"legacy_generic": True}),
+
+            # ===== SITIOS WEB / DESARROLLO =====
+            dict(
+                code="ceo-website-1-basica", name="Website 1 Básica", department="developer", service_type="website",
+                base_price=Decimal("2400.00"), billing_cycle="one_time", website_pages=7, branding_pages=8,
+                scope_range="7 secciones base + 8 branding pages",
+                description="Web básica · 8 branding pages + SEO + indexación + Google Business + Google Guarantee / LSA. Estructura: Home, About, Services, Areas We Service, FAQ, Contact Us y Blog + SEO.",
+                rules={"source":"Hoja de Producción CEO Marketing", "includes":["SEO", "Indexación Google", "Google Business", "Google Guarantee / LSA"], "core_sections":["Home","About","Services","Areas We Service","FAQ","Contact Us","Blog + SEO"]},
+            ),
+            dict(
+                code="ceo-website-2-media", name="Website 2 Media", department="developer", service_type="website",
+                base_price=Decimal("3200.00"), billing_cycle="one_time", website_pages=7, branding_pages=20,
+                scope_range="7 secciones base + 20 branding pages",
+                description="Web media · 20 branding pages + indexación + Google Business + Google Guarantee / LSA. Areas We Service se desarrolla por área cuando corresponda.",
+                rules={"source":"Hoja de Producción CEO Marketing", "includes":["Indexación Google", "Google Business", "Google Guarantee / LSA"], "core_sections":["Home","About","Services","Areas We Service por área","FAQ","Contact Us","Blog + SEO"]},
+            ),
+            dict(
+                code="ceo-website-3-avanzada", name="Website 3 Avanzada", department="developer", service_type="website",
+                base_price=Decimal("42000.00"), billing_cycle="one_time", website_pages=7, branding_pages=40,
+                scope_range="7 secciones base + 40 branding pages",
+                description="Web avanzada · 40 branding pages + indexación + Google Business + Google Guarantee / LSA. Servicios y ciudades se trabajan en páginas separadas según alcance.",
+                rules={"source":"Hoja de Producción CEO Marketing", "includes":["Indexación Google", "Google Business", "Google Guarantee / LSA"], "core_sections":["Home","About","Servicios por separado","Ciudades por separado","FAQ","Contact Us","Blog + SEO"]},
+            ),
+            dict(
+                code="ceo-seo-indexacion-lsa", name="Plugin SEO + Indexación + Local Service Ads / Guarantee",
+                department="developer", service_type="seo", base_price=Decimal("1200.00"), billing_cycle="one_time",
+                scope_range="Configuración SEO + Google + LSA",
+                description="SEO e indexación del website para posicionamiento, más creación/configuración de Google Business y Local Service Ads / Google Guarantee.",
+                rules={"source":"Hoja de Producción CEO Marketing", "includes_marketing":True, "includes":["SEO", "Indexación Google", "Google Business", "Local Service Ads", "Google Guarantee"]},
+            ),
+            dict(
+                code="ceo-analisis-web-google-tools", name="Análisis sitio web completo + Google Tools",
+                department="developer", service_type="seo", base_price=Decimal("300.00"), billing_cycle="one_time",
+                scope_range="Auditoría web + herramientas Google",
+                description="Análisis completo del sitio web y revisión/configuración de herramientas de Google relacionadas.",
+                rules={"source":"Hoja de Producción CEO Marketing", "includes_marketing":True},
+            ),
+
+            # ===== DISEÑO =====
+            dict(
+                code="ceo-social-media-basico", name="Social Media Básico", department="design", service_type="social_media",
+                base_price=Decimal("250.00"), billing_cycle="monthly", weekly_posts=20, weekly_videos=0,
+                description="Plan mensual. Google Business: 20 posts por ciclo. Incluye creación de banners y fotos de perfil.",
+                rules={"source":"Hoja de Producción CEO Marketing", "networks":["google_business"], "deliverables":{"google_business_posts":20}, "includes":["Banners", "Fotos de perfil"]},
+            ),
+            dict(
+                code="ceo-social-media-medio", name="Social Media Medio", department="design", service_type="social_media",
+                base_price=Decimal("450.00"), billing_cycle="monthly", weekly_posts=32, weekly_videos=0,
+                description="Plan mensual. Google Business: 20 posts + Facebook e Instagram: 12 posts. Incluye creación de banners y fotos de perfil.",
+                rules={"source":"Hoja de Producción CEO Marketing", "networks":["google_business","facebook","instagram"], "deliverables":{"google_business_posts":20,"social_posts":12}, "includes":["Banners", "Fotos de perfil"]},
+            ),
+            dict(
+                code="ceo-social-media-avanzado", name="Social Media Avanzado", department="design", service_type="social_media",
+                base_price=Decimal("600.00"), billing_cycle="monthly", weekly_posts=32, weekly_videos=4,
+                description="Plan mensual. Google Business: 20 posts + Facebook e Instagram: 12 posts + 4 videos. Incluye optimización de perfiles Business y LSA, análisis de rendimiento, banners y fotos de perfil.",
+                rules={"source":"Hoja de Producción CEO Marketing", "networks":["google_business","facebook","instagram"], "deliverables":{"google_business_posts":20,"social_posts":12,"videos":4}, "includes":["Optimización Business", "Optimización LSA", "Análisis de rendimiento", "Banners", "Fotos de perfil"]},
+            ),
+            dict(code="ceo-diseno-logotipo", name="Diseño de Logotipo", department="design", service_type="branding", base_price=Decimal("300.00"), billing_cycle="one_time", description="Diseño de logotipo.", rules={"source":"Hoja de Producción CEO Marketing"}),
+            dict(code="ceo-diseno-logotipo-manual", name="Diseño de Logotipo + Manual de Marca", department="design", service_type="branding", base_price=Decimal("450.00"), billing_cycle="one_time", description="Diseño de logotipo más manual de marca.", rules={"source":"Hoja de Producción CEO Marketing"}),
+            dict(code="ceo-business-cards-diseno", name="Diseño de Business Cards", department="design", service_type="graphic_design", base_price=Decimal("100.00"), billing_cycle="one_time", description="Diseño de tarjetas de presentación.", rules={"source":"Hoja de Producción CEO Marketing"}),
+            dict(code="ceo-1000-tarjetas", name="1000 Tarjetas", department="design", service_type="other_design", base_price=Decimal("150.00"), billing_cycle="one_time", description="Producción de 1000 tarjetas.", rules={"source":"Hoja de Producción CEO Marketing", "quantity":1000}),
+            dict(code="ceo-business-cards-1000", name="Diseño de Business Cards + 1000 Tarjetas", department="design", service_type="graphic_design", base_price=Decimal("250.00"), billing_cycle="one_time", description="Diseño de Business Cards más producción de 1000 tarjetas.", rules={"source":"Hoja de Producción CEO Marketing", "quantity":1000}),
+            dict(code="ceo-jackets", name="Jackets", department="design", service_type="jackets", base_price=Decimal("38.00"), billing_cycle="one_time", description="Precio por unidad.", rules={"source":"Hoja de Producción CEO Marketing", "unit":"unidad"}),
+            dict(code="ceo-buzos-poliester", name="Buzos Poliéster", department="design", service_type="other_design", base_price=Decimal("21.00"), billing_cycle="one_time", description="Precio por unidad.", rules={"source":"Hoja de Producción CEO Marketing", "unit":"unidad"}),
+            dict(code="ceo-buzos-polialgodon", name="Buzos Polialgodón", department="design", service_type="other_design", base_price=Decimal("19.00"), billing_cycle="one_time", description="Precio por unidad.", rules={"source":"Hoja de Producción CEO Marketing", "unit":"unidad"}),
+            dict(code="ceo-camisetas-polo-vendedores", name="Camisetas Polo Vendedores", department="design", service_type="other_design", base_price=Decimal("25.00"), billing_cycle="one_time", description="Precio por unidad.", rules={"source":"Hoja de Producción CEO Marketing", "unit":"unidad"}),
+            dict(code="ceo-diseno-yard-sign", name="Diseño de Yard Sign", department="design", service_type="graphic_design", base_price=Decimal("100.00"), billing_cycle="one_time", description="Diseño de yard sign.", rules={"source":"Hoja de Producción CEO Marketing"}),
+            dict(code="ceo-logo-450", name="Logo", department="design", service_type="branding", base_price=Decimal("450.00"), billing_cycle="one_time", description="Producto Logo según la hoja comercial vigente.", rules={"source":"Hoja de Producción CEO Marketing"}),
+
+            # ===== ADMINISTRACIÓN =====
+            dict(code="ceo-transferencia-dominio", name="Transferencia de Dominio", department="administration", service_type="domain_host", base_price=Decimal("300.00"), billing_cycle="one_time", description="Servicio de transferencia de dominio.", rules={"source":"Hoja de Producción CEO Marketing"}),
+            dict(code="ceo-host-dominio", name="Comprar Host y Dominio", department="administration", service_type="domain_host", base_price=Decimal("150.00"), billing_cycle="one_time", description="Compra/configuración inicial de hosting y dominio.", rules={"source":"Hoja de Producción CEO Marketing"}),
+
+            # ===== MARKETING =====
+            dict(code="ceo-google-business", name="Google My Business", department="marketing", service_type="google_business", base_price=Decimal("300.00"), billing_cycle="one_time", description="Creación/configuración de Google Business Profile.", rules={"source":"Hoja de Producción CEO Marketing"}),
+            dict(code="ceo-google-guarantee", name="Google Guarantee", department="marketing", service_type="google_guarantee", base_price=Decimal("500.00"), billing_cycle="one_time", description="Configuración de Google Guarantee / Local Services Ads.", rules={"source":"Hoja de Producción CEO Marketing", "lsa":True}),
+            dict(code="ceo-google-ads", name="Google Ads", department="marketing", service_type="google_ads", base_price=Decimal("500.00"), billing_cycle="one_time", description="Configuración/servicio de Google Ads según la hoja comercial vigente.", rules={"source":"Hoja de Producción CEO Marketing"}),
+            dict(code="ceo-coaching-juan-alvaro", name="Coaching Juan Álvaro", department="marketing", service_type="other_marketing", base_price=Decimal("1000.00"), billing_cycle="one_time", description="Sesión personalizada por día.", rules={"source":"Hoja de Producción CEO Marketing", "unit":"sesión personalizada por día"}),
+            dict(code="ceo-coaching-karla-samaniego", name="Coaching Karla Samaniego", department="marketing", service_type="other_marketing", base_price=Decimal("1000.00"), billing_cycle="one_time", description="Sesión personalizada por día.", rules={"source":"Hoja de Producción CEO Marketing", "unit":"sesión personalizada por día"}),
+            dict(code="ceo-coaching-juan-karla", name="Coaching Juan Álvaro + Karla Samaniego", department="marketing", service_type="other_marketing", base_price=Decimal("1500.00"), billing_cycle="one_time", description="Sesión personalizada por día.", rules={"source":"Hoja de Producción CEO Marketing", "unit":"sesión personalizada por día"}),
+        ]
+
         for item in plans:
-            code = item.pop("code")
-            ServicePlan.objects.update_or_create(code=code, defaults={**item, "currency": "USD", "is_active": True})
+            defaults = {**item, "currency": "USD", "is_active": True}
+            code = defaults.pop("code")
+            # get_or_create es intencional: una vez creado, el equipo puede editar
+            # precio, nombre, alcance o facturación sin que un reinicio lo sobrescriba.
+            ServicePlan.objects.get_or_create(code=code, defaults=defaults)
 
     def backfill_project_plans(self):
         """Conserva proyectos anteriores al nuevo esquema multi-plan."""

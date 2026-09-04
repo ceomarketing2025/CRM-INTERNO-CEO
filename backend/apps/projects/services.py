@@ -40,7 +40,11 @@ def sync_project_area_records(project, user=None):
 
     if flags["design"]:
         from apps.design.models import DesignBrief
+        from apps.design.services import ensure_default_design_tasks_for_project
         DesignBrief.objects.get_or_create(project=project)
+        # Cada producto real de Diseño recibe una actividad base automática.
+        # Social Media queda con alerta hasta que Diseño configure su frecuencia.
+        ensure_default_design_tasks_for_project(project, user=user)
 
     if flags["marketing"]:
         from apps.marketing.services import ensure_workspace

@@ -81,6 +81,12 @@ class MarketingWorkspace(TimestampedModel):
     business_profile_id = models.CharField(max_length=180, blank=True, verbose_name="ID Google Business")
     business_profile_social_links = models.TextField(blank=True, verbose_name="Links de redes sociales del perfil")
     business_profile_notes = models.TextField(blank=True, verbose_name="Notas Google Business")
+    business_profile_reviews_status = models.CharField(max_length=20, choices=BinaryStatus.choices, default=BinaryStatus.INCOMPLETE, verbose_name="Reseñas")
+    business_profile_products_status = models.CharField(max_length=20, choices=BinaryStatus.choices, default=BinaryStatus.INCOMPLETE, verbose_name="Productos")
+    business_profile_completion_status = models.CharField(max_length=20, choices=BinaryStatus.choices, default=BinaryStatus.INCOMPLETE, verbose_name="Porcentaje del perfil")
+    business_profile_website_status = models.CharField(max_length=20, choices=BinaryStatus.choices, default=BinaryStatus.INCOMPLETE, verbose_name="Website en Google Business")
+    business_profile_last_post = models.DateField(null=True, blank=True, verbose_name="Último post en Google Business")
+    business_profile_photos_status = models.CharField(max_length=20, choices=BinaryStatus.choices, default=BinaryStatus.INCOMPLETE, verbose_name="Fotos")
     website_has = models.CharField(max_length=10, choices=YesNo.choices, blank=True, default="", verbose_name="¿Tiene sitio web?")
     website_url = models.URLField(blank=True, verbose_name="Sitio web actual")
     review_link = models.URLField(blank=True, verbose_name="Link para reviews")
@@ -153,6 +159,7 @@ class GoogleLSAWorkspace(TimestampedModel):
     verification_status = models.CharField(max_length=20, choices=BinaryStatus.choices, default=BinaryStatus.INCOMPLETE, verbose_name="Verificación LSA")
     weekly_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)], verbose_name="Costo por semana")
     leads_last_7_days = models.PositiveIntegerField(null=True, blank=True, verbose_name="Leads últimos 7 días")
+    last_lead_date = models.DateField(null=True, blank=True, verbose_name="Fecha del último lead")
     has_social_media = models.CharField(max_length=10, choices=YesNo.choices, blank=True, default="", verbose_name="¿Tiene Social Media?")
     followup_mode = models.CharField(max_length=20, choices=FollowUpMode.choices, default=FollowUpMode.WEEKLY, verbose_name="Recordatorio de revisión")
     followup_start_date = models.DateField(null=True, blank=True, verbose_name="Primera revisión")
@@ -277,6 +284,46 @@ class SocialMediaTracking(TimestampedModel):
 
     def __str__(self):
         return self.client.business_name
+
+
+class SocialMediaAudit(TimestampedModel):
+    """Auditoría liviana del seguimiento Social Media.
+
+    La información operativa no se duplica aquí: se lee de Diseño, Marketing y
+    del plan contratado. Este modelo solo guarda la confirmación de revisión.
+    """
+
+    project_plan = models.OneToOneField(
+        "projects.ProjectPlanAssignment",
+        on_delete=models.CASCADE,
+        related_name="social_media_audit",
+        verbose_name="Plan Social Media del proyecto",
+    )
+    is_ready = models.BooleanField(default=False, verbose_name="Auditoría lista")
+    reviewed_at = models.DateTimeField(null=True, blank=True, verbose_name="Última revisión")
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reviewed_social_media_audits",
+        verbose_name="Revisado por",
+    )
+    note = models.TextField(blank=True, verbose_name="Nota de auditoría")
+
+    class Meta:
+        ordering = ["project_plan__project__client__business_name", "project_plan__plan__name"]
+
+    @property
+    def project(self):
+        return self.project_plan.project
+
+    @property
+    def client(self):
+        return self.project_plan.project.client
+
+    def __str__(self):
+        return f"Auditoría Social Media · {self.client.business_name} · {self.project_plan.plan.name}"
 
 
 class SocialMediaPlan(TimestampedModel):

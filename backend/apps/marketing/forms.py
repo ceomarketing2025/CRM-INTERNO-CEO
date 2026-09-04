@@ -168,12 +168,19 @@ class GoogleBusinessForm(forms.ModelForm):
             "business_profile_link",
             "business_profile_id",
             "business_profile_social_links",
+            "business_profile_reviews_status",
+            "business_profile_products_status",
+            "business_profile_completion_status",
+            "business_profile_website_status",
+            "business_profile_last_post",
+            "business_profile_photos_status",
             "business_profile_notes",
             "review_link",
             "review_message",
         ]
         widgets = {
             "business_profile_social_links": TEXTAREA_3,
+            "business_profile_last_post": DATE,
             "business_profile_notes": TEXTAREA_3,
             "review_message": forms.Textarea(attrs={"rows": 12, "readonly": "readonly"}),
         }
@@ -184,6 +191,12 @@ class GoogleBusinessForm(forms.ModelForm):
         self.fields["business_profile_link"].label = "Link del perfil de Google Business"
         self.fields["business_profile_id"].label = "ID del perfil"
         self.fields["business_profile_social_links"].label = "Links de redes sociales"
+        self.fields["business_profile_reviews_status"].label = "Reseñas"
+        self.fields["business_profile_products_status"].label = "Productos"
+        self.fields["business_profile_completion_status"].label = "Porcentaje del perfil cargado"
+        self.fields["business_profile_website_status"].label = "Website visible en Google Business"
+        self.fields["business_profile_last_post"].label = "Último post en Google Business"
+        self.fields["business_profile_photos_status"].label = "Fotos actualizadas"
         self.fields["business_profile_notes"].label = "Notas"
         self.fields["review_link"].label = "Link directo para dejar la review"
         self.fields["review_message"].label = "Mensaje para enviar al customer"
@@ -225,6 +238,7 @@ class GoogleLSAForm(forms.ModelForm):
             "verification_status",
             "weekly_cost",
             "leads_last_7_days",
+            "last_lead_date",
             "has_social_media",
             "followup_mode",
             "followup_start_date",
@@ -238,6 +252,7 @@ class GoogleLSAForm(forms.ModelForm):
             "followup_start_date": DATE,
             "custom_followup_date": DATE,
             "photo_reminder_start_date": DATE,
+            "last_lead_date": DATE,
             "weekly_cost": NUMBER_MONEY,
             "founding_year": forms.NumberInput(attrs={"min": "1800", "max": "2100", "step": "1"}),
             "notes": TEXTAREA_4,
@@ -252,6 +267,7 @@ class GoogleLSAForm(forms.ModelForm):
         self.fields["verification_status"].label = "Validación Google LSA"
         self.fields["weekly_cost"].label = "Costo por semana"
         self.fields["leads_last_7_days"].label = "Cantidad de leads en los últimos 7 días"
+        self.fields["last_lead_date"].label = "Fecha del último lead"
         self.fields["has_social_media"].label = "¿Tiene Social Media?"
         self.fields["followup_start_date"].label = "Primera revisión semanal"
         self.fields["custom_followup_date"].label = "Fecha del recordatorio personalizado"

@@ -25,6 +25,12 @@ CHECKLIST_TEMPLATE = [
     ("google_profile", "v4_gbp_social", "Links de redes sociales registrados", 30),
     ("google_profile", "v6_gbp_notes", "Notas registradas", 40),
     ("google_profile", "v4_gbp_reviews", "QR y mensaje de reviews preparados", 50),
+    ("google_profile", "v7_gbp_reviews_status", "Reseñas revisadas", 60),
+    ("google_profile", "v7_gbp_products", "Productos revisados", 70),
+    ("google_profile", "v7_gbp_completion", "Porcentaje del perfil revisado", 80),
+    ("google_profile", "v7_gbp_website", "Website en Google Business revisado", 90),
+    ("google_profile", "v7_gbp_last_post", "Último post de Google Business registrado", 100),
+    ("google_profile", "v7_gbp_photos", "Fotos revisadas", 110),
     ("google_lsa", "v4_lsa_drive", "Drive de documentos registrado", 10),
     ("google_lsa", "v4_lsa_license", "Licencia de conducir validada", 20),
     ("google_lsa", "v4_lsa_founding", "Año de fundación registrado", 30),
@@ -144,6 +150,12 @@ def sync_workspace_checks(workspace):
         "v4_gbp_reviews",
         bool(workspace.review_link and workspace.review_message.strip()),
     )
+    _set_check(workspace, "v7_gbp_reviews_status", workspace.business_profile_reviews_status == "complete")
+    _set_check(workspace, "v7_gbp_products", workspace.business_profile_products_status == "complete")
+    _set_check(workspace, "v7_gbp_completion", workspace.business_profile_completion_status == "complete")
+    _set_check(workspace, "v7_gbp_website", workspace.business_profile_website_status == "complete")
+    _set_check(workspace, "v7_gbp_last_post", bool(workspace.business_profile_last_post))
+    _set_check(workspace, "v7_gbp_photos", workspace.business_profile_photos_status == "complete")
 
     lsa = getattr(workspace, "lsa_workspace", None)
     if lsa:
@@ -534,3 +546,283 @@ def save_social_plan(*, form, user):
     ensure_social_monthly_reminder(obj, user=user)
     log_activity(user, "marketing", "social_plan_save", obj)
     return obj
+
+
+# ---------------------------------------------------------------------------
+# Seguimiento Social Media · dashboard automático de auditoría
+# ---------------------------------------------------------------------------
+
+def _social_audit_chip(label, state="wait", detail=""):
+    return {"label": label, "state": state, "detail": detail}
+
+
+def _social_binary_chip(value, *, missing=False):
+    if missing:
+        return _social_audit_chip("Sin ficha", "muted")
+    if value == "complete":
+        return _social_audit_chip("Completo", "success")
+    return _social_audit_chip("Pendiente", "wait")
+
+
+def _social_max_datetime(*values):
+    values = [value for value in values if value]
+    return max(values) if values else None
+
+
+def build_social_media_audit_rows(*, today=None):
+    """Construye el reporte desde las fuentes reales, sin duplicar captura.
+
+    Fuente de verdad:
+    - Plan/proyecto: ProjectPlanAssignment.
+    - Contenido y redes: Diseño / ClientPlan / SocialMediaCycle.
+    - GBP, LSA y Ads: MarketingWorkspace y sus módulos.
+    - SocialMediaTracking: solo fallback histórico para datos previos a V7.
+    """
+    from django.utils import timezone
+
+    from apps.design.services import ensure_current_social_media_cycle
+    from apps.plans.models.choices import PlanDepartment, ServiceType
+    from apps.projects.models import ProjectPlanAssignment
+    from .models import SocialMediaAudit, SocialMediaTracking
+
+    today = today or timezone.localdate()
+    assignments = list(
+        ProjectPlanAssignment.objects
+        .select_related(
+            "project__client",
+            "plan",
+            "subscription",
+            "subscription__assigned_design_user",
+            "project__marketing_workspace",
+            "project__marketing_workspace__lsa_workspace",
+        )
+        .prefetch_related(
+            "project__marketing_workspace__advertising_accounts",
+            "project__marketing_workspace__checklist_items",
+        )
+        .filter(
+            is_active=True,
+            plan__department=PlanDepartment.DESIGN,
+            plan__service_type=ServiceType.SOCIAL_MEDIA,
+        )
+        .order_by("project__client__business_name", "plan__name", "id")
+    )
+
+    client_ids = {item.project.client_id for item in assignments}
+    legacy_by_client = {
+        item.client_id: item
+        for item in SocialMediaTracking.objects.filter(client_id__in=client_ids).select_related("project")
+    }
+
+    rows = []
+    for project_plan in assignments:
+        project = project_plan.project
+        client = project.client
+        subscription = project_plan.subscription
+        legacy = legacy_by_client.get(client.pk)
+        audit, _ = SocialMediaAudit.objects.get_or_create(project_plan=project_plan)
+
+        cycle = None
+        items = []
+        if subscription and subscription.is_active:
+            cycle = ensure_current_social_media_cycle(subscription, today=today)
+            if cycle:
+                items = list(cycle.items.all())
+
+        try:
+            workspace = project.marketing_workspace
+        except Exception:
+            workspace = None
+        if workspace:
+            # Mantiene el checklist V7 sincronizado sin crear una ficha de
+            # Marketing para proyectos que todavía no la tienen.
+            workspace = ensure_workspace(project)
+        try:
+            lsa = workspace.lsa_workspace if workspace else None
+        except Exception:
+            lsa = None
+
+        accounts = list(workspace.advertising_accounts.all()) if workspace else []
+        checks = list(workspace.checklist_items.all()) if workspace else []
+        active_checks = [item for item in checks if item.active]
+        complete_checks = [item for item in active_checks if item.status == "complete"]
+        marketing_progress = round(len(complete_checks) * 100 / len(active_checks)) if active_checks else 0
+
+        if not subscription:
+            content = _social_audit_chip("Falta configurar", "danger", "El plan está contratado pero aún no tiene suscripción operativa en Diseño.")
+            design_progress = 0
+            networks_label = "Sin configurar"
+        elif not cycle or not items:
+            content = _social_audit_chip("Sin entregables", "wait", "Configura posts/videos del plan para generar el ciclo.")
+            design_progress = 0
+            networks_label = subscription.social_networks_label
+        else:
+            design_progress = cycle.progress_percent
+            if cycle.completed:
+                content = _social_audit_chip(f"100% · {cycle.completed_items}/{cycle.total_items}", "success", "Contenido listo y publicado en todas las redes seleccionadas.")
+            else:
+                content = _social_audit_chip(f"{design_progress}% · {cycle.completed_items}/{cycle.total_items}", "wait", "Avance sincronizado desde Diseño.")
+            networks_label = subscription.social_networks_label
+
+        if workspace:
+            reviews = _social_binary_chip(workspace.business_profile_reviews_status)
+            products = _social_binary_chip(workspace.business_profile_products_status)
+            profile_percentage = _social_binary_chip(workspace.business_profile_completion_status)
+            website_gb = _social_binary_chip(workspace.business_profile_website_status)
+            photos = _social_binary_chip(workspace.business_profile_photos_status)
+            last_post = workspace.business_profile_last_post
+            gb_notes = workspace.business_profile_notes.strip()
+
+            gb_state = workspace.business_profile_status
+            if gb_state == "approved":
+                google_business = _social_audit_chip("Aprobado", "success")
+            elif gb_state == "denied":
+                google_business = _social_audit_chip("Desaprobado", "danger")
+            elif gb_state == "verification":
+                google_business = _social_audit_chip("En verificación", "wait")
+            else:
+                google_business = _social_audit_chip("No iniciado", "wait")
+        else:
+            reviews = _social_binary_chip(None, missing=True)
+            products = _social_binary_chip(None, missing=True)
+            profile_percentage = _social_binary_chip(None, missing=True)
+            website_gb = _social_binary_chip(None, missing=True)
+            photos = _social_binary_chip(None, missing=True)
+            last_post = None
+            gb_notes = ""
+            google_business = _social_audit_chip("Sin ficha", "muted")
+
+        # Fallback histórico: conserva el valor del seguimiento anterior cuando
+        # todavía no fue migrado a la ficha fuente de Marketing.
+        if legacy:
+            if workspace and workspace.business_profile_reviews_status == "incomplete" and legacy.reviews == "complete":
+                reviews = _social_binary_chip(legacy.reviews)
+            if workspace and workspace.business_profile_products_status == "incomplete" and legacy.products == "complete":
+                products = _social_binary_chip(legacy.products)
+            if workspace and workspace.business_profile_completion_status == "incomplete" and legacy.profile_percentage == "complete":
+                profile_percentage = _social_binary_chip(legacy.profile_percentage)
+            if workspace and workspace.business_profile_website_status == "incomplete" and legacy.website_in_gb == "complete":
+                website_gb = _social_binary_chip(legacy.website_in_gb)
+            if workspace and workspace.business_profile_photos_status == "incomplete" and legacy.photos == "complete":
+                photos = _social_binary_chip(legacy.photos)
+            last_post = last_post or legacy.last_post_gb
+            gb_notes = gb_notes or legacy.gb_notes.strip()
+
+        if lsa:
+            if lsa.verification_status == "complete":
+                lsa_status = _social_audit_chip("Completo", "success")
+            elif workspace and workspace.lsa_documents_available == "no":
+                lsa_status = _social_audit_chip("Sin documentos", "muted")
+            else:
+                lsa_status = _social_audit_chip("Pendiente", "wait")
+
+            if lsa.followup_mode == "weekly" and lsa.followup_start_date:
+                google_followup = _social_audit_chip("Sí · semanal", "success")
+            elif lsa.followup_mode == "custom" and lsa.custom_followup_date:
+                google_followup = _social_audit_chip("Sí · fecha", "success")
+            elif lsa.followup_mode == "none":
+                google_followup = _social_audit_chip("No", "muted")
+            else:
+                google_followup = _social_audit_chip("Pendiente", "wait")
+
+            if lsa.last_lead_date:
+                leads_label = lsa.last_lead_date.strftime("%d/%m/%Y")
+            elif lsa.leads_last_7_days is not None:
+                leads_label = f"{lsa.leads_last_7_days} / 7 días"
+            else:
+                leads_label = "—"
+        else:
+            lsa_status = _social_audit_chip("Sin ficha", "muted")
+            google_followup = _social_audit_chip("Sin ficha", "muted")
+            leads_label = "—"
+
+        if legacy and leads_label == "—" and legacy.last_lead:
+            leads_label = legacy.last_lead
+
+        enabled_ads = [account for account in accounts if account.platform != "traditional" and account.enabled == "yes"]
+        if not enabled_ads:
+            ads_verified = _social_audit_chip("No aplica", "muted")
+        else:
+            platforms = ", ".join(account.get_platform_display() for account in enabled_ads)
+            if all(account.account_verified == "yes" for account in enabled_ads):
+                ads_verified = _social_audit_chip("Verificado", "success", platforms)
+            else:
+                ads_verified = _social_audit_chip("Pendiente", "wait", platforms)
+
+        source_updated_at = _social_max_datetime(
+            project_plan.updated_at,
+            subscription.updated_at if subscription else None,
+            cycle.updated_at if cycle else None,
+            max((item.updated_at for item in items), default=None),
+            workspace.updated_at if workspace else None,
+            lsa.updated_at if lsa else None,
+            max((account.updated_at for account in accounts), default=None),
+            max((check.updated_at for check in checks), default=None),
+        )
+        audit_current = bool(
+            audit.is_ready
+            and audit.reviewed_at
+            and (not source_updated_at or audit.reviewed_at >= source_updated_at)
+        )
+        if audit_current:
+            audit_chip = _social_audit_chip("Listo", "success")
+        elif audit.is_ready:
+            audit_chip = _social_audit_chip("Cambios nuevos", "wait", "Diseño o Marketing cambió después de la última auditoría.")
+        else:
+            audit_chip = _social_audit_chip("Pendiente", "wait")
+
+        notes = []
+        if workspace and workspace.notes.strip():
+            notes.append(workspace.notes.strip())
+        if lsa and lsa.notes.strip():
+            notes.append(lsa.notes.strip())
+        if legacy and legacy.notes.strip() and legacy.notes.strip() not in notes:
+            notes.append(legacy.notes.strip())
+
+        rows.append({
+            "project_plan": project_plan,
+            "project": project,
+            "client": client,
+            "subscription": subscription,
+            "cycle": cycle,
+            "audit": audit,
+            "audit_current": audit_current,
+            "audit_chip": audit_chip,
+            "content": content,
+            "design_progress": design_progress,
+            "reviews": reviews,
+            "products": products,
+            "profile_percentage": profile_percentage,
+            "google_business": google_business,
+            "networks_label": networks_label,
+            "website_gb": website_gb,
+            "last_post": last_post,
+            "gb_notes": gb_notes,
+            "lsa": lsa_status,
+            "photos": photos,
+            "last_lead": leads_label,
+            "ads_verified": ads_verified,
+            "google_followup": google_followup,
+            "marketing_progress": marketing_progress,
+            "marketing_checks_complete": len(complete_checks),
+            "marketing_checks_total": len(active_checks),
+            "notes": notes,
+            "source_updated_at": source_updated_at,
+        })
+
+    return rows
+
+
+def review_social_media_audit(*, audit, user, ready=True, note=None):
+    """Única escritura del dashboard: confirmar o reabrir la auditoría."""
+    audit.is_ready = bool(ready)
+    if note is not None:
+        audit.note = note.strip()
+    if audit.is_ready:
+        audit.reviewed_at = timezone.now()
+        audit.reviewed_by = user
+    else:
+        audit.reviewed_at = None
+        audit.reviewed_by = None
+    audit.save(update_fields=["is_ready", "reviewed_at", "reviewed_by", "note", "updated_at"])
+    return audit

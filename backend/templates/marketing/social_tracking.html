@@ -1,3 +1,103 @@
-{% extends 'base.html' %}{% block page_heading %}Seguimiento Social Media{% endblock %}{% block content %}
-<div class="page-intro"><div><span class="eyebrow">Control operativo</span><h2>Seguimiento Social Media / Google</h2><p>Una sola hoja sincronizada para Marketing, Administración y Gerencia. Estados: Completo/Incompleto y Sí/No.</p></div>{% if current_role == 'marketing' or request.user.is_manager %}<a class="btn btn-primary" href="{% url 'marketing:social_tracking_create' %}">＋ Nuevo seguimiento</a>{% endif %}</div>
-<div class="card"><div class="table-wrap"><table class="wide-table"><thead><tr><th>Contenido</th><th>Reseñas</th><th>Productos</th><th>% Perfil</th><th>GB</th><th>Redes</th><th>Website GB</th><th>Último Post GB</th><th>Notas GB</th><th>LSA</th><th>Fotos</th><th>Último Lead</th><th>Ads verificado</th><th>Seguimiento Google?</th><th>Notas</th></tr></thead><tbody>{% for r in records %}<tr><td>{% if current_role == 'marketing' or request.user.is_manager %}<a class="text-link" href="{% url 'marketing:social_tracking_edit' r.pk %}"><strong>{{ r.client.business_name }}</strong></a>{% else %}<strong>{{ r.client.business_name }}</strong>{% endif %}</td><td>{{ r.get_reviews_display }}</td><td>{{ r.get_products_display }}</td><td>{{ r.get_profile_percentage_display }}</td><td>{{ r.get_google_business_display }}</td><td>{{ r.get_networks_display }}</td><td>{{ r.get_website_in_gb_display }}</td><td>{{ r.last_post_gb|date:'d/m/Y'|default:'—' }}</td><td>{{ r.gb_notes|truncatechars:50|default:'—' }}</td><td>{{ r.get_lsa_display }}</td><td>{{ r.get_photos_display }}</td><td>{{ r.last_lead|default:'—' }}</td><td>{{ r.get_ads_verified_display }}</td><td>{{ r.get_google_followup_display }}</td><td>{{ r.notes|truncatechars:60|default:'—' }}</td></tr>{% empty %}<tr><td colspan="15"><div class="empty">Sin registros.</div></td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}
+{% extends 'base.html' %}
+{% block page_heading %}Auditoría General{% endblock %}
+{% block content %}
+<style>
+.ga2-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-bottom:17px}.ga2-head h2{margin:5px 0}.ga2-head p{max-width:920px;margin:0}.ga2-lock{padding:9px 12px;border-radius:999px;background:rgba(39,104,232,.08);font-size:11px;font-weight:800}
+.ga2-kpis{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:11px;margin-bottom:13px}.ga2-kpi{padding:15px}.ga2-kpi span{display:block;font-size:11px;opacity:.68}.ga2-kpi strong{display:block;font-size:26px;margin-top:4px}.ga2-kpi small{display:block;margin-top:4px;opacity:.62}
+.ga2-area-global{display:grid;grid-template-columns:repeat(3,minmax(210px,1fr));gap:11px;margin-bottom:14px}.ga2-area-global .card{padding:14px}.ga2-area-global-top{display:flex;justify-content:space-between;gap:12px}.ga2-area-global h3{margin:2px 0 0}.ga2-mini-bar,.ga2-bar{height:7px;border-radius:999px;background:rgba(127,127,127,.12);overflow:hidden}.ga2-mini-bar{margin-top:8px}.ga2-mini-bar i,.ga2-bar i{display:block;height:100%;border-radius:999px;background:#2b6de6}
+.ga2-filter{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;margin-bottom:15px}.ga2-filter input{flex:1;min-width:250px}.ga2-filter input,.ga2-filter select{min-height:42px}
+.ga2-project{padding:0;overflow:hidden;margin-bottom:15px}.ga2-project-head{display:grid;grid-template-columns:minmax(260px,1.4fr) minmax(160px,.6fr) minmax(190px,.7fr);gap:16px;align-items:center;padding:17px 18px;border-bottom:1px solid rgba(127,127,127,.12)}.ga2-project-head h3{margin:3px 0 4px}.ga2-project-head small{opacity:.65}.ga2-overall{display:flex;align-items:center;gap:12px}.ga2-ring{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;border:7px solid rgba(127,127,127,.12)}.ga2-ring.red{border-color:#d94b4b}.ga2-ring.yellow{border-color:#d8a125}.ga2-ring.green{border-color:#2b9c66}.ga2-ring.neutral{border-color:#aeb5bf}.ga2-overall small{display:block;margin-top:2px}
+.ga2-area-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0}.ga2-area{border-right:1px solid rgba(127,127,127,.11)}.ga2-area:last-child{border-right:0}.ga2-area summary{list-style:none;cursor:pointer;padding:15px 16px;min-height:118px}.ga2-area summary::-webkit-details-marker{display:none}.ga2-area summary:hover{background:rgba(127,127,127,.025)}.ga2-area-title{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.ga2-area-title h4{margin:2px 0}.ga2-area-title b{font-size:20px}.ga2-area-meta{display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-size:11px;opacity:.67}.ga2-bar{margin-top:8px}.ga2-bar.red i{background:#d94b4b}.ga2-bar.yellow i{background:#d8a125}.ga2-bar.green i{background:#2b9c66}.ga2-bar.neutral i{background:#aeb5bf}.ga2-na{font-size:11px;opacity:.6;margin-top:10px}
+.ga2-area-body{border-top:1px solid rgba(127,127,127,.1);padding:0 12px 13px}.ga2-category{padding-top:12px}.ga2-category h5{font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin:0 0 7px;opacity:.72}.ga2-task{display:grid;grid-template-columns:minmax(190px,1.5fr) 105px 110px auto;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid rgba(127,127,127,.08)}.ga2-task:last-child{border-bottom:0}.ga2-task-title strong{display:block;font-size:12px}.ga2-task-title small{display:block;margin-top:3px;font-size:10px;opacity:.62}.ga2-task.history{opacity:.68}.ga2-chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:800;white-space:nowrap}.ga2-chip.red{background:rgba(217,75,75,.12);color:#a53a3a}.ga2-chip.yellow{background:rgba(216,161,37,.14);color:#8d680c}.ga2-chip.green{background:rgba(43,156,102,.13);color:#21754e}.ga2-chip.muted{background:rgba(127,127,127,.1)}.ga2-audit{display:flex;justify-content:flex-end;gap:5px;align-items:center}.ga2-audit form{display:inline}.ga2-source{font-size:10px;font-weight:800;text-decoration:none}.ga2-empty{padding:14px;font-size:11px;opacity:.65}.ga2-history{display:inline-flex;padding:2px 5px;border-radius:999px;background:rgba(127,127,127,.1);font-size:9px;font-weight:800;margin-left:5px}
+@media(max-width:1100px){.ga2-area-grid{grid-template-columns:1fr}.ga2-area{border-right:0;border-bottom:1px solid rgba(127,127,127,.11)}.ga2-area:last-child{border-bottom:0}.ga2-task{grid-template-columns:1fr 100px 100px auto}}@media(max-width:800px){.ga2-kpis{grid-template-columns:repeat(2,minmax(140px,1fr))}.ga2-area-global{grid-template-columns:1fr}.ga2-project-head{grid-template-columns:1fr}.ga2-task{grid-template-columns:1fr}.ga2-audit{justify-content:flex-start}}
+</style>
+
+<div class="ga2-head">
+  <div>
+    <span class="eyebrow">Gerencia · supervisión central</span>
+    <h2>Auditoría General por Proyecto</h2>
+    <p>Cada proyecto resume <strong>Diseño, Marketing y Desarrollo</strong>. El porcentaje sale de las tareas reales de cada área; aquí solo se supervisa y se marca lo revisado. Los ciclos de publicaciones vuelven automáticamente a pendiente al iniciar una nueva semana, quincena o mes.</p>
+  </div>
+  <span class="ga2-lock">🔒 Solo Gerencia / Administración</span>
+</div>
+
+<div class="ga2-kpis">
+  <div class="card ga2-kpi"><span>Proyectos visibles</span><strong>{{ project_count }}</strong><small>según filtros</small></div>
+  <div class="card ga2-kpi"><span>Tareas actuales</span><strong>{{ total }}</strong><small>sin contar históricos</small></div>
+  <div class="card ga2-kpi"><span>Avance operativo</span><strong>{{ source_progress }}%</strong><small>promedio de tareas actuales</small></div>
+  <div class="card ga2-kpi"><span>Auditoría</span><strong>{{ audit_progress }}%</strong><small>{{ needs_review }} por revisar</small></div>
+</div>
+
+<div class="ga2-area-global">
+{% for stat in area_stats %}
+  <div class="card">
+    <div class="ga2-area-global-top"><div><span class="eyebrow">{{ stat.label }}</span><h3>{{ stat.progress }}%</h3></div><strong>{{ stat.projects }} proy.</strong></div>
+    <div class="ga2-mini-bar"><i style="width:{{ stat.progress }}%"></i></div>
+    <small>{{ stat.tasks }} tareas actuales · {{ stat.audit_progress }}% auditado</small>
+  </div>
+{% endfor %}
+</div>
+
+<form method="get" class="card ga2-filter">
+  <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar cliente, proyecto, servicio o tarea…">
+  <select name="area">
+    <option value="all" {% if selected_area == 'all' %}selected{% endif %}>Todas las áreas</option>
+    <option value="design" {% if selected_area == 'design' %}selected{% endif %}>Diseño</option>
+    <option value="marketing" {% if selected_area == 'marketing' %}selected{% endif %}>Marketing</option>
+    <option value="development" {% if selected_area == 'development' %}selected{% endif %}>Desarrollo</option>
+  </select>
+  <select name="status">
+    <option value="all" {% if selected_status == 'all' %}selected{% endif %}>Todos los estados</option>
+    <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Por auditar</option>
+    <option value="audited" {% if selected_status == 'audited' %}selected{% endif %}>Auditados</option>
+    <option value="changed" {% if selected_status == 'changed' %}selected{% endif %}>Cambios nuevos</option>
+    <option value="source_pending" {% if selected_status == 'source_pending' %}selected{% endif %}>Trabajo pendiente</option>
+    <option value="source_done" {% if selected_status == 'source_done' %}selected{% endif %}>Trabajo al 100%</option>
+  </select>
+  <button class="btn btn-secondary" type="submit">Filtrar</button>
+  {% if search_query or selected_area != 'all' or selected_status != 'all' %}<a class="btn btn-ghost" href="{% url 'marketing:general_audit' %}">Limpiar</a>{% endif %}
+</form>
+
+{% for item in projects %}
+<div class="card ga2-project">
+  <div class="ga2-project-head">
+    <div><span class="project-code">{{ item.project.project_code }}</span><h3>{{ item.project.client.business_name }}</h3><small>{{ item.project.name }} · {{ item.project.get_status_display }}</small></div>
+    <div class="ga2-overall"><div class="ga2-ring {{ item.overall_state }}">{{ item.overall }}%</div><div><strong>Avance general</strong><small>{{ item.applicable_areas }} área(s) activas</small></div></div>
+    <div><strong>{{ item.audited_tasks }}/{{ item.current_tasks }} revisadas</strong><small style="display:block;margin-top:4px">Auditoría sobre tareas actuales</small></div>
+  </div>
+
+  <div class="ga2-area-grid">
+    {% for area in item.areas %}
+    <details class="ga2-area" {% if selected_area == area.key %}open{% endif %}>
+      <summary>
+        <div class="ga2-area-title"><div><span class="eyebrow">{{ area.label }}</span><h4>{% if area.applies %}{{ area.current_done }}/{{ area.current_total }} completas{% else %}No aplica{% endif %}</h4></div><b>{% if area.applies %}{{ area.progress }}%{% else %}—{% endif %}</b></div>
+        {% if area.applies %}<div class="ga2-bar {{ area.state }}"><i style="width:{{ area.progress }}%"></i></div><div class="ga2-area-meta"><span>Trabajo actual</span><span>{{ area.audit_progress }}% auditado</span></div>{% else %}<div class="ga2-na">Este proyecto no tiene servicios activos de {{ area.label }}.</div>{% endif %}
+      </summary>
+      <div class="ga2-area-body">
+        {% for category in area.categories %}
+          <div class="ga2-category">
+            <h5>{{ category.name }}</h5>
+            {% for row in category.rows %}
+            <div class="ga2-task {% if row.historical %}history{% endif %}">
+              <div class="ga2-task-title"><strong>{{ row.label }}{% if row.historical %}<span class="ga2-history">Histórico</span>{% endif %}</strong>{% if row.detail %}<small>{{ row.detail|truncatechars:130 }}</small>{% endif %}</div>
+              <span class="ga2-chip {{ row.source_state }}">{{ row.source_progress }}% · {{ row.source_status }}</span>
+              <span class="ga2-chip {{ row.audit_state }}">{{ row.audit_label }}</span>
+              <div class="ga2-audit">
+                {% if row.source_url %}<a class="ga2-source" href="{{ row.source_url }}">Abrir área →</a>{% endif %}
+                <form method="post" action="{% url 'marketing:general_audit_check' row.check.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">{% if row.audit_current %}<input type="hidden" name="action" value="reopen"><button class="btn btn-ghost btn-sm" type="submit">↺</button>{% else %}<input type="hidden" name="action" value="ready"><button class="btn btn-primary btn-sm" type="submit">✓ Revisar</button>{% endif %}</form>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% empty %}
+          <div class="ga2-empty">No hay tareas que coincidan con el filtro en esta área.</div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+</div>
+{% empty %}
+<div class="card ga2-empty"><strong>No hay proyectos que coincidan con los filtros.</strong></div>
+{% endfor %}
+{% endblock %}

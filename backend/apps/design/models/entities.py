@@ -188,3 +188,203 @@ class SocialMediaContentItem(TimestampedModel):
 
     def __str__(self):
         return f"{self.cycle} · {self.label}"
+
+
+class DesignTask(TimestampedModel):
+    """Actividad operativa para cualquier producto contratado del área de Diseño.
+
+    Las tareas normales se completan una vez. Las tareas de contenido pueden ser
+    recurrentes (semanales, quincenales o mensuales) y generan ciclos históricos
+    independientes para saber si el contenido fue creado y si realmente se publicó.
+    """
+
+    class Status(models.TextChoices):
+        TODO = "todo", "Pendiente"
+        DOING = "doing", "En proceso"
+        REVIEW = "review", "En revisión"
+        DONE = "done", "Lista"
+
+    class TaskType(models.TextChoices):
+        STANDARD = "standard", "Tarea única"
+        CONTENT = "content", "Contenido / publicación"
+
+    class Recurrence(models.TextChoices):
+        NONE = "none", "Sin renovación"
+        WEEKLY = "weekly", "Semanal"
+        BIWEEKLY = "biweekly", "Quincenal"
+        MONTHLY = "monthly", "Mensual"
+
+    project_plan = models.ForeignKey(
+        "projects.ProjectPlanAssignment",
+        on_delete=models.CASCADE,
+        related_name="design_tasks",
+        verbose_name="Proyecto / producto de Diseño",
+    )
+    title = models.CharField(max_length=180, verbose_name="Actividad")
+    description = models.TextField(blank=True, verbose_name="Detalle")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.TODO, verbose_name="Estado")
+    due_date = models.DateField(null=True, blank=True, verbose_name="Fecha límite")
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="design_operational_tasks",
+        verbose_name="Responsable",
+    )
+    order = models.PositiveIntegerField(default=0, verbose_name="Orden")
+    task_type = models.CharField(
+        max_length=20,
+        choices=TaskType.choices,
+        default=TaskType.STANDARD,
+        verbose_name="Tipo de actividad",
+    )
+    recurrence_frequency = models.CharField(
+        max_length=20,
+        choices=Recurrence.choices,
+        default=Recurrence.NONE,
+        verbose_name="Frecuencia de control",
+        help_text="Para publicaciones: semanal, quincenal o mensual. Cada periodo crea un control nuevo.",
+    )
+    recurrence_start_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Inicio de la renovación",
+    )
+    auto_generated = models.BooleanField(default=False, verbose_name="Creada automáticamente")
+    configuration_required = models.BooleanField(
+        default=False,
+        verbose_name="Requiere configurar renovación",
+        help_text="Se usa para tareas Social Media creadas automáticamente al contratar el servicio.",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_design_operational_tasks",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_design_operational_tasks",
+    )
+
+    class Meta:
+        ordering = ["project_plan__project__client__business_name", "project_plan__plan__name", "order", "id"]
+
+    @property
+    def is_complete(self):
+        return self.status == self.Status.DONE
+
+    @property
+    def is_recurring(self):
+        return self.task_type == self.TaskType.CONTENT and self.recurrence_frequency != self.Recurrence.NONE
+
+    @property
+    def needs_configuration(self):
+        return bool(
+            self.task_type == self.TaskType.CONTENT
+            and (
+                self.configuration_required
+                or self.recurrence_frequency == self.Recurrence.NONE
+                or not self.recurrence_start_date
+            )
+        )
+
+    @property
+    def standard_progress_percent(self):
+        return {
+            self.Status.TODO: 0,
+            self.Status.DOING: 60,
+            self.Status.REVIEW: 80,
+            self.Status.DONE: 100,
+        }.get(self.status, 0)
+
+    @property
+    def project(self):
+        return self.project_plan.project
+
+    @property
+    def plan(self):
+        return self.project_plan.plan
+
+    def save(self, *args, **kwargs):
+        if self.task_type == self.TaskType.STANDARD:
+            self.recurrence_frequency = self.Recurrence.NONE
+            self.recurrence_start_date = None
+            self.configuration_required = False
+        elif self.recurrence_frequency != self.Recurrence.NONE and self.recurrence_start_date:
+            self.configuration_required = False
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.project_plan} · {self.title}"
+
+
+class DesignTaskCycle(TimestampedModel):
+    """Periodo de una tarea recurrente de contenido.
+
+    Mantiene el historial por semana/quincena/mes. El estado operativo tiene dos
+    pasos simples: contenido creado y contenido publicado.
+    """
+
+    task = models.ForeignKey(DesignTask, on_delete=models.CASCADE, related_name="cycles")
+    period_start = models.DateField(verbose_name="Inicio del periodo")
+    period_end = models.DateField(verbose_name="Fin del periodo")
+    label = models.CharField(max_length=120, verbose_name="Periodo")
+    content_created = models.BooleanField(default=False, verbose_name="Creado")
+    content_published = models.BooleanField(default=False, verbose_name="Publicado")
+    notes = models.CharField(max_length=300, blank=True, verbose_name="Notas")
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_design_task_cycles",
+    )
+
+    class Meta:
+        ordering = ["-period_start", "-id"]
+        constraints = [
+            models.UniqueConstraint(fields=["task", "period_start"], name="unique_design_task_cycle_start")
+        ]
+        indexes = [models.Index(fields=["task", "period_start"], name="design_desi_task_id_0b1698_idx")]
+
+    @property
+    def progress_percent(self):
+        if self.content_published:
+            return 100
+        if self.content_created:
+            return 60
+        return 0
+
+    @property
+    def state_label(self):
+        if self.content_published:
+            return "Publicado"
+        if self.content_created:
+            return "Creado · pendiente publicar"
+        return "Pendiente de crear"
+
+    @property
+    def state_code(self):
+        if self.content_published:
+            return "green"
+        if self.content_created:
+            return "yellow"
+        return "red"
+
+    @property
+    def is_complete(self):
+        return self.content_published
+
+    def save(self, *args, **kwargs):
+        if self.content_published:
+            self.content_created = True
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.task} · {self.label}"

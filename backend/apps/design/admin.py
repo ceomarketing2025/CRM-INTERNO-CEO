@@ -2,6 +2,8 @@ from django.contrib import admin
 from .models import (
     ColorPalette,
     DesignBrief,
+    DesignTask,
+    DesignTaskCycle,
     PaletteColor,
     PaletteGradient,
     SocialMediaContentItem,
@@ -9,6 +11,8 @@ from .models import (
 )
 
 admin.site.register(DesignBrief)
+admin.site.register(DesignTask)
+admin.site.register(DesignTaskCycle)
 admin.site.register(ColorPalette)
 admin.site.register(PaletteColor)
 admin.site.register(PaletteGradient)

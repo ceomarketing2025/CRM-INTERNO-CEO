@@ -31,6 +31,7 @@ DESIGN_SERVICE_TYPES = {
 }
 
 MARKETING_SERVICE_TYPES = {
+    ServiceType.SOCIAL_MEDIA,
     ServiceType.MARKETING,
     ServiceType.GOOGLE_GUARANTEE,
     ServiceType.GOOGLE_SEARCH_CONSOLE,
@@ -76,10 +77,12 @@ def area_filter(area):
     if area == "marketing":
         return (
             Q(contracted_plans__plan__department=PlanDepartment.MARKETING, contracted_plans__is_active=True)
+            | Q(contracted_plans__plan__service_type__in=MARKETING_SERVICE_TYPES, contracted_plans__is_active=True)
             | Q(contracted_plans__plan__service_type__in=WEB_WORKFLOW_SERVICE_TYPES, contracted_plans__is_active=True)
             | Q(purchased_plan__is_active=True, purchased_plan__plan__department=PlanDepartment.MARKETING)
+            | Q(purchased_plan__is_active=True, purchased_plan__plan__service_type__in=MARKETING_SERVICE_TYPES)
             | Q(purchased_plan__is_active=True, purchased_plan__plan__service_type__in=WEB_WORKFLOW_SERVICE_TYPES)
-            | Q(project_type__in=["website", "seo"])
+            | Q(project_type__in=["website", "seo", "social_media"])
             | Q(assignments__area="marketing")
         )
     if area == "development":
@@ -125,8 +128,9 @@ def project_belongs_to_area(project, area):
     if area == "marketing":
         return (
             PlanDepartment.MARKETING in departments
+            or bool(service_types & MARKETING_SERVICE_TYPES)
             or bool(service_types & WEB_WORKFLOW_SERVICE_TYPES)
-            or project.project_type in {"website", "seo"}
+            or project.project_type in {"website", "seo", "social_media"}
             or "marketing" in legacy_areas
         )
     if area == "development":

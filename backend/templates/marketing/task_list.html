@@ -1,33 +1,12 @@
 {% extends 'base.html' %}
 {% block page_heading %}Tareas de Marketing{% endblock %}
 {% block content %}
-<div class="page-intro">
-  <div>
-    <span class="eyebrow">Marketing · operación</span>
-    <h2>Tareas de Marketing</h2>
-    <p>Resumen de actividades operativas del área. La información base del cliente se mantiene separada en Información Marketing.</p>
-  </div>
-  <a class="btn btn-primary" href="{% url 'marketing:task_create' %}">＋ Nueva tarea</a>
-</div>
-
-<form method="get" class="card toolbar" style="align-items:center;flex-wrap:wrap">
-  <input type="search" name="q" value="{{ q }}" placeholder="Buscar proyecto o tarea">
-  <select name="status"><option value="">Todos los estados</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
-  <button class="btn btn-secondary" type="submit">Filtrar</button>
-  {% if q or selected_status %}<a class="btn btn-ghost" href="{% url 'marketing:tasks' %}">Limpiar</a>{% endif %}
-</form>
-
-<div class="project-grid">
-{% for task in records %}
-  <article class="card area-information-card">
-    <div class="area-info-title">
-      <div><span class="project-code">{{ task.project.project_code }}</span><h3>{{ task.title }}</h3><p>{{ task.project.client.business_name }} · {{ task.project.name }}</p></div>
-      <span class="badge">{{ task.get_status_display }}</span>
-    </div>
-    {% if task.description %}<p style="margin:0;color:var(--muted);font-size:10px;line-height:1.5">{{ task.description|truncatechars:180 }}</p>{% endif %}
-    <div class="area-task-summary"><div><span>Responsable</span><strong style="font-size:12px">{{ task.assigned_to.display_name|default:'Sin asignar' }}</strong><small>{% if task.due_date %}Entrega {{ task.due_date|date:'d/m/Y' }}{% else %}Sin fecha límite{% endif %}</small></div></div>
-    <div class="area-info-actions"><a href="{% url 'marketing:workspace' task.project_id %}">Información Marketing</a><a href="{% url 'handoff:summary' task.project_id %}">Resumen proyecto</a></div>
-  </article>
-{% empty %}<div class="card empty">No hay tareas de Marketing con estos filtros.</div>{% endfor %}
-</div>
+<style>
+.mt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:15px}.mt-head h2{margin:4px 0 6px}.mt-head p{margin:0;color:var(--muted);max-width:820px}.mt-kpis{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:12px;margin-bottom:14px}.mt-kpi{padding:15px}.mt-kpi span{display:block;font-size:11px;color:var(--muted)}.mt-kpi strong{display:block;font-size:25px;margin-top:4px}.mt-filter{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;margin-bottom:14px}.mt-filter input{flex:1;min-width:230px}.mt-filter select{min-width:190px}.mt-list{display:grid;gap:11px}.mt-task{padding:15px 17px}.mt-task-top{display:grid;grid-template-columns:minmax(250px,1.5fr) minmax(140px,.55fr) minmax(165px,.65fr) auto;gap:14px;align-items:center}.mt-task-title h3{margin:3px 0 4px}.mt-task-title p{margin:0;color:var(--muted);font-size:11px}.mt-state{display:inline-flex;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:800}.mt-state.todo{background:rgba(217,75,75,.11);color:#a53a3a}.mt-state.doing,.mt-state.review{background:rgba(216,111,69,.13);color:#995031}.mt-state.done{background:rgba(43,156,102,.13);color:#21754e}.mt-meta span{display:block;color:var(--muted);font-size:10px}.mt-meta strong{display:block;font-size:12px;margin-top:3px}.mt-actions{display:flex;gap:7px;justify-content:flex-end;flex-wrap:wrap}@media(max-width:950px){.mt-task-top{grid-template-columns:1fr 1fr}.mt-actions{justify-content:flex-start}}@media(max-width:650px){.mt-head{flex-direction:column}.mt-kpis{grid-template-columns:1fr}.mt-task-top{grid-template-columns:1fr}.mt-filter input,.mt-filter select{width:100%;min-width:0}}
+</style>
+<div class="mt-head"><div><span class="eyebrow">Marketing · operación</span><h2>Tareas de Marketing</h2><p>Las tareas viven separadas de la información del cliente. Así puedes asignar trabajo específico a Google Business, Google LSA, Publicidad Digital, Social Media o tareas generales.</p></div><a class="btn btn-primary" href="{% url 'marketing:task_create' %}">＋ Nueva tarea</a></div>
+<div class="mt-kpis"><div class="card mt-kpi"><span>Tareas filtradas</span><strong>{{ total_tasks }}</strong><small>resultado actual</small></div><div class="card mt-kpi"><span>Pendientes</span><strong>{{ pending_tasks }}</strong><small>requieren trabajo</small></div><div class="card mt-kpi"><span>Finalizadas</span><strong>{{ done_tasks }}</strong><small>completadas</small></div></div>
+<form method="get" class="card mt-filter"><input type="search" name="q" value="{{ q }}" placeholder="Buscar cliente, proyecto o tarea…"><select name="area"><option value="">Todas las áreas</option>{% for value,label in area_choices %}<option value="{{ value }}" {% if selected_area == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><select name="status"><option value="">Todos los estados</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="btn btn-secondary">Filtrar</button>{% if q or selected_status or selected_area %}<a class="btn btn-ghost" href="{% url 'marketing:tasks' %}">Limpiar</a>{% endif %}</form>
+<div class="mt-list">{% for task in records %}<article class="card mt-task"><div class="mt-task-top"><div class="mt-task-title"><span class="project-code">{{ task.project.project_code }} · {{ task.get_area_display }}</span><h3>{{ task.title }}</h3><p>{{ task.project.client.business_name }} · {{ task.project.name }}{% if task.description %} · {{ task.description|truncatechars:120 }}{% endif %}</p></div><div><span class="mt-state {{ task.status }}">{{ task.get_status_display }}</span></div><div class="mt-meta"><span>Responsable</span><strong>{{ task.assigned_to.display_name|default:'Sin asignar' }}</strong><span style="margin-top:6px">{% if task.due_date %}Entrega {{ task.due_date|date:'d/m/Y' }}{% else %}Sin fecha límite{% endif %}</span></div><div class="mt-actions"><form method="post" action="{% url 'marketing:task_toggle' task.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-ghost btn-sm" type="submit">{% if task.status == 'done' %}↺ Reabrir{% else %}✓ Completar{% endif %}</button></form><a class="btn btn-secondary btn-sm" href="{% url 'marketing:task_edit' task.pk %}">Editar</a>{% if task.area == 'google_business' %}<a class="btn btn-primary btn-sm" href="{% url 'marketing:google_business' task.project.pk %}">Abrir área</a>{% elif task.area == 'google_lsa' %}<a class="btn btn-primary btn-sm" href="{% url 'marketing:google_lsa' task.project.pk %}">Abrir área</a>{% elif task.area == 'digital_ads' %}<a class="btn btn-primary btn-sm" href="{% url 'marketing:digital_ads' task.project.pk %}">Abrir área</a>{% elif task.area == 'social_media' %}<a class="btn btn-primary btn-sm" href="{% url 'marketing:social_plans' %}">Abrir área</a>{% else %}<a class="btn btn-primary btn-sm" href="{% url 'marketing:workspace' task.project.pk %}">Abrir ficha</a>{% endif %}</div></div></article>{% empty %}<div class="card empty">No hay tareas de Marketing con estos filtros.</div>{% endfor %}</div>
+{% include 'marketing/_custom_dropdowns.html' %}
 {% endblock %}

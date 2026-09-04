@@ -25,12 +25,6 @@ CHECKLIST_TEMPLATE = [
     ("google_profile", "v4_gbp_social", "Links de redes sociales registrados", 30),
     ("google_profile", "v6_gbp_notes", "Notas registradas", 40),
     ("google_profile", "v4_gbp_reviews", "QR y mensaje de reviews preparados", 50),
-    ("google_profile", "v7_gbp_reviews_status", "Reseñas revisadas", 60),
-    ("google_profile", "v7_gbp_products", "Productos revisados", 70),
-    ("google_profile", "v7_gbp_completion", "Porcentaje del perfil revisado", 80),
-    ("google_profile", "v7_gbp_website", "Website en Google Business revisado", 90),
-    ("google_profile", "v7_gbp_last_post", "Último post de Google Business registrado", 100),
-    ("google_profile", "v7_gbp_photos", "Fotos revisadas", 110),
     ("google_lsa", "v4_lsa_drive", "Drive de documentos registrado", 10),
     ("google_lsa", "v4_lsa_license", "Licencia de conducir validada", 20),
     ("google_lsa", "v4_lsa_founding", "Año de fundación registrado", 30),
@@ -150,12 +144,6 @@ def sync_workspace_checks(workspace):
         "v4_gbp_reviews",
         bool(workspace.review_link and workspace.review_message.strip()),
     )
-    _set_check(workspace, "v7_gbp_reviews_status", workspace.business_profile_reviews_status == "complete")
-    _set_check(workspace, "v7_gbp_products", workspace.business_profile_products_status == "complete")
-    _set_check(workspace, "v7_gbp_completion", workspace.business_profile_completion_status == "complete")
-    _set_check(workspace, "v7_gbp_website", workspace.business_profile_website_status == "complete")
-    _set_check(workspace, "v7_gbp_last_post", bool(workspace.business_profile_last_post))
-    _set_check(workspace, "v7_gbp_photos", workspace.business_profile_photos_status == "complete")
 
     lsa = getattr(workspace, "lsa_workspace", None)
     if lsa:

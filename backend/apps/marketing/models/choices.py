@@ -8,6 +8,14 @@ class MarketingTaskStatus(models.TextChoices):
     DONE = "done", "Finalizada"
 
 
+class MarketingTaskArea(models.TextChoices):
+    GENERAL = "general", "General"
+    GOOGLE_BUSINESS = "google_business", "Google Business"
+    GOOGLE_LSA = "google_lsa", "Google LSA"
+    DIGITAL_ADS = "digital_ads", "Publicidad Digital"
+    SOCIAL_MEDIA = "social_media", "Social Media"
+
+
 class BinaryStatus(models.TextChoices):
     INCOMPLETE = "incomplete", "Incompleto"
     COMPLETE = "complete", "Completo"

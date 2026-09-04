@@ -32,9 +32,12 @@
       <details class="nav-section" {% if active_nav_group == 'marketing' %}open{% endif %}>
         <summary><span class="nav-section-icon">↗</span><b>Marketing</b><i>⌄</i></summary>
         <div class="nav-section-links">
-          <a href="{% url 'marketing:list' %}" class="nav-link {% if active_nav_group == 'marketing' and current_page_label == 'Información Marketing' %}active{% endif %}"><span>◫</span><b>Información Marketing</b></a>
-          <a href="{% url 'marketing:tasks' %}" class="nav-link {% if active_nav_group == 'marketing' and current_page_label == 'Tareas de Marketing' %}active{% endif %}"><span>✓</span><b>Tareas de Marketing</b></a>
-          <a href="{% url 'marketing:campaign_list' %}" class="nav-link {% if active_nav_group == 'marketing' and current_page_label == 'Campañas Ads' %}active{% endif %}"><span>⌁</span><b>Campañas Ads</b></a>
+          <a href="{% url 'marketing:list' %}" class="nav-link {% if current_url_name == 'list' or current_url_name == 'workspace' or current_url_name == 'brief_edit' or current_url_name == 'document_add' %}active{% endif %}"><span>◫</span><b>Ficha Marketing</b></a>
+          <a href="{% url 'marketing:google_business_list' %}" class="nav-link {% if current_url_name == 'google_business_list' or current_url_name == 'google_business' or current_url_name == 'review_qr' %}active{% endif %}"><span>G</span><b>Google Business</b></a>
+          <a href="{% url 'marketing:google_lsa_list' %}" class="nav-link {% if current_url_name == 'google_lsa_list' or current_url_name == 'google_lsa' %}active{% endif %}"><span>L</span><b>Google LSA</b></a>
+          <a href="{% url 'marketing:digital_ads_list' %}" class="nav-link {% if current_url_name == 'digital_ads_list' or current_url_name == 'digital_ads' or current_url_name == 'campaign_list' or current_url_name == 'campaign_create' or current_url_name == 'campaign_edit' or current_url_name == 'campaign_manager_review' or current_url_name == 'campaign_weekly_report' %}active{% endif %}"><span>⌁</span><b>Publicidad Digital</b></a>
+          <a href="{% url 'marketing:tasks' %}" class="nav-link {% if current_url_name == 'tasks' or current_url_name == 'task_create' or current_url_name == 'task_edit' or current_url_name == 'task_toggle' %}active{% endif %}"><span>✓</span><b>Tareas de Marketing</b></a>
+          <a href="{% url 'marketing:social_plans' %}" class="nav-link {% if current_url_name == 'social_plans' or current_url_name == 'social_plan_create' or current_url_name == 'social_plan_edit' or current_url_name == 'social_daily_add' %}active{% endif %}"><span>◎</span><b>Social Media</b></a>
         </div>
       </details>
       {% endif %}

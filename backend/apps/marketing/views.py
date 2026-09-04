@@ -33,6 +33,7 @@ from .models import (
     AdCampaign,
     AdvertisingAccount,
     CampaignWeeklyReport,
+    GoogleLSAWorkspace,
     MarketingBrief,
     MarketingChecklistItem,
     MarketingDocument,
@@ -73,6 +74,29 @@ def _active_groups(workspace):
     return groups
 
 
+def _visible_marketing_projects(request):
+    projects = projects_for_area("marketing").select_related("client").order_by("client__business_name", "project_code")
+    if not request.user.is_manager:
+        projects = projects.filter(assignments__user=request.user, assignments__area="marketing").distinct()
+    return projects
+
+
+def _progress_for_checks(checks):
+    total = checks.count()
+    complete = checks.filter(status="complete").count()
+    percent = round((complete / total) * 100) if total else 0
+    return total, complete, percent
+
+
+def _task_count_for_project(project, area):
+    qs = project.marketing_tasks.filter(area=area)
+    return {
+        "total": qs.count(),
+        "pending": qs.exclude(status="done").count(),
+        "done": qs.filter(status="done").count(),
+    }
+
+
 @role_required("marketing")
 def marketing_list(request):
     projects = projects_for_area("marketing").order_by("-updated_at", "-created_at")
@@ -104,7 +128,101 @@ def marketing_list(request):
             "percent": percent,
             "last_log": last_log,
         })
-    return render(request, "marketing/dashboard.html", {"project_rows": project_rows, "tasks": tasks, "campaigns": campaigns})
+    return render(request, "marketing/dashboard.html", {"project_rows": project_rows, "tasks": tasks, "campaigns": campaigns, "current_page_label": "Ficha Marketing"})
+
+
+@role_required("marketing")
+def google_business_list(request):
+    rows = []
+    q = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "all").strip()
+    for project in _visible_marketing_projects(request):
+        if q and q.lower() not in f"{project.client.business_name} {project.name} {project.project_code}".lower():
+            continue
+        workspace_obj = ensure_workspace(project)
+        sync_workspace_checks(workspace_obj)
+        checks = workspace_obj.checklist_items.filter(area="google_profile", active=True)
+        total, complete, percent = _progress_for_checks(checks)
+        if status != "all" and workspace_obj.business_profile_status != status:
+            continue
+        rows.append({
+            "project": project,
+            "workspace": workspace_obj,
+            "total": total,
+            "complete": complete,
+            "percent": percent,
+            "tasks": _task_count_for_project(project, "google_business"),
+        })
+    return render(request, "marketing/google_business_list.html", {
+        "rows": rows,
+        "q": q,
+        "selected_status": status,
+        "status_choices": MarketingWorkspace._meta.get_field("business_profile_status").choices,
+        "current_page_label": "Google Business",
+    })
+
+
+@role_required("marketing")
+def google_lsa_list(request):
+    rows = []
+    q = (request.GET.get("q") or "").strip()
+    verification = (request.GET.get("status") or "all").strip()
+    for project in _visible_marketing_projects(request):
+        if q and q.lower() not in f"{project.client.business_name} {project.name} {project.project_code}".lower():
+            continue
+        workspace_obj = ensure_workspace(project)
+        sync_workspace_checks(workspace_obj)
+        lsa = workspace_obj.lsa_workspace
+        if verification != "all" and lsa.verification_status != verification:
+            continue
+        checks = workspace_obj.checklist_items.filter(area="google_lsa", active=True)
+        total, complete, percent = _progress_for_checks(checks)
+        rows.append({
+            "project": project,
+            "workspace": workspace_obj,
+            "lsa": lsa,
+            "total": total,
+            "complete": complete,
+            "percent": percent,
+            "tasks": _task_count_for_project(project, "google_lsa"),
+        })
+    return render(request, "marketing/google_lsa_list.html", {
+        "rows": rows,
+        "q": q,
+        "selected_status": verification,
+        "status_choices": GoogleLSAWorkspace._meta.get_field("verification_status").choices,
+        "current_page_label": "Google LSA",
+    })
+
+
+@role_required("marketing")
+def digital_ads_list(request):
+    rows = []
+    q = (request.GET.get("q") or "").strip()
+    for project in _visible_marketing_projects(request):
+        if q and q.lower() not in f"{project.client.business_name} {project.name} {project.project_code}".lower():
+            continue
+        workspace_obj = ensure_workspace(project)
+        sync_workspace_checks(workspace_obj)
+        accounts = {a.platform: a for a in workspace_obj.advertising_accounts.all()}
+        campaigns = AdCampaign.objects.filter(project=project)
+        ads_checks = workspace_obj.checklist_items.filter(
+            area__in=["traditional", "meta_ads", "google_ads", "tiktok_ads"], active=True
+        )
+        total, complete, percent = _progress_for_checks(ads_checks)
+        rows.append({
+            "project": project,
+            "workspace": workspace_obj,
+            "accounts": accounts,
+            "total": total,
+            "complete": complete,
+            "percent": percent,
+            "campaign_total": campaigns.count(),
+            "campaign_active": campaigns.filter(status__in=["approved", "scheduled", "launched"]).count(),
+            "campaign_review": campaigns.filter(status="manager_review").count(),
+            "tasks": _task_count_for_project(project, "digital_ads"),
+        })
+    return render(request, "marketing/digital_ads_list.html", {"rows": rows, "q": q, "current_page_label": "Publicidad Digital"})
 
 
 @role_required("marketing")
@@ -139,6 +257,7 @@ def workspace(request, project_pk):
         "form": form,
         "groups": _active_groups(obj),
         "flow_statuses": marketing_flow_statuses(obj),
+        "current_page_label": "Ficha Marketing",
     })
 
 
@@ -163,6 +282,7 @@ def google_business(request, project_pk):
         "form": form,
         "checks": obj.checklist_items.filter(area="google_profile", active=True),
         "flow_statuses": marketing_flow_statuses(obj),
+        "current_page_label": "Google Business",
     })
 
 
@@ -186,6 +306,7 @@ def google_lsa(request, project_pk):
         "form": form,
         "checks": workspace_obj.checklist_items.filter(area="google_lsa", active=True),
         "flow_statuses": marketing_flow_statuses(workspace_obj),
+        "current_page_label": "Google LSA",
     })
 
 
@@ -236,6 +357,7 @@ def digital_ads(request, project_pk):
         "campaign_map": campaign_map,
         "traditional_enabled": accounts["traditional"].enabled == "yes",
         "flow_statuses": marketing_flow_statuses(workspace_obj),
+        "current_page_label": "Publicidad Digital",
     })
 
 
@@ -295,7 +417,7 @@ def campaign_list(request):
     records = AdCampaign.objects.select_related("project__client", "assigned_to", "manager_approved_by")
     if not request.user.is_manager and request.user.role != "administration":
         records = records.filter(project__assignments__user=request.user, project__assignments__area="marketing").distinct()
-    return render(request, "marketing/campaign_list.html", {"records": records})
+    return render(request, "marketing/campaign_list.html", {"records": records, "current_page_label": "Publicidad Digital"})
 
 
 @role_required("marketing")
@@ -612,7 +734,7 @@ def social_tracking_edit(request, pk):
 @role_required("marketing")
 def social_plan_list(request):
     records = SocialMediaPlan.objects.select_related("client", "project", "assigned_to")
-    return render(request, "marketing/social_plans.html", {"records": records})
+    return render(request, "marketing/social_plans.html", {"records": records, "current_page_label": "Social Media"})
 
 
 @role_required("marketing")
@@ -667,7 +789,7 @@ def brief_edit(request, project_pk):
 
 @role_required("marketing")
 def task_list(request):
-    """Resumen operativo de tareas propias del área de Marketing."""
+    """Bandeja operativa propia de Marketing, separada de la ficha de información."""
     from django.db.models import Q
 
     records = MarketingTask.objects.select_related("project__client", "assigned_to").order_by("status", "due_date", "project__client__business_name")
@@ -679,6 +801,7 @@ def task_list(request):
 
     q = (request.GET.get("q") or "").strip()
     status = (request.GET.get("status") or "").strip()
+    area = (request.GET.get("area") or "").strip()
     if q:
         records = records.filter(
             Q(title__icontains=q)
@@ -689,21 +812,75 @@ def task_list(request):
         )
     if status:
         records = records.filter(status=status)
+    if area:
+        records = records.filter(area=area)
 
+    visible = records[:300]
     return render(request, "marketing/task_list.html", {
-        "records": records[:300],
+        "records": visible,
         "q": q,
         "selected_status": status,
+        "selected_area": area,
         "status_choices": MarketingTask._meta.get_field("status").choices,
+        "area_choices": MarketingTask._meta.get_field("area").choices,
+        "total_tasks": records.count(),
+        "pending_tasks": records.exclude(status="done").count(),
+        "done_tasks": records.filter(status="done").count(),
+        "current_page_label": "Tareas de Marketing",
     })
 
 
 @role_required("marketing")
 def task_create(request):
-    form = MarketingTaskForm(request.POST or None, user=request.user)
+    initial = {}
+    project_id = (request.GET.get("project") or "").strip()
+    area = (request.GET.get("area") or "").strip()
+    if project_id.isdigit():
+        initial["project"] = project_id
+    valid_areas = {value for value, _ in MarketingTask._meta.get_field("area").choices}
+    if area in valid_areas:
+        initial["area"] = area
+    form = MarketingTaskForm(request.POST or None, user=request.user, initial=initial)
     if request.method == "POST" and form.is_valid():
         obj = form.save()
         log_activity(request.user, "marketing", "task_create", obj)
-        messages.success(request, "Tarea creada.")
+        messages.success(request, "Tarea de Marketing creada.")
         return redirect("marketing:tasks")
-    return render(request, "marketing/form.html", {"form": form, "title": "Nueva tarea de marketing", "subtitle": "Tarea operativa independiente."})
+    return render(request, "marketing/form.html", {
+        "form": form,
+        "title": "Nueva tarea de Marketing",
+        "subtitle": "Actividad operativa separada de la información recopilada del cliente.",
+    })
+
+
+@role_required("marketing")
+def task_edit(request, pk):
+    task = get_object_or_404(MarketingTask.objects.select_related("project"), pk=pk)
+    if not can_access_project(request.user, task.project):
+        raise PermissionDenied("Este proyecto no está asignado a Marketing.")
+    form = MarketingTaskForm(request.POST or None, instance=task, user=request.user)
+    if request.method == "POST" and form.is_valid():
+        obj = form.save()
+        log_activity(request.user, "marketing", "task_update", obj)
+        messages.success(request, "Tarea actualizada.")
+        return redirect("marketing:tasks")
+    return render(request, "marketing/form.html", {
+        "form": form,
+        "title": "Editar tarea de Marketing",
+        "subtitle": f"{task.project.client.business_name} · {task.get_area_display()}",
+    })
+
+
+@role_required("marketing")
+def task_toggle(request, pk):
+    if request.method != "POST":
+        return redirect("marketing:tasks")
+    task = get_object_or_404(MarketingTask.objects.select_related("project"), pk=pk)
+    if not can_access_project(request.user, task.project):
+        raise PermissionDenied("Este proyecto no está asignado a Marketing.")
+    task.status = "todo" if task.status == "done" else "done"
+    task.save(update_fields=["status", "updated_at"])
+    log_activity(request.user, "marketing", "task_toggle", task, description=task.get_status_display())
+    messages.success(request, "Tarea reabierta." if task.status == "todo" else "Tarea completada.")
+    next_url = request.POST.get("next") or ""
+    return redirect(next_url or "marketing:tasks")

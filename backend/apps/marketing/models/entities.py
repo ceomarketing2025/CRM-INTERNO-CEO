@@ -14,6 +14,7 @@ from .choices import (
     ChecklistArea,
     EmailAccountMode,
     FollowUpMode,
+    MarketingTaskArea,
     MarketingTaskStatus,
     YesNo,
 )
@@ -34,6 +35,12 @@ class MarketingBrief(TimestampedModel):
 
 class MarketingTask(TimestampedModel):
     project = models.ForeignKey("projects.Project", on_delete=models.CASCADE, related_name="marketing_tasks")
+    area = models.CharField(
+        max_length=30,
+        choices=MarketingTaskArea.choices,
+        default=MarketingTaskArea.GENERAL,
+        verbose_name="Área de trabajo",
+    )
     title = models.CharField(max_length=180)
     description = models.TextField(blank=True)
     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="marketing_tasks")

@@ -43,7 +43,7 @@ class MarketingTaskForm(forms.ModelForm):
 
     class Meta:
         model = MarketingTask
-        fields = ["project", "title", "description", "assigned_to", "status", "due_date"]
+        fields = ["project", "area", "title", "description", "assigned_to", "status", "due_date"]
         widgets = {"description": TEXTAREA_3, "due_date": DATE}
 
 
@@ -166,19 +166,12 @@ class GoogleBusinessForm(forms.ModelForm):
             "business_profile_link",
             "business_profile_id",
             "business_profile_social_links",
-            "business_profile_reviews_status",
-            "business_profile_products_status",
-            "business_profile_completion_status",
-            "business_profile_website_status",
-            "business_profile_last_post",
-            "business_profile_photos_status",
             "business_profile_notes",
             "review_link",
             "review_message",
         ]
         widgets = {
             "business_profile_social_links": TEXTAREA_3,
-            "business_profile_last_post": DATE,
             "business_profile_notes": TEXTAREA_3,
             "review_message": forms.Textarea(attrs={"rows": 12, "readonly": "readonly"}),
         }
@@ -189,12 +182,6 @@ class GoogleBusinessForm(forms.ModelForm):
         self.fields["business_profile_link"].label = "Link del perfil de Google Business"
         self.fields["business_profile_id"].label = "ID del perfil"
         self.fields["business_profile_social_links"].label = "Links de redes sociales"
-        self.fields["business_profile_reviews_status"].label = "Reseñas"
-        self.fields["business_profile_products_status"].label = "Productos"
-        self.fields["business_profile_completion_status"].label = "Porcentaje del perfil cargado"
-        self.fields["business_profile_website_status"].label = "Website visible en Google Business"
-        self.fields["business_profile_last_post"].label = "Último post en Google Business"
-        self.fields["business_profile_photos_status"].label = "Fotos actualizadas"
         self.fields["business_profile_notes"].label = "Notas"
         self.fields["review_link"].label = "Link directo para dejar la review"
         self.fields["review_message"].label = "Mensaje para enviar al customer"

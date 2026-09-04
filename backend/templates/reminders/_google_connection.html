@@ -1,0 +1,32 @@
+<div class="google-connect-card {% if google_connected %}is-success{% elif google_configured %}is-wait{% else %}is-danger{% endif %}">
+  <div class="google-connect-main">
+    <div class="google-connect-icon">📅</div>
+    <div>
+      <h3>Google Calendar · CEO Marketing</h3>
+      {% if google_connected %}
+        <p>Cuenta central conectada. Recordatorios y reuniones pueden sincronizarse automáticamente.</p>
+        <div class="google-connect-meta">
+          <span><strong>Cuenta:</strong> {{ google_connection.account_email|default:'Google conectado' }}</span>
+          <span><strong>Calendar:</strong> {{ google_connection.calendar_id|default:'primary' }}</span>
+          {% if google_connection.last_synced_at %}<span><strong>Última sync:</strong> {{ google_connection.last_synced_at|date:'d/m/Y H:i' }}</span>{% endif %}
+        </div>
+      {% elif google_configured %}
+        <p>OAuth está configurado, pero todavía falta autorizar la cuenta central de CEO Marketing.</p>
+      {% else %}
+        <p>Faltan las variables OAuth de Google en <code>.env</code>. No se guardan contraseñas de Gmail.</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="actions">
+    {% if google_connected %}
+      {% if request.user.is_manager or request.user.role == 'administration' %}
+      <form method="post" action="{% url 'reminders:google_sync_now' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="btn btn-secondary">Sincronizar ahora</button></form>
+      <form method="post" action="{% url 'reminders:google_disconnect' %}" onsubmit="return confirm('¿Desconectar la cuenta Google del CRM? Los eventos ya creados permanecerán en Calendar.');">{% csrf_token %}<button class="btn btn-secondary">Desconectar</button></form>
+      {% endif %}
+    {% elif google_configured %}
+      {% if request.user.is_manager or request.user.role == 'administration' %}
+        <a class="btn btn-primary" href="{% url 'reminders:google_connect' %}">Conectar Google</a>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>

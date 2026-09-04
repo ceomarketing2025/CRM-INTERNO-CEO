@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block page_heading %}{{ title }}{% endblock %}
+{% block content %}
+{% include 'reminders/_styles.html' %}
+<div class="rem-shell">
+  <div class="rem-toolbar"><div><span class="eyebrow">Recordatorios</span><h2>{{ title }}</h2><p>{{ subtitle }}</p></div><a class="btn btn-secondary" href="{% url 'reminders:list' %}">← Volver</a></div>
+  {% include 'reminders/_google_connection.html' %}
+  <div class="rem-form-layout">
+    <form method="post" class="card rem-form-card">{% csrf_token %}
+      {% if form.non_field_errors %}<div class="semantic-banner is-danger compact">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="rem-form-grid">
+        {% for field in form %}
+          <div class="{% if field.name == 'notes' %}wide{% endif %}{% if field.field.widget.input_type == 'checkbox' %} check-row{% endif %}">
+            {% if field.field.widget.input_type == 'checkbox' %}{{ field }}<div><label for="{{ field.id_for_label }}">{{ field.label }}</label>{% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}</div>
+            {% else %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}{% endif %}
+            {% if field.errors %}<div class="field-errors">{{ field.errors }}</div>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="form-actions"><button class="btn btn-primary">Guardar recordatorio</button></div>
+    </form>
+    <aside class="card rem-form-card"><h3>Google Calendar</h3><p>Al activar sincronización, el evento queda en el calendario central. Si hay responsable con correo, Google puede enviarle la invitación.</p>{% if reminder and reminder.google_event_url %}<a class="btn btn-secondary" href="{{ reminder.google_event_url }}" target="_blank" rel="noopener">Ver evento ↗</a>{% endif %}</aside>
+  </div>
+</div>
+{% endblock %}

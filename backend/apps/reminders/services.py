@@ -1,6 +1,6 @@
 from datetime import datetime, time, timedelta
 from django.utils import timezone
-from .models import Reminder, ReminderCategory, ReminderStatus
+from .models import Reminder, ReminderCategory, ReminderStatus, GoogleSyncStatus
 
 
 def _aware_on_date(date_value, hour=9):
@@ -8,7 +8,24 @@ def _aware_on_date(date_value, hour=9):
     return timezone.make_aware(dt, timezone.get_current_timezone()) if timezone.is_naive(dt) else dt
 
 
-def ensure_reminder(*, source_key, title, category, due_at, client=None, project=None, assigned_to=None, notes="", user=None):
+def _try_sync_reminder(obj):
+    try:
+        from .google_calendar import calendar_is_connected, sync_reminder_to_google
+        if calendar_is_connected():
+            sync_reminder_to_google(obj)
+        elif obj.category != ReminderCategory.MEETING and obj.sync_to_google:
+            if obj.google_sync_status != GoogleSyncStatus.PENDING:
+                obj.google_sync_status = GoogleSyncStatus.PENDING
+                obj.google_sync_error = ""
+                obj.save(update_fields=["google_sync_status", "google_sync_error", "updated_at"])
+    except Exception:
+        # Crear un recordatorio interno nunca debe fallar porque Google esté caído.
+        return
+
+
+def ensure_reminder(*, source_key, title, category, due_at, client=None, project=None, assigned_to=None, notes="", user=None, sync_to_google=True):
+    if category == ReminderCategory.MEETING:
+        sync_to_google = False  # Meeting crea su propio evento y evita duplicados.
     obj, _ = Reminder.objects.update_or_create(
         source_key=source_key,
         defaults={
@@ -21,8 +38,10 @@ def ensure_reminder(*, source_key, title, category, due_at, client=None, project
             "notes": notes,
             "status": ReminderStatus.PENDING,
             "created_by": user,
+            "sync_to_google": sync_to_google,
         },
     )
+    _try_sync_reminder(obj)
     return obj
 
 
@@ -98,9 +117,16 @@ def ensure_launch_followups(project, *, launch_date=None, user=None):
 
 
 def ensure_meeting_reminder(meeting, *, user=None):
+    source_key = f"meeting:{meeting.pk}"
+    if meeting.status == "cancelled":
+        Reminder.objects.filter(source_key=source_key).update(
+            status=ReminderStatus.CANCELLED,
+            google_sync_status=GoogleSyncStatus.SKIPPED,
+        )
+        return Reminder.objects.filter(source_key=source_key).first()
     due_at = meeting.scheduled_at - timedelta(minutes=meeting.reminder_minutes or 60)
-    return ensure_reminder(
-        source_key=f"meeting:{meeting.pk}",
+    obj = ensure_reminder(
+        source_key=source_key,
         title=f"Reunión · {meeting.client.business_name}",
         category=ReminderCategory.MEETING,
         due_at=due_at,
@@ -109,7 +135,13 @@ def ensure_meeting_reminder(meeting, *, user=None):
         assigned_to=user,
         notes=meeting.meet_url or meeting.agenda,
         user=user,
+        sync_to_google=False,
     )
+    if meeting.status == "completed":
+        obj.status = ReminderStatus.DONE
+        obj.completed_at = timezone.now()
+        obj.save(update_fields=["status", "completed_at", "updated_at"])
+    return obj
 
 
 def ensure_campaign_weekly_reminders(campaign, *, user=None):

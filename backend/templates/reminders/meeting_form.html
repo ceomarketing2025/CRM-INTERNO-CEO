@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block page_heading %}{{ title }}{% endblock %}
+{% block content %}
+{% include 'reminders/_styles.html' %}
+<div class="rem-shell">
+  <div class="rem-toolbar"><div><span class="eyebrow">Reuniones</span><h2>{{ title }}</h2><p>{{ subtitle }}</p></div><a class="btn btn-secondary" href="{% url 'reminders:meeting_list' %}">← Reuniones</a></div>
+  {% include 'reminders/_google_connection.html' %}
+  <div class="rem-form-layout">
+    <form method="post" class="card rem-form-card" id="meeting-form">{% csrf_token %}
+      {% if form.non_field_errors %}<div class="semantic-banner is-danger compact">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="rem-form-grid">
+        <div><label for="{{ form.client.id_for_label }}">{{ form.client.label }}</label>{{ form.client }}<div class="field-errors">{{ form.client.errors }}</div></div>
+        <div><label for="{{ form.project.id_for_label }}">{{ form.project.label }}</label>{{ form.project }}<div class="field-errors">{{ form.project.errors }}</div></div>
+        <div class="wide"><label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>{{ form.title }}<div class="field-errors">{{ form.title.errors }}</div></div>
+        <div><label for="{{ form.scheduled_at.id_for_label }}">{{ form.scheduled_at.label }}</label>{{ form.scheduled_at }}<div class="field-errors">{{ form.scheduled_at.errors }}</div></div>
+        <div><label for="{{ form.duration_minutes.id_for_label }}">{{ form.duration_minutes.label }}</label>{{ form.duration_minutes }}<div class="field-errors">{{ form.duration_minutes.errors }}</div></div>
+        <div><label for="{{ form.reminder_minutes.id_for_label }}">{{ form.reminder_minutes.label }}</label>{{ form.reminder_minutes }}<div class="field-errors">{{ form.reminder_minutes.errors }}</div></div>
+        <div><label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>{{ form.status }}<div class="field-errors">{{ form.status.errors }}</div></div>
+        <div class="wide"><label for="{{ form.attendees.id_for_label }}">{{ form.attendees.label }}</label>{{ form.attendees }}<div class="help">Los usuarios seleccionados se agregan como invitados al evento usando su correo del CRM.</div><div class="field-errors">{{ form.attendees.errors }}</div></div>
+        <div class="wide"><label for="{{ form.external_attendees.id_for_label }}">{{ form.external_attendees.label }}</label>{{ form.external_attendees }}<div class="help">Uno por línea, coma o punto y coma. Google enviará invitaciones si la cuenta está conectada.</div><div class="field-errors">{{ form.external_attendees.errors }}</div></div>
+        <div class="wide"><label for="{{ form.agenda.id_for_label }}">{{ form.agenda.label }}</label>{{ form.agenda }}<div class="field-errors">{{ form.agenda.errors }}</div></div>
+        <div class="wide"><label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>{{ form.notes }}<div class="field-errors">{{ form.notes.errors }}</div></div>
+        <div class="wide check-row">{{ form.create_google_event }}<div><label for="{{ form.create_google_event.id_for_label }}">{{ form.create_google_event.label }}</label><div class="help">Crea o actualiza el evento en la cuenta central CEO Marketing.</div><div class="field-errors">{{ form.create_google_event.errors }}</div></div></div>
+        <div class="wide check-row" id="meet-toggle-row">{{ form.create_google_meet }}<div><label for="{{ form.create_google_meet.id_for_label }}">{{ form.create_google_meet.label }}</label><div class="help">Google genera el enlace Meet y el CRM lo guarda automáticamente.</div><div class="field-errors">{{ form.create_google_meet.errors }}</div></div></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-primary">Guardar y sincronizar reunión</button></div>
+    </form>
+    <aside class="card rem-form-card">
+      <h3>Resultado Google</h3>
+      {% if meeting %}
+        {% if meeting.google_sync_status == 'synced' %}<span class="sync-pill success">Google sincronizado</span>{% elif meeting.google_sync_status == 'error' %}<span class="sync-pill danger">Error Google</span><p>{{ meeting.google_sync_error }}</p>{% else %}<span class="sync-pill wait">Pendiente</span>{% endif %}
+        {% if meeting.meet_url %}<p><a class="btn btn-primary" href="{{ meeting.meet_url }}" target="_blank" rel="noopener">🎥 Unirse a Google Meet</a></p>{% endif %}
+        {% if meeting.google_event_url %}<p><a class="btn btn-secondary" href="{{ meeting.google_event_url }}" target="_blank" rel="noopener">Ver en Google Calendar ↗</a></p>{% endif %}
+      {% else %}<p>Después de guardar, aquí podrás ver el enlace Meet y el evento de Calendar.</p>{% endif %}
+    </aside>
+  </div>
+</div>
+<script>
+(function(){
+  var eventBox=document.getElementById('id_create_google_event');
+  var meetBox=document.getElementById('id_create_google_meet');
+  var meetRow=document.getElementById('meet-toggle-row');
+  function sync(){
+    if(!eventBox||!meetBox)return;
+    var active=eventBox.checked;
+    meetBox.disabled=!active;
+    if(!active) meetBox.checked=false;
+    if(meetRow){meetRow.style.opacity=active?'1':'.5';}
+  }
+  if(eventBox){eventBox.addEventListener('change',sync);sync();}
+})();
+</script>
+{% endblock %}

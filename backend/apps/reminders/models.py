@@ -24,6 +24,53 @@ class ReminderStatus(models.TextChoices):
     CANCELLED = "cancelled", "Cancelado"
 
 
+class GoogleSyncStatus(models.TextChoices):
+    NOT_SYNCED = "not_synced", "Sin sincronizar"
+    PENDING = "pending", "Pendiente"
+    SYNCED = "synced", "Sincronizado"
+    ERROR = "error", "Error"
+    SKIPPED = "skipped", "No aplica"
+
+
+class GoogleConnectionStatus(models.TextChoices):
+    DISCONNECTED = "disconnected", "Desconectado"
+    CONNECTED = "connected", "Conectado"
+    ERROR = "error", "Error"
+
+
+class GoogleCalendarConnection(TimestampedModel):
+    """Conexión OAuth central usada por Recordatorios/Meet.
+
+    Solo se espera una fila activa. Los tokens se guardan cifrados; nunca se
+    almacena la contraseña de Google.
+    """
+
+    account_email = models.EmailField(blank=True)
+    calendar_id = models.CharField(max_length=255, default="primary")
+    encrypted_credentials = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=GoogleConnectionStatus.choices,
+        default=GoogleConnectionStatus.DISCONNECTED,
+    )
+    last_error = models.TextField(blank=True)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    connected_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="google_calendar_connections",
+    )
+
+    class Meta:
+        verbose_name = "Conexión Google Calendar"
+        verbose_name_plural = "Conexiones Google Calendar"
+
+    def __str__(self):
+        return self.account_email or "Google Calendar"
+
+
 class Reminder(TimestampedModel):
     title = models.CharField(max_length=220)
     category = models.CharField(max_length=40, choices=ReminderCategory.choices, default=ReminderCategory.CUSTOM)
@@ -36,6 +83,14 @@ class Reminder(TimestampedModel):
     source_key = models.CharField(max_length=140, blank=True, db_index=True, help_text="Clave idempotente para recordatorios automáticos.")
     completed_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_reminders")
+
+    # Google Calendar
+    sync_to_google = models.BooleanField(default=True, verbose_name="Sincronizar con Google Calendar")
+    google_event_id = models.CharField(max_length=255, blank=True, db_index=True)
+    google_event_url = models.URLField(blank=True)
+    google_sync_status = models.CharField(max_length=20, choices=GoogleSyncStatus.choices, default=GoogleSyncStatus.PENDING)
+    google_sync_error = models.TextField(blank=True)
+    google_last_synced_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["due_at", "id"]
@@ -56,14 +111,24 @@ class Meeting(TimestampedModel):
     project = models.ForeignKey("projects.Project", null=True, blank=True, on_delete=models.SET_NULL, related_name="meetings")
     title = models.CharField(max_length=200, default="Reunión con cliente")
     scheduled_at = models.DateTimeField()
-    meet_url = models.URLField(blank=True, help_text="Pega aquí el enlace de Google Meet. El módulo queda preparado para OAuth/Calendar futuro.")
+    duration_minutes = models.PositiveIntegerField(default=60, verbose_name="Duración (minutos)")
+    meet_url = models.URLField(blank=True, help_text="Se genera automáticamente cuando Google Meet está activado.")
     attendees = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="meetings")
-    external_attendees = models.TextField(blank=True, help_text="Correos externos, uno por línea.")
+    external_attendees = models.TextField(blank=True, help_text="Correos externos, uno por línea, coma o punto y coma.")
     agenda = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     reminder_minutes = models.PositiveIntegerField(default=60)
     status = models.CharField(max_length=20, choices=MeetingStatus.choices, default=MeetingStatus.SCHEDULED)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_meetings")
+
+    # Google Calendar / Meet
+    create_google_event = models.BooleanField(default=True, verbose_name="Crear evento en Google Calendar")
+    create_google_meet = models.BooleanField(default=True, verbose_name="Crear Google Meet")
+    google_event_id = models.CharField(max_length=255, blank=True, db_index=True)
+    google_event_url = models.URLField(blank=True)
+    google_sync_status = models.CharField(max_length=20, choices=GoogleSyncStatus.choices, default=GoogleSyncStatus.PENDING)
+    google_sync_error = models.TextField(blank=True)
+    google_last_synced_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["scheduled_at"]

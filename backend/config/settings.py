@@ -111,6 +111,15 @@ CELERY_TASK_ALWAYS_EAGER = env_bool("CELERY_TASK_ALWAYS_EAGER", False)
 
 PROJECT_NAME = os.getenv("PROJECT_NAME", "CRM CEO Interno")
 
+# Google Calendar / Meet - cuenta central CEO Marketing.
+# Las credenciales OAuth reales van en .env; nunca se guarda la contraseña de Gmail.
+GOOGLE_CALENDAR_CLIENT_ID = os.getenv("GOOGLE_CALENDAR_CLIENT_ID", "")
+GOOGLE_CALENDAR_CLIENT_SECRET = os.getenv("GOOGLE_CALENDAR_CLIENT_SECRET", "")
+GOOGLE_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "http://localhost:8000/reminders/google/callback/")
+GOOGLE_CALENDAR_ACCOUNT_EMAIL = os.getenv("GOOGLE_CALENDAR_ACCOUNT_EMAIL", "")
+GOOGLE_CALENDAR_ID = os.getenv("GOOGLE_CALENDAR_ID", "primary")
+GOOGLE_CALENDAR_SEND_UPDATES = os.getenv("GOOGLE_CALENDAR_SEND_UPDATES", "all")
+
 CELERY_BEAT_SCHEDULE = {
     "daily-social-followups": {
         "task": "apps.marketing.tasks.create_daily_social_followups",
@@ -119,5 +128,9 @@ CELERY_BEAT_SCHEDULE = {
     "due-reminder-digest": {
         "task": "apps.reminders.tasks.due_reminder_digest",
         "schedule": 60 * 60,
+    },
+    "google-calendar-sync": {
+        "task": "apps.reminders.tasks.sync_google_calendar",
+        "schedule": 60 * 15,
     },
 }

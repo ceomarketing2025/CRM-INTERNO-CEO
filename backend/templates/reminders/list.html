@@ -1,3 +1,65 @@
-{% extends 'base.html' %}{% block page_heading %}Recordatorios{% endblock %}{% block content %}
-<div class="page-intro"><div><span class="eyebrow">Agenda operativa</span><h2>Recordatorios</h2><p>Seis semanas, renovaciones, seguimiento 15 días, Social Media, campañas y reuniones.</p></div><div class="actions"><a class="btn btn-secondary" href="{% url 'reminders:meeting_list' %}">Reuniones Meet</a><a class="btn btn-primary" href="{% url 'reminders:create' %}">＋ Recordatorio</a></div></div>
-<div class="reminder-grid">{% for r in reminders %}<div class="reminder-card {% if r.due_at <= today %}overdue{% endif %}"><div class="reminder-top"><span class="badge">{{ r.get_category_display }}</span><time>{{ r.due_at|date:'d M Y H:i' }}</time></div><h3>{{ r.title }}</h3><p>{{ r.notes|default:'Sin notas' }}</p><div class="reminder-meta"><span>{{ r.client.business_name|default:'General' }}</span><span>{{ r.assigned_to.display_name|default:'Equipo' }}</span></div><form method="post" action="{% url 'reminders:done' r.pk %}">{% csrf_token %}<button class="btn btn-secondary btn-full">Marcar completado</button></form></div>{% empty %}<div class="card empty">No hay recordatorios pendientes.</div>{% endfor %}</div>{% endblock %}
+{% extends 'base.html' %}
+{% block page_heading %}Recordatorios{% endblock %}
+{% block content %}
+{% include 'reminders/_styles.html' %}
+<div class="rem-shell">
+  <div class="rem-toolbar">
+    <div>
+      <span class="eyebrow">Agenda operativa</span>
+      <h2>Recordatorios</h2>
+      <p>Todo lo que requiere seguimiento puede quedar sincronizado con la cuenta central de Google Calendar.</p>
+    </div>
+    <div class="actions">
+      <a class="btn btn-secondary" href="{% url 'reminders:calendar' %}">📅 Calendario</a>
+      <a class="btn btn-secondary" href="{% url 'reminders:meeting_list' %}">🎥 Reuniones</a>
+      <a class="btn btn-primary" href="{% url 'reminders:create' %}">＋ Recordatorio</a>
+    </div>
+  </div>
+
+  {% include 'reminders/_google_connection.html' %}
+
+  <div class="rem-tabs">
+    <a class="active" href="{% url 'reminders:list' %}">Recordatorios</a>
+    <a href="{% url 'reminders:meeting_list' %}">Reuniones / Meet</a>
+    <a href="{% url 'reminders:calendar' %}">Calendario</a>
+  </div>
+
+  <div class="reminder-grid">
+    {% for r in reminders %}
+      <article class="reminder-card {% if r.due_at <= today %}overdue{% endif %}">
+        <div class="reminder-top">
+          <span class="badge">{{ r.get_category_display }}</span>
+          <time>{{ r.due_at|date:'d M Y H:i' }}</time>
+        </div>
+        <h3><a class="text-link" href="{% url 'reminders:edit' r.pk %}">{{ r.title }}</a></h3>
+        <p>{{ r.notes|default:'Sin notas' }}</p>
+        <div class="reminder-meta">
+          <span>{{ r.client.business_name|default:'General' }}</span>
+          <span>{{ r.assigned_to.display_name|default:'Equipo' }}</span>
+        </div>
+        <div>
+          {% if not r.sync_to_google or r.google_sync_status == 'skipped' %}
+            <span class="sync-pill neutral">Google: no aplica</span>
+          {% elif r.google_sync_status == 'synced' %}
+            <span class="sync-pill success">● Google sincronizado</span>
+          {% elif r.google_sync_status == 'error' %}
+            <span class="sync-pill danger" title="{{ r.google_sync_error }}">● Error Google</span>
+          {% else %}
+            <span class="sync-pill wait">● Google pendiente</span>
+          {% endif %}
+          {% if r.google_event_url %}<a class="calendar-link" href="{{ r.google_event_url }}" target="_blank" rel="noopener">Ver en Calendar ↗</a>{% endif %}
+        </div>
+        <div class="rem-card-actions">
+          {% if r.google_sync_status == 'error' %}
+          <form method="post" action="{% url 'reminders:retry_google' r.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="btn btn-secondary">Reintentar Google</button></form>
+          {% endif %}
+          <form method="post" action="{% url 'reminders:done' r.pk %}">{% csrf_token %}<button class="btn btn-secondary">Completar</button></form>
+          <form method="post" action="{% url 'reminders:cancel' r.pk %}">{% csrf_token %}<button class="btn btn-secondary">Cancelar</button></form>
+        </div>
+      </article>
+    {% empty %}
+      <div class="card empty">No hay recordatorios pendientes.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

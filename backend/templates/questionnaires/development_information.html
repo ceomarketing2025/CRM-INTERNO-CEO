@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block page_heading %}Información Desarrollo{% endblock %}
+{% block content %}
+<div class="page-intro">
+  <div>
+    <span class="eyebrow">Desarrollo · información fuente</span>
+    <h2>Información Desarrollo</h2>
+    <p>Aquí se captura la información técnica de cada proyecto. Lo guardado se centraliza automáticamente en el proyecto y alimenta Producción, SEO y Auditoría.</p>
+  </div>
+</div>
+
+<div class="area-information-grid">
+{% for row in rows %}{% with p=row.project %}
+  <article class="card area-information-card">
+    <div class="area-info-title">
+      <div><span class="project-code">{{ p.project_code }}</span><h3>{{ p.client.business_name }}</h3><p>{{ p.name }} · {{ p.client.full_name|default:'Sin contacto' }}</p></div>
+      <span class="badge">{{ row.progress.percent }}%</span>
+    </div>
+    <div class="area-task-summary">
+      <div><span>Ficha técnica</span><strong>{{ row.progress.percent }}%</strong><small>{{ row.progress.complete }}/{{ row.progress.total }} bloques completos</small></div>
+      <div class="progress-mini"><i style="width:{{ row.progress.percent }}%"></i></div>
+    </div>
+    <div class="area-info-actions">
+      {% if row.questionnaire %}<a href="{% url 'questionnaires:fill' row.questionnaire.pk %}">Abrir información</a>{% else %}<a href="{% url 'questionnaires:create_for_project' p.pk %}?auto=1">Crear información</a>{% endif %}
+      <a href="{% url 'handoff:summary' p.pk %}">Resumen proyecto</a>
+    </div>
+  </article>
+{% endwith %}{% empty %}
+  <div class="card empty">No hay proyectos asignados a Desarrollo.</div>
+{% endfor %}
+</div>
+{% endblock %}

@@ -23,6 +23,6 @@ def summary(request, project_pk):
     if not can_access_project(request.user, project):
         raise PermissionDenied("Este proyecto no está asignado a tu área.")
     sync_project_area_records(project, request.user)
-    context = build_project_summary(project)
+    context = build_project_summary(project, viewer=request.user)
     context["project"] = project
     return render(request, "handoff/summary.html", context)

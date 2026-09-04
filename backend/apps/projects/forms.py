@@ -1,8 +1,10 @@
 from django import forms
+from django.contrib.auth import get_user_model
 
 from apps.plans.models import ServicePlan
-from apps.plans.models.choices import ServiceType
+from apps.plans.models.choices import BillingCycle, ServiceType
 from .models import Project, ProjectAssignment, ProjectNote, ProjectPlanAssignment
+from .models.choices import AssignmentArea, AssignmentStatus
 
 
 class PlanMultipleChoiceField(forms.ModelMultipleChoiceField):
@@ -24,42 +26,108 @@ class ProjectForm(forms.ModelForm):
         label="Servicios contratados",
         widget=forms.CheckboxSelectMultiple(),
     )
+    design_responsible = forms.ModelChoiceField(
+        queryset=get_user_model().objects.none(),
+        required=False,
+        label="Responsable de Diseño",
+        empty_label="Sin asignar",
+    )
+    marketing_responsible = forms.ModelChoiceField(
+        queryset=get_user_model().objects.none(),
+        required=False,
+        label="Responsable de Marketing",
+        empty_label="Sin asignar",
+    )
+    development_responsible = forms.ModelChoiceField(
+        queryset=get_user_model().objects.none(),
+        required=False,
+        label="Responsable de Desarrollo",
+        empty_label="Sin asignar",
+    )
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
         self.fields["status"].choices = [
+            ("in_development", "En desarrollo"),
             ("active", "Activo"),
-            ("paused", "Pausado"),
             ("completed", "Completado"),
+            ("paused", "Pausado"),
             ("cancelled", "Cancelado"),
         ]
+        if not self.is_bound and not (self.instance and self.instance.pk):
+            self.fields["status"].initial = "in_development"
+        self.fields["client"].widget.attrs.update({"class": "project-control-v11"})
+        self.fields["name"].widget.attrs.update({
+            "class": "project-control-v11",
+            "placeholder": "Ej. Rediseño web + Social Media · Cliente",
+            "autocomplete": "off",
+        })
+        self.fields["start_date"].widget.attrs.update({"class": "project-control-v11"})
+        self.fields["internal_notes"].widget.attrs.update({"class": "project-control-v11"})
         self.fields["service_plans"].queryset = ServicePlan.objects.filter(
             is_active=True
         ).order_by("department", "service_type", "name")
+
+        User = get_user_model()
+        responsible_config = {
+            "design_responsible": ("design", "Diseño"),
+            "marketing_responsible": ("marketing", "Marketing"),
+            "development_responsible": ("developer", "Desarrollo"),
+        }
+        for field_name, (role, area_label) in responsible_config.items():
+            field = self.fields[field_name]
+            field.queryset = User.objects.filter(
+                is_active=True, role__in=[role, "manager"]
+            ).order_by("first_name", "last_name", "email")
+            field.widget.attrs.update({
+                "class": "project-control-v11 responsible-select-v12",
+                "data-area-label": area_label,
+            })
 
         if self.instance and self.instance.pk:
             self.fields["service_plans"].initial = list(
                 self.instance.contracted_plans.filter(is_active=True).values_list("plan_id", flat=True)
             )
+            assignment_fields = {
+                AssignmentArea.DESIGN: "design_responsible",
+                AssignmentArea.MARKETING: "marketing_responsible",
+                AssignmentArea.DEVELOPMENT: "development_responsible",
+            }
+            for area, field_name in assignment_fields.items():
+                assignment = self.instance.assignments.filter(area=area).select_related("user").order_by("-updated_at").first()
+                if assignment:
+                    self.fields[field_name].initial = assignment.user_id
 
     class Meta:
         model = Project
         fields = [
-            "client", "name", "status", "priority",
-            "start_date", "due_date", "summary", "internal_notes",
+            "client", "name", "status", "start_date", "internal_notes",
         ]
         widgets = {
             "start_date": forms.DateInput(attrs={"type": "date"}),
-            "due_date": forms.DateInput(attrs={"type": "date"}),
-            "summary": forms.Textarea(attrs={"rows": 3, "placeholder": "Resumen general del proyecto..."}),
-            "internal_notes": forms.Textarea(attrs={"rows": 3, "placeholder": "Notas internas..."}),
+            "internal_notes": forms.Textarea(attrs={"rows": 4, "placeholder": "Notas internas, acuerdos, contexto o indicaciones para el equipo..."}),
         }
         labels = {
             "name": "Nombre del proyecto",
             "start_date": "Fecha de inicio",
-            "due_date": "Fecha objetivo",
         }
+
+    def clean(self):
+        cleaned = super().clean()
+        status = cleaned.get("status")
+        selected_plans = list(cleaned.get("service_plans") or [])
+        has_subscription = any(
+            plan.service_type == ServiceType.SOCIAL_MEDIA
+            or plan.billing_cycle in {BillingCycle.MONTHLY, BillingCycle.YEARLY, BillingCycle.CUSTOM}
+            for plan in selected_plans
+        )
+        if status == "active" and not has_subscription:
+            self.add_error(
+                "status",
+                "Activo se usa para proyectos con una suscripción o servicio recurrente. Para trabajos de pago único usa En desarrollo y luego Completado.",
+            )
+        return cleaned
 
     def selected_service_plan_ids(self):
         """IDs seleccionados tanto en GET inicial como después de un POST inválido."""
@@ -90,6 +158,7 @@ class ProjectForm(forms.ModelForm):
         if commit:
             project.save()
             self.save_plan_assignments(project, selected_plans=selected_plans)
+            self.save_responsible_assignments(project)
         return project
 
     def save_plan_assignments(self, project, selected_plans=None):
@@ -107,6 +176,38 @@ class ProjectForm(forms.ModelForm):
                 },
             )
         project.contracted_plans.exclude(plan_id__in=selected_ids).update(is_active=False)
+
+    def save_responsible_assignments(self, project):
+        """Mantiene un único responsable principal por cada área operativa."""
+        assignment_map = {
+            AssignmentArea.DESIGN: ("design_responsible", "Responsable principal de Diseño"),
+            AssignmentArea.MARKETING: ("marketing_responsible", "Responsable principal de Marketing"),
+            AssignmentArea.DEVELOPMENT: ("development_responsible", "Responsable principal de Desarrollo"),
+        }
+        for area, (field_name, responsibility) in assignment_map.items():
+            selected_user = self.cleaned_data.get(field_name)
+            area_assignments = ProjectAssignment.objects.filter(project=project, area=area)
+            if not selected_user:
+                area_assignments.delete()
+                continue
+
+            # El modelo histórico permitía más de una persona por área. La nueva
+            # regla conserva exactamente un responsable principal por área.
+            area_assignments.exclude(user=selected_user).delete()
+            assignment, _ = ProjectAssignment.objects.update_or_create(
+                project=project,
+                user=selected_user,
+                area=area,
+                defaults={
+                    "status": AssignmentStatus.ASSIGNED,
+                    "responsibility": responsibility,
+                },
+            )
+            # Si existían duplicados históricos del mismo usuario/área, la constraint
+            # ya los impide; esta asignación queda como la única vigente.
+            assignment.status = AssignmentStatus.ASSIGNED
+            assignment.responsibility = responsibility
+            assignment.save(update_fields=["status", "responsibility", "updated_at"])
 
 
 class ProjectAssignmentForm(forms.ModelForm):

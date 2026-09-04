@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
-{% block page_heading %}Desarrollo{% endblock %}
+{% block page_heading %}Resumen de tareas · Desarrollo{% endblock %}
 {% block content %}
 <div class="page-intro">
   <div>
-    <span class="eyebrow">Módulo de desarrollo</span>
-    <h2>Desarrollo</h2>
-    <p>Gestiona la ficha, la hoja de producción y los recordatorios de cada proyecto asignado.</p>
+    <span class="eyebrow">Desarrollo · operación</span>
+    <h2>Resumen de tareas de Desarrollo</h2>
+    <p>Consulta el avance técnico y de producción por proyecto. La información base se completa desde Información Desarrollo.</p>
   </div>
 </div>
 
@@ -26,10 +26,6 @@
   <strong>{{ completed_count }}</strong>
 </button>
 
-  <a href="{% url 'reminders:list' %}" class="development-summary-card development-summary-link">
-    <span>Recordatorios</span>
-    <strong>{{ reminders_count }}</strong>
-  </a>
   <button type="button" class="development-summary-card development-summary-link development-filter" data-filter="all">
     <span>Todos</span>
     <strong>{{ rows|length }}</strong>

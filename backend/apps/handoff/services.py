@@ -4,7 +4,7 @@ def _clean(value):
     return str(value).strip()
 
 
-def build_project_summary(project):
+def build_project_summary(project, viewer=None):
     """Resumen operativo compartido entre áreas.
 
     Regla V10: este resumen NO expone costos, pagos ni fechas de renovación.
@@ -139,7 +139,17 @@ def build_project_summary(project):
     campaign_rows = list(project.ad_campaigns.select_related("assigned_to").all())
     links = list(project.resource_links.all())
     images = list(project.image_references.all())
-    domain_hosting_rows = list(project.domain_hosting_records.select_related("updated_by").all())
+    can_view_administration = bool(
+        viewer and (getattr(viewer, "is_manager", False) or getattr(viewer, "role", "") == "administration")
+    )
+    shared_contracted_plans = [
+        item for item in contracted_plans
+        if can_view_administration or item.plan.department != "administration"
+    ]
+    domain_hosting_rows = (
+        list(project.domain_hosting_records.select_related("updated_by").all())
+        if can_view_administration else []
+    )
 
     visible_credentials = []
     for row in project.project_credentials.filter(enabled=True, visible_to_team=True).select_related("updated_by"):
@@ -158,19 +168,20 @@ def build_project_summary(project):
         f"Correo: {client.email or '—'}", f"ID: {client.identity_document or '—'}",
         f"Proyecto: {project.name} ({project.project_code})", f"Estado general: {project.get_status_display()}",
     ]
-    if contracted_plans:
+    if shared_contracted_plans:
         copy_lines.extend(["", "PRODUCTOS CONTRATADOS"])
-        for item in contracted_plans:
+        for item in shared_contracted_plans:
             copy_lines.append(f"- {item.plan.get_department_display()} · {item.plan.name} · {item.plan.get_service_type_display()}")
     elif plan:
         copy_lines.extend(["", "PRODUCTOS CONTRATADOS", f"- Legado · {plan.name}"])
 
-    if domain_hosting_rows:
-        copy_lines.extend(["", "DOMINIO / HOSTING"])
-        for row in domain_hosting_rows:
-            copy_lines.append(f"- {row.project_domain_label} · {row.domain_name or 'Dominio sin definir'} · hosting {row.provider_label}")
-    else:
-        copy_lines.extend(["", "DOMINIO / HOSTING", "- Dominio pendiente"])
+    if can_view_administration:
+        if domain_hosting_rows:
+            copy_lines.extend(["", "DOMINIO / HOSTING"])
+            for row in domain_hosting_rows:
+                copy_lines.append(f"- {row.project_domain_label} · {row.domain_name or 'Dominio sin definir'} · hosting {row.provider_label}")
+        else:
+            copy_lines.extend(["", "DOMINIO / HOSTING", "- Dominio pendiente"])
 
     if visible_credentials:
         copy_lines.extend(["", "CREDENCIALES HABILITADAS POR GERENCIA"])
@@ -263,13 +274,14 @@ def build_project_summary(project):
             if city.state == "incomplete": pending.append(f"Producción · {city.name or 'Ciudad sin nombre'}")
 
     return {
-        "client": client, "plan": plan, "contracted_plans": contracted_plans, "brief": brief,
+        "client": client, "plan": plan, "contracted_plans": shared_contracted_plans, "brief": brief,
         "design_lines": design_lines, "palette_lines": palette_lines, "questionnaire_rows": questionnaire_rows,
         "marketing": marketing, "marketing_lines": marketing_lines, "marketing_checks": marketing_checks,
         "marketing_documents": marketing_documents, "production_rows": production_rows, "web_production": web_production,
         "web_pages": web_pages, "web_counties": web_counties, "web_cities": web_cities,
         "campaign_rows": campaign_rows, "social_tracking": social_tracking, "links": links, "images": images,
         "domain_hosting_rows": domain_hosting_rows, "visible_credentials": visible_credentials,
+        "can_view_administration": can_view_administration,
         "pending": pending, "copy_text": "\n".join(copy_lines),
         "development_questionnaire": questionnaire_rows[0] if questionnaire_rows else None,
     }

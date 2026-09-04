@@ -5,6 +5,7 @@ app_name = "marketing"
 
 urlpatterns = [
     path("", views.marketing_list, name="list"),
+    path("tasks/", views.task_list, name="tasks"),
     path("task/new/", views.task_create, name="task_create"),
     path("project/<int:project_pk>/brief/", views.brief_edit, name="brief_edit"),
     path("project/<int:project_pk>/workspace/", views.workspace, name="workspace"),

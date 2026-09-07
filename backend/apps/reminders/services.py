@@ -1,6 +1,6 @@
 from datetime import datetime, time, timedelta
 from django.utils import timezone
-from .models import Reminder, ReminderCategory, ReminderStatus, GoogleSyncStatus
+from .models import Reminder, ReminderArea, ReminderCategory, ReminderStatus, GoogleSyncStatus
 
 
 def _aware_on_date(date_value, hour=9):
@@ -23,14 +23,38 @@ def _try_sync_reminder(obj):
         return
 
 
-def ensure_reminder(*, source_key, title, category, due_at, client=None, project=None, assigned_to=None, notes="", user=None, sync_to_google=True):
+def _infer_reminder_area(*, source_key, category, area=None):
+    if area:
+        return area
+    source_key = source_key or ""
+    marketing_categories = {
+        ReminderCategory.SOCIAL_OFFER,
+        ReminderCategory.SOCIAL_MONTHLY,
+        ReminderCategory.SOCIAL_DAILY,
+        ReminderCategory.CAMPAIGN_MANAGER_REVIEW,
+        ReminderCategory.CAMPAIGN_WEEKLY,
+        ReminderCategory.GOOGLE_REVIEWS,
+    }
+    if (
+        category in marketing_categories
+        or source_key.startswith("marketing-")
+        or source_key.startswith("campaign:")
+        or source_key.startswith("social-plan:")
+    ):
+        return ReminderArea.MARKETING
+    return ReminderArea.GENERAL
+
+
+def ensure_reminder(*, source_key, title, category, due_at, client=None, project=None, assigned_to=None, notes="", user=None, sync_to_google=True, area=None):
     if category == ReminderCategory.MEETING:
         sync_to_google = False  # Meeting crea su propio evento y evita duplicados.
+    area = _infer_reminder_area(source_key=source_key, category=category, area=area)
     obj, _ = Reminder.objects.update_or_create(
         source_key=source_key,
         defaults={
             "title": title,
             "category": category,
+            "area": area,
             "due_at": due_at,
             "client": client,
             "project": project,
@@ -136,6 +160,7 @@ def ensure_meeting_reminder(meeting, *, user=None):
         notes=meeting.meet_url or meeting.agenda,
         user=user,
         sync_to_google=False,
+        area=meeting.area,
     )
     if meeting.status == "completed":
         obj.status = ReminderStatus.DONE

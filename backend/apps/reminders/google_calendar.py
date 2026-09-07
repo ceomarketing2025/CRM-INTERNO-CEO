@@ -8,6 +8,7 @@ import base64
 import hashlib
 import json
 import secrets
+from time import sleep
 from datetime import timedelta
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
@@ -284,6 +285,38 @@ def _calendar_description(*parts):
     return "\n\n".join(str(part).strip() for part in parts if str(part or "").strip())
 
 
+GOOGLE_PROJECT_COLOR_IDS = ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11")
+
+
+def _project_google_color_id(project):
+    """Color estable por proyecto también dentro de Google Calendar."""
+    if not project:
+        return "8"  # graphite para elementos generales
+    key = project.pk or project.project_code or project.name
+    digest = hashlib.sha1(str(key).encode("utf-8")).digest()[0]
+    return GOOGLE_PROJECT_COLOR_IDS[digest % len(GOOGLE_PROJECT_COLOR_IDS)]
+
+
+def _extract_meet_url(event):
+    if not event:
+        return ""
+    if event.get("hangoutLink"):
+        return event["hangoutLink"]
+    conference = event.get("conferenceData") or {}
+    for item in conference.get("entryPoints") or []:
+        if item.get("entryPointType") == "video" and item.get("uri"):
+            return item["uri"]
+    return ""
+
+
+def _get_google_event(event_id):
+    if not event_id:
+        return {}
+    return _calendar_request(
+        "/calendars/{calendar_id}/events/" + quote(event_id, safe=""),
+    )
+
+
 def sync_reminder_to_google(reminder, *, raise_errors=False):
     """Create/update/delete one Reminder in the central Google Calendar."""
     if reminder.category == ReminderCategory.MEETING:
@@ -340,7 +373,22 @@ def sync_reminder_to_google(reminder, *, raise_errors=False):
             "start": {"dateTime": reminder.due_at.isoformat(), "timeZone": settings.TIME_ZONE},
             "end": {"dateTime": end_at.isoformat(), "timeZone": settings.TIME_ZONE},
             "attendees": _event_attendees_for_reminder(reminder),
-            "extendedProperties": {"private": {"crmType": "reminder", "crmId": str(reminder.pk)}},
+            "reminders": {
+                "useDefault": False,
+                "overrides": [
+                    {"method": "popup", "minutes": 1440},
+                    {"method": "popup", "minutes": 60},
+                ],
+            },
+            "colorId": _project_google_color_id(reminder.project),
+            "extendedProperties": {
+                "private": {
+                    "crmType": "reminder",
+                    "crmId": str(reminder.pk),
+                    "crmArea": reminder.area,
+                    "crmProjectId": str(reminder.project_id or ""),
+                }
+            },
         }
         send_updates = getattr(settings, "GOOGLE_CALENDAR_SEND_UPDATES", "all")
         if reminder.google_event_id:
@@ -374,14 +422,14 @@ def sync_reminder_to_google(reminder, *, raise_errors=False):
 
 
 def sync_meeting_to_google(meeting, *, raise_errors=False):
-    """Create/update a Google Calendar event and optional Google Meet."""
+    """Create/update the Calendar event and guarantee a Meet link when requested."""
     if not meeting.create_google_event:
         try:
             if meeting.google_event_id and calendar_is_connected():
                 delete_google_event(meeting.google_event_id)
-                meeting.google_event_id = ""
-                meeting.google_event_url = ""
-                meeting.meet_url = ""
+            meeting.google_event_id = ""
+            meeting.google_event_url = ""
+            meeting.meet_url = ""
         except Exception as exc:
             meeting.google_sync_status = GoogleSyncStatus.ERROR
             meeting.google_sync_error = str(exc)[:2000]
@@ -408,6 +456,18 @@ def sync_meeting_to_google(meeting, *, raise_errors=False):
             meeting.save()
             return None
 
+        # If Google finished generating the conference after a previous request,
+        # recover the Meet URL before sending another createRequest.
+        current_event = {}
+        if meeting.google_event_id:
+            try:
+                current_event = _get_google_event(meeting.google_event_id)
+                existing_meet = _extract_meet_url(current_event)
+                if existing_meet and not meeting.meet_url:
+                    meeting.meet_url = existing_meet
+            except GoogleCalendarError:
+                current_event = {}
+
         end_at = meeting.scheduled_at + timedelta(minutes=max(meeting.duration_minutes or 60, 5))
         description = _calendar_description(
             meeting.agenda,
@@ -426,12 +486,22 @@ def sync_meeting_to_google(meeting, *, raise_errors=False):
                 "useDefault": False,
                 "overrides": [{"method": "popup", "minutes": max(meeting.reminder_minutes or 60, 0)}],
             },
-            "extendedProperties": {"private": {"crmType": "meeting", "crmId": str(meeting.pk)}},
+            "colorId": _project_google_color_id(meeting.project),
+            "extendedProperties": {
+                "private": {
+                    "crmType": "meeting",
+                    "crmId": str(meeting.pk),
+                    "crmArea": meeting.area,
+                    "crmProjectId": str(meeting.project_id or ""),
+                }
+            },
         }
-        if meeting.create_google_meet and not meeting.meet_url:
+
+        conference_status = (((current_event.get("conferenceData") or {}).get("createRequest") or {}).get("status") or {}).get("statusCode")
+        if meeting.create_google_meet and not meeting.meet_url and conference_status != "pending":
             event["conferenceData"] = {
                 "createRequest": {
-                    "requestId": f"crm-meeting-{meeting.pk}-{int(meeting.updated_at.timestamp())}",
+                    "requestId": f"crm-meeting-{meeting.pk}-{int(timezone.now().timestamp() * 1000)}",
                     "conferenceSolutionKey": {"type": "hangoutsMeet"},
                 }
             }
@@ -456,14 +526,31 @@ def sync_meeting_to_google(meeting, *, raise_errors=False):
             )
 
         meeting.google_event_id = result.get("id", meeting.google_event_id)
-        meeting.google_event_url = result.get("htmlLink", "")
-        conference = result.get("conferenceData") or {}
-        entry_points = conference.get("entryPoints") or []
-        meet_url = next((item.get("uri") for item in entry_points if item.get("entryPointType") == "video"), "")
-        meeting.meet_url = meet_url or result.get("hangoutLink", "") or meeting.meet_url
-        meeting.google_sync_status = GoogleSyncStatus.SYNCED
-        meeting.google_sync_error = ""
+        meeting.google_event_url = result.get("htmlLink", "") or meeting.google_event_url
+        meet_url = _extract_meet_url(result) or meeting.meet_url
+
+        # Conference creation may be asynchronous. Poll the same event briefly so
+        # the user receives the Meet URL immediately after saving the meeting.
+        if meeting.create_google_meet and not meet_url and meeting.google_event_id:
+            for delay in (0.35, 0.65, 1.0):
+                sleep(delay)
+                refreshed = _get_google_event(meeting.google_event_id)
+                meeting.google_event_url = refreshed.get("htmlLink", "") or meeting.google_event_url
+                meet_url = _extract_meet_url(refreshed)
+                if meet_url:
+                    break
+
+        meeting.meet_url = meet_url
         meeting.google_last_synced_at = timezone.now()
+        if meeting.create_google_meet and not meeting.meet_url:
+            meeting.google_sync_status = GoogleSyncStatus.ERROR
+            meeting.google_sync_error = (
+                "Google Calendar creó el evento, pero todavía no devolvió el enlace Meet. "
+                "Pulsa Reintentar Google; no se creará una reunión duplicada."
+            )
+        else:
+            meeting.google_sync_status = GoogleSyncStatus.SYNCED
+            meeting.google_sync_error = ""
         meeting.save()
         return result
     except Exception as exc:

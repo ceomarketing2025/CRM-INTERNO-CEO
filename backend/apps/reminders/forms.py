@@ -18,6 +18,7 @@ class MeetingForm(forms.ModelForm):
         fields = [
             "client",
             "project",
+            "area",
             "title",
             "scheduled_at",
             "duration_minutes",
@@ -25,8 +26,6 @@ class MeetingForm(forms.ModelForm):
             "external_attendees",
             "agenda",
             "reminder_minutes",
-            "create_google_event",
-            "create_google_meet",
             "status",
             "notes",
         ]
@@ -36,8 +35,6 @@ class MeetingForm(forms.ModelForm):
             "external_attendees": forms.Textarea(attrs={"rows": 3, "placeholder": "cliente@correo.com\notro@correo.com"}),
             "agenda": forms.Textarea(attrs={"rows": 4}),
             "notes": forms.Textarea(attrs={"rows": 3}),
-            "create_google_event": forms.CheckboxInput(),
-            "create_google_meet": forms.CheckboxInput(),
         }
         labels = {
             "scheduled_at": "Fecha y hora",
@@ -45,8 +42,7 @@ class MeetingForm(forms.ModelForm):
             "attendees": "Participantes internos",
             "external_attendees": "Invitados externos",
             "reminder_minutes": "Avisar con anticipación (minutos)",
-            "create_google_event": "Sincronizar reunión con Google Calendar",
-            "create_google_meet": "Generar enlace Google Meet",
+            "area": "Área / módulo",
         }
 
     def __init__(self, *args, **kwargs):
@@ -80,12 +76,8 @@ class MeetingForm(forms.ModelForm):
         cleaned = super().clean()
         client = cleaned.get("client")
         project = cleaned.get("project")
-        create_event = cleaned.get("create_google_event")
-        create_meet = cleaned.get("create_google_meet")
         if project and client and project.client_id != client.pk:
             self.add_error("project", "El proyecto seleccionado no pertenece a este cliente.")
-        if create_meet and not create_event:
-            self.add_error("create_google_meet", "Para crear Google Meet debes sincronizar primero la reunión con Google Calendar.")
         if (cleaned.get("duration_minutes") or 0) < 5:
             self.add_error("duration_minutes", "La reunión debe durar al menos 5 minutos.")
         return cleaned
@@ -94,13 +86,13 @@ class MeetingForm(forms.ModelForm):
 class ReminderForm(forms.ModelForm):
     class Meta:
         model = Reminder
-        fields = ["title", "category", "due_at", "client", "project", "assigned_to", "sync_to_google", "notes"]
+        fields = ["title", "category", "area", "due_at", "client", "project", "assigned_to", "sync_to_google", "notes"]
         widgets = {
             "due_at": DateTimeLocalInput(format="%Y-%m-%dT%H:%M"),
             "notes": forms.Textarea(attrs={"rows": 4}),
             "sync_to_google": forms.CheckboxInput(),
         }
-        labels = {"sync_to_google": "Sincronizar con Google Calendar"}
+        labels = {"sync_to_google": "Sincronizar con Google Calendar", "area": "Área / módulo"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

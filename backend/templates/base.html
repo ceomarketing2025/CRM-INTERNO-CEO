@@ -38,6 +38,7 @@
           <a href="{% url 'marketing:digital_ads_list' %}" class="nav-link {% if current_url_name == 'digital_ads_list' or current_url_name == 'digital_ads' or current_url_name == 'campaign_list' or current_url_name == 'campaign_create' or current_url_name == 'campaign_edit' or current_url_name == 'campaign_manager_review' or current_url_name == 'campaign_weekly_report' %}active{% endif %}"><span>⌁</span><b>Publicidad Digital</b></a>
           <a href="{% url 'marketing:tasks' %}" class="nav-link {% if current_url_name == 'tasks' or current_url_name == 'task_create' or current_url_name == 'task_edit' or current_url_name == 'task_toggle' %}active{% endif %}"><span>✓</span><b>Tareas de Marketing</b></a>
           <a href="{% url 'marketing:social_plans' %}" class="nav-link {% if current_url_name == 'social_plans' or current_url_name == 'social_plan_create' or current_url_name == 'social_plan_edit' or current_url_name == 'social_daily_add' %}active{% endif %}"><span>◎</span><b>Social Media</b></a>
+          <a href="{% url 'reminders:marketing_calendar' %}" class="nav-link {% if current_url_name == 'marketing_calendar' %}active{% endif %}"><span>◷</span><b>Calendario Marketing</b></a>
         </div>
       </details>
       {% endif %}

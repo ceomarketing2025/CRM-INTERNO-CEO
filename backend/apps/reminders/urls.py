@@ -11,6 +11,7 @@ urlpatterns = [
     path("<int:pk>/cancel/", views.reminder_cancel, name="cancel"),
     path("<int:pk>/google/retry/", views.reminder_retry_google, name="retry_google"),
     path("calendar/", views.calendar_view, name="calendar"),
+    path("calendar/marketing/", views.marketing_calendar_view, name="marketing_calendar"),
     path("meetings/", views.meeting_list, name="meeting_list"),
     path("meetings/new/", views.meeting_create, name="meeting_create"),
     path("meetings/<int:pk>/edit/", views.meeting_edit, name="meeting_edit"),

@@ -4,15 +4,15 @@ from .models import GoogleCalendarConnection, Meeting, Reminder
 
 @admin.register(Reminder)
 class ReminderAdmin(admin.ModelAdmin):
-    list_display = ("title", "category", "due_at", "assigned_to", "status", "google_sync_status")
-    list_filter = ("status", "category", "google_sync_status", "sync_to_google")
+    list_display = ("title", "area", "category", "due_at", "assigned_to", "status", "google_sync_status")
+    list_filter = ("area", "status", "category", "google_sync_status", "sync_to_google")
     search_fields = ("title", "notes", "source_key")
 
 
 @admin.register(Meeting)
 class MeetingAdmin(admin.ModelAdmin):
-    list_display = ("title", "client", "scheduled_at", "status", "create_google_meet", "google_sync_status")
-    list_filter = ("status", "create_google_event", "create_google_meet", "google_sync_status")
+    list_display = ("title", "area", "client", "scheduled_at", "status", "create_google_meet", "google_sync_status")
+    list_filter = ("area", "status", "create_google_event", "create_google_meet", "google_sync_status")
     search_fields = ("title", "client__business_name", "external_attendees")
 
 

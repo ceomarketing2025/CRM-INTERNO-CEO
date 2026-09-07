@@ -24,6 +24,16 @@ class ReminderStatus(models.TextChoices):
     CANCELLED = "cancelled", "Cancelado"
 
 
+
+
+class ReminderArea(models.TextChoices):
+    GENERAL = "general", "General"
+    MARKETING = "marketing", "Marketing"
+    DESIGN = "design", "Diseño"
+    DEVELOPMENT = "development", "Desarrollo"
+    ADMINISTRATION = "administration", "Administración"
+
+
 class GoogleSyncStatus(models.TextChoices):
     NOT_SYNCED = "not_synced", "Sin sincronizar"
     PENDING = "pending", "Pendiente"
@@ -74,6 +84,7 @@ class GoogleCalendarConnection(TimestampedModel):
 class Reminder(TimestampedModel):
     title = models.CharField(max_length=220)
     category = models.CharField(max_length=40, choices=ReminderCategory.choices, default=ReminderCategory.CUSTOM)
+    area = models.CharField(max_length=20, choices=ReminderArea.choices, default=ReminderArea.GENERAL, db_index=True)
     due_at = models.DateTimeField()
     client = models.ForeignKey("clients.Client", null=True, blank=True, on_delete=models.CASCADE, related_name="reminders")
     project = models.ForeignKey("projects.Project", null=True, blank=True, on_delete=models.CASCADE, related_name="reminders")
@@ -110,6 +121,7 @@ class Meeting(TimestampedModel):
     client = models.ForeignKey("clients.Client", on_delete=models.CASCADE, related_name="meetings")
     project = models.ForeignKey("projects.Project", null=True, blank=True, on_delete=models.SET_NULL, related_name="meetings")
     title = models.CharField(max_length=200, default="Reunión con cliente")
+    area = models.CharField(max_length=20, choices=ReminderArea.choices, default=ReminderArea.GENERAL, db_index=True)
     scheduled_at = models.DateTimeField()
     duration_minutes = models.PositiveIntegerField(default=60, verbose_name="Duración (minutos)")
     meet_url = models.URLField(blank=True, help_text="Se genera automáticamente cuando Google Meet está activado.")

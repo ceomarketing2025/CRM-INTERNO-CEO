@@ -1,30 +1,104 @@
 {% extends 'base.html' %}
-{% block page_heading %}Calendario{% endblock %}
+{% block page_heading %}{% if marketing_only %}Calendario Marketing{% else %}Calendario{% endif %}{% endblock %}
 {% block content %}
 {% include 'reminders/_styles.html' %}
 <div class="rem-shell">
   <div class="rem-toolbar">
-    <div><span class="eyebrow">Agenda integrada</span><h2>Calendar + Recordatorios + Meet</h2><p>Vista mensual del CRM y eventos externos de la cuenta CEO Marketing.</p></div>
-    <div class="actions"><a class="btn btn-secondary" href="{% url 'reminders:calendar' %}?month={{ prev_month }}">← Mes anterior</a><a class="btn btn-secondary" href="{% url 'reminders:calendar' %}">Hoy</a><a class="btn btn-secondary" href="{% url 'reminders:calendar' %}?month={{ next_month }}">Mes siguiente →</a><a class="btn btn-primary" href="{% url 'reminders:meeting_create' %}">＋ Reunión</a></div>
+    <div>
+      <span class="eyebrow">{% if marketing_only %}Agenda Marketing{% else %}Agenda integrada{% endif %}</span>
+      <h2>{% if marketing_only %}Calendario de Marketing{% else %}Calendar + Recordatorios + Meet{% endif %}</h2>
+      <p>{% if marketing_only %}Muestra únicamente recordatorios, reuniones y tareas operativas de Marketing. Cada proyecto conserva su propio color.{% else %}Vista mensual del CRM y eventos externos de la cuenta CEO Marketing. Cada proyecto conserva el mismo color aquí y en Google Calendar.{% endif %}</p>
+    </div>
+    <div class="actions">
+      <a class="btn btn-secondary" href="{% url calendar_url_name %}?month={{ prev_month }}">← Mes anterior</a>
+      <a class="btn btn-secondary" href="{% url calendar_url_name %}">Hoy</a>
+      <a class="btn btn-secondary" href="{% url calendar_url_name %}?month={{ next_month }}">Mes siguiente →</a>
+      {% if marketing_only %}
+        <a class="btn btn-secondary" href="{% url 'reminders:create' %}?area=marketing&return_to=marketing_calendar">＋ Recordatorio</a>
+        <a class="btn btn-primary" href="{% url 'reminders:meeting_create' %}?area=marketing&return_to=marketing_calendar">🎥 Reunión + Meet</a>
+      {% else %}
+        <a class="btn btn-primary" href="{% url 'reminders:meeting_create' %}">＋ Reunión + Meet</a>
+      {% endif %}
+    </div>
   </div>
 
-  {% include 'reminders/_google_connection.html' %}
-  <div class="rem-tabs"><a href="{% url 'reminders:list' %}">Recordatorios</a><a href="{% url 'reminders:meeting_list' %}">Reuniones / Meet</a><a class="active" href="{% url 'reminders:calendar' %}">Calendario</a></div>
+  {% if not marketing_only %}{% include 'reminders/_google_connection.html' %}{% endif %}
 
-  <div class="calendar-layout">
+  {% if warning_counts.overdue or warning_counts.today or warning_counts.soon %}
+  <div class="deadline-summary">
+    {% if warning_counts.overdue %}<div class="deadline-stat danger"><strong>{{ warning_counts.overdue }}</strong><span>Vencidos</span><small>Requieren atención</small></div>{% endif %}
+    {% if warning_counts.today %}<div class="deadline-stat wait"><strong>{{ warning_counts.today }}</strong><span>Para hoy</span><small>Vencen durante el día</small></div>{% endif %}
+    {% if warning_counts.soon %}<div class="deadline-stat wait"><strong>{{ warning_counts.soon }}</strong><span>Próximos</span><small>Dentro de 48 horas</small></div>{% endif %}
+  </div>
+  {% endif %}
+
+  {% if not marketing_only %}
+  <div class="rem-tabs">
+    <a href="{% url 'reminders:list' %}">Recordatorios</a>
+    <a href="{% url 'reminders:meeting_list' %}">Reuniones / Meet</a>
+    <a class="active" href="{% url 'reminders:calendar' %}">Calendario</a>
+  </div>
+  {% endif %}
+
+  {% if project_legend %}
+  <section class="project-legend card">
+    <div class="project-legend-head"><strong>Colores por proyecto</strong><small>El mismo proyecto mantiene el mismo color en recordatorios, reuniones y Google Calendar.</small></div>
+    <div class="project-legend-items">
+      {% for project in project_legend %}<span class="project-legend-item"><i style="--project-color:{{ project.color }}"></i>{{ project.label }}</span>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="calendar-layout {% if marketing_only %}marketing-calendar-layout{% endif %}">
     <section class="card calendar-card">
-      <div style="padding:16px 18px;border-bottom:1px solid #e5e7eb"><h3 style="margin:0">{{ selected_month|date:'F Y' }}</h3></div>
+      <div class="calendar-month-title"><h3>{{ selected_month|date:'F Y' }}</h3>{% if marketing_only %}<span class="sync-pill success">Solo Marketing</span>{% endif %}</div>
       <div class="calendar-head"><div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div></div>
-      {% for week in weeks %}<div class="calendar-week">{% for day in week %}<div class="calendar-day {% if not day.in_month %}outside{% endif %} {% if day.date == today %}today{% endif %}"><div class="day-num">{{ day.date.day }}</div>{% for item in day.items %}{% if item.kind == 'meeting' %}<a class="calendar-item meeting" href="{% url 'reminders:meeting_edit' item.obj.pk %}" title="{{ item.obj.title }}">🎥 {{ item.time|date:'H:i' }} {{ item.obj.title }}</a>{% else %}<a class="calendar-item reminder" href="{% url 'reminders:edit' item.obj.pk %}" title="{{ item.obj.title }}">⏰ {{ item.time|date:'H:i' }} {{ item.obj.title }}</a>{% endif %}{% endfor %}</div>{% endfor %}</div>{% endfor %}
+      {% for week in weeks %}
+      <div class="calendar-week">
+        {% for day in week %}
+        <div class="calendar-day {% if not day.in_month %}outside{% endif %} {% if day.date == today %}today{% endif %}">
+          <div class="day-num">{{ day.date.day }}</div>
+          {% for item in day.items %}
+            {% if item.kind == 'meeting' %}
+              <a class="calendar-item project-event meeting deadline-{{ item.deadline_state }}" style="--project-color:{{ item.color }}" href="{% url 'reminders:meeting_edit' item.obj.pk %}{% if marketing_only %}?return_to=marketing_calendar{% endif %}" title="{{ item.obj.title }}{% if item.deadline_label %} · {{ item.deadline_label }}{% endif %}">
+                <span class="event-kind">🎥</span><span>{{ item.time|date:'H:i' }} {{ item.obj.title }}</span>{% if item.deadline_label %}<b>{{ item.deadline_label }}</b>{% endif %}
+              </a>
+            {% elif item.kind == 'marketing_task' %}
+              <a class="calendar-item project-event task deadline-{{ item.deadline_state }}" style="--project-color:{{ item.color }}" href="{% url 'marketing:tasks' %}" title="{{ item.obj.title }}{% if item.deadline_label %} · {{ item.deadline_label }}{% endif %}">
+                <span class="event-kind">✓</span><span>{{ item.obj.title }}</span>{% if item.deadline_label %}<b>{{ item.deadline_label }}</b>{% endif %}
+              </a>
+            {% else %}
+              <a class="calendar-item project-event reminder deadline-{{ item.deadline_state }}" style="--project-color:{{ item.color }}" href="{% url 'reminders:edit' item.obj.pk %}{% if marketing_only %}?return_to=marketing_calendar{% endif %}" title="{{ item.obj.title }}{% if item.deadline_label %} · {{ item.deadline_label }}{% endif %}">
+                <span class="event-kind">⏰</span><span>{{ item.time|date:'H:i' }} {{ item.obj.title }}</span>{% if item.deadline_label %}<b>{{ item.deadline_label }}</b>{% endif %}
+              </a>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
     </section>
+
+    {% if marketing_only %}
+    <aside class="card rem-form-card marketing-calendar-info">
+      <h3>Qué aparece aquí</h3>
+      <div class="calendar-scope-row"><span>⏰</span><div><strong>Recordatorios Marketing</strong><small>LSA, campañas, reviews, Social Media y recordatorios manuales clasificados como Marketing.</small></div></div>
+      <div class="calendar-scope-row"><span>🎥</span><div><strong>Reuniones Marketing</strong><small>Las reuniones creadas desde esta vista quedan clasificadas como Marketing y generan Meet.</small></div></div>
+      <div class="calendar-scope-row"><span>✓</span><div><strong>Tareas Marketing</strong><small>Tareas con fecha límite que todavía no están finalizadas.</small></div></div>
+      <a class="btn btn-secondary" href="{% url 'reminders:calendar' %}">Ver calendario general</a>
+    </aside>
+    {% else %}
     <aside class="card rem-form-card">
       <h3>Eventos externos de Google</h3>
       <p>Eventos de CEO Marketing que no fueron creados por este CRM.</p>
       {% if google_error %}<div class="semantic-banner is-danger compact">{{ google_error }}</div>{% endif %}
       <div class="calendar-side-list">
-        {% for event in google_events %}<div class="calendar-side-event"><strong>{{ event.summary }}</strong><small>{% if event.start %}{{ event.start|date:'d/m/Y H:i' }}{% endif %}</small><div class="actions" style="margin-top:7px">{% if event.meet_url %}<a class="meet-link" href="{{ event.meet_url }}" target="_blank" rel="noopener">🎥 Meet</a>{% endif %}{% if event.html_link %}<a class="calendar-link" href="{{ event.html_link }}" target="_blank" rel="noopener">Calendar ↗</a>{% endif %}</div></div>{% empty %}<div class="empty">{% if google_connected %}No hay otros eventos en este mes.{% else %}Conecta Google para ver eventos externos.{% endif %}</div>{% endfor %}
+        {% for event in google_events %}
+          <div class="calendar-side-event"><strong>{{ event.summary }}</strong><small>{% if event.start %}{{ event.start|date:'d/m/Y H:i' }}{% endif %}</small><div class="actions" style="margin-top:7px">{% if event.meet_url %}<a class="meet-link" href="{{ event.meet_url }}" target="_blank" rel="noopener">🎥 Meet</a>{% endif %}{% if event.html_link %}<a class="calendar-link" href="{{ event.html_link }}" target="_blank" rel="noopener">Calendar ↗</a>{% endif %}</div></div>
+        {% empty %}<div class="empty">{% if google_connected %}No hay otros eventos en este mes.{% else %}Conecta Google para ver eventos externos.{% endif %}</div>{% endfor %}
       </div>
     </aside>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

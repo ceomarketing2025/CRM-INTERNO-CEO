@@ -23,3 +23,25 @@
   @media(max-width:1050px){.reminder-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.calendar-layout,.rem-form-layout{grid-template-columns:1fr}.google-connect-card{grid-template-columns:1fr}}
   @media(max-width:700px){.reminder-grid{grid-template-columns:1fr}.rem-form-grid{grid-template-columns:1fr}.rem-form-grid .wide{grid-column:auto}.calendar-day{min-height:95px;padding:5px}.calendar-item{font-size:10px}.calendar-head div{padding:8px 3px;font-size:10px}}
 </style>
+<style>
+  .deadline-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .deadline-stat{display:grid;grid-template-columns:auto 1fr;column-gap:11px;row-gap:2px;align-items:center;padding:14px 16px;border-radius:16px;border:1px solid #e5e7eb;background:#fff}
+  .deadline-stat strong{grid-row:1/3;font-size:28px;line-height:1;font-weight:900}.deadline-stat span{font-weight:900}.deadline-stat small{color:#64748b}
+  .deadline-stat.danger{border-color:#fecaca;background:#fef2f2;color:#991b1b}.deadline-stat.wait{border-color:#fed7aa;background:#fff7ed;color:#9a3412}
+  .deadline-pill{display:inline-flex;align-items:center;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900}
+  .deadline-pill.overdue{background:#fee2e2;color:#991b1b}.deadline-pill.today,.deadline-pill.soon{background:#ffedd5;color:#9a3412}
+  .reminder-card{position:relative;overflow:hidden}.project-stripe{position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--project-color,#64748b)}
+  .reminder-card.deadline-overdue{border-color:#fecaca}.reminder-card.deadline-today,.reminder-card.deadline-soon{border-color:#fed7aa}
+  .project-dot,.project-legend-item i{display:inline-block;width:9px;height:9px;border-radius:999px;background:var(--project-color,#64748b);margin-right:6px;flex:0 0 auto}
+  .project-legend{padding:15px 17px;display:grid;gap:10px}.project-legend-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.project-legend-head small{color:#64748b}
+  .project-legend-items{display:flex;gap:8px 14px;flex-wrap:wrap}.project-legend-item{display:inline-flex;align-items:center;font-size:11px;font-weight:800;color:#475569}
+  .calendar-month-title{padding:16px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:12px}.calendar-month-title h3{margin:0}
+  .calendar-item.project-event{--project-color:#64748b;position:relative;border-left:4px solid var(--project-color);background:color-mix(in srgb,var(--project-color) 10%,#fff);color:#0f172a;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:4px 5px}
+  .calendar-item.project-event span:nth-child(2){overflow:hidden;text-overflow:ellipsis}.calendar-item.project-event b{grid-column:2;font-size:9px;color:#9a3412}
+  .calendar-item.project-event.deadline-overdue{outline:1px solid #ef4444;background:color-mix(in srgb,#ef4444 8%,#fff)}
+  .calendar-item.project-event.deadline-today,.calendar-item.project-event.deadline-soon{outline:1px solid #f97316}
+  .calendar-item.project-event.task{border-left-style:dashed}.event-kind{line-height:1.2}
+  .marketing-calendar-info{display:grid;gap:12px}.calendar-scope-row{display:grid;grid-template-columns:32px 1fr;gap:10px;padding:12px;border:1px solid #e5e7eb;border-radius:14px;background:#fafafa}.calendar-scope-row>span{font-size:20px}.calendar-scope-row strong,.calendar-scope-row small{display:block}.calendar-scope-row small{margin-top:4px;color:#64748b;line-height:1.45}
+  .automatic-meet-box{display:grid;grid-template-columns:42px 1fr;gap:12px;margin-top:17px;padding:14px 15px;border:1px solid #bbf7d0;border-radius:15px;background:#f0fdf4}.automatic-meet-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:#fff;font-size:20px}.automatic-meet-box strong{display:block;color:#166534}.automatic-meet-box p{margin:4px 0 0;color:#475569;font-size:12px;line-height:1.5}
+  @media(max-width:900px){.deadline-summary{grid-template-columns:1fr}.project-legend-head{align-items:flex-start;flex-direction:column}}
+</style>

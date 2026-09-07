@@ -27,6 +27,11 @@ urlpatterns = [
         views.seo_status_import,
         name="seo_status_import",
     ),
+    path(
+    "seo-status/<int:project_pk>/",
+    views.seo_status_detail,
+    name="seo_status_detail",
+),
 
     path(
         "project/<int:project_pk>/new/",

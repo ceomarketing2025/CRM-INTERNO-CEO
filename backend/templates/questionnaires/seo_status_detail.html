@@ -1,0 +1,1621 @@
+{% extends 'base.html' %}
+
+{% block page_heading %}Matriz SEO{% endblock %}
+
+{% block content %}
+
+<div class="page-intro seo-detail-intro">
+
+  <div>
+
+    <span class="eyebrow">
+      SEO · MATRIZ INDIVIDUAL
+    </span>
+
+    <h2>
+      {{ project.client.business_name }}
+    </h2>
+
+    <p>
+      {{ project.project_code }} ·
+      {{ total_urls }} URLs registradas
+    </p>
+
+  </div>
+
+  <div class="actions">
+
+    <a
+      href="{% url 'questionnaires:seo_status' %}"
+      class="btn btn-secondary"
+    >
+      Volver
+    </a>
+
+  </div>
+
+</div>
+
+
+<div class="seo-detail-kpis">
+
+  <div class="seo-detail-kpi">
+    <span>Total URLs</span>
+    <strong>{{ total_urls }}</strong>
+    <small>URLs monitoreadas</small>
+  </div>
+
+  <div class="seo-detail-kpi">
+    <span>Indexadas</span>
+    <strong>{{ indexed_urls }}</strong>
+    <small>{{ indexing_percent }}% de indexación</small>
+  </div>
+
+  <div class="seo-detail-kpi">
+    <span>Top 10</span>
+    <strong>{{ top_10_count }}</strong>
+    <small>Posición 1–10</small>
+  </div>
+
+  <div class="seo-detail-kpi">
+    <span>Top 20</span>
+    <strong>{{ top_20_count }}</strong>
+    <small>Posición 11–20</small>
+  </div>
+
+  <div class="seo-detail-kpi">
+    <span>+20</span>
+    <strong>{{ over_20_count }}</strong>
+    <small>Por encima de posición 20</small>
+  </div>
+
+  <div class="seo-detail-kpi">
+    <span>Sin estado</span>
+    <strong>{{ unknown_urls }}</strong>
+    <small>Requieren revisión</small>
+  </div>
+
+</div>
+
+
+<div class="card seo-detail-card">
+
+  <div class="seo-detail-head">
+
+    <div>
+
+      <span class="eyebrow">
+        URLs DEL PROYECTO
+      </span>
+
+      <h3>
+        Matriz SEO
+      </h3>
+
+      <p>
+        Consulta el resumen de cada URL y edita su ficha individualmente.
+      </p>
+
+    </div>
+
+    {% if seo_project.sitemap_url %}
+
+      <a
+        href="{{ seo_project.sitemap_url }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="btn btn-secondary btn-sm"
+      >
+        Ver sitemap
+      </a>
+
+    {% endif %}
+
+  </div>
+
+
+  <div class="seo-detail-table-scroll">
+
+    <table class="seo-detail-table">
+
+      <thead>
+
+        <tr>
+
+          <th>Página</th>
+
+          <th>Estado</th>
+
+          <th>Posición</th>
+
+          <th>Evolución</th>
+
+          <th>Alerta</th>
+
+          <th>Últ. actualización</th>
+
+          <th>Acción</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        {% for item in urls %}
+
+        <tr>
+
+          <td>
+
+            <div class="seo-url-cell">
+
+              <strong>
+                {{ item.page_name }}
+              </strong>
+
+              <a
+                href="{{ item.url }}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {{ item.url }}
+              </a>
+
+            </div>
+
+          </td>
+
+
+          <td>
+
+            {% if item.status == "indexed" %}
+
+              <span class="seo-status-badge indexed">
+                Indexada
+              </span>
+
+            {% elif item.status == "not_indexed" %}
+
+              <span class="seo-status-badge not-indexed">
+                No indexada
+              </span>
+
+            {% elif item.status == "pending" %}
+
+              <span class="seo-status-badge pending">
+                Pendiente
+              </span>
+
+            {% else %}
+
+              <span class="seo-status-badge unknown">
+                Sin estado
+              </span>
+
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            {% if item.current_position %}
+
+              <span
+                class="seo-ranking-badge
+                {% if item.current_position <= 10 %}
+                  green
+                {% elif item.current_position <= 20 %}
+                  orange
+                {% else %}
+                  red
+                {% endif %}"
+              >
+                {{ item.current_position }}
+              </span>
+
+            {% else %}
+
+              <span class="seo-empty">
+                —
+              </span>
+
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            {% if item.previous_position and item.current_position %}
+
+              {% if item.current_position < item.previous_position %}
+
+                <span class="seo-evolution improved">
+                  ↑ Mejoró
+                </span>
+
+              {% elif item.current_position > item.previous_position %}
+
+                <span class="seo-evolution worsened">
+                  ↓ Empeoró
+                </span>
+
+              {% else %}
+
+                <span class="seo-evolution stable">
+                  = Igual
+                </span>
+
+              {% endif %}
+
+            {% else %}
+
+              <span class="seo-empty">
+                —
+              </span>
+
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            {% if item.alert == "ok" %}
+
+              <span class="seo-alert-badge ok">
+                OK
+              </span>
+
+            {% elif item.alert == "attention" %}
+
+              <span class="seo-alert-badge attention">
+                Atención
+              </span>
+
+            {% elif item.alert == "critical" %}
+
+              <span class="seo-alert-badge critical">
+                Crítica
+              </span>
+
+            {% else %}
+
+              <span class="seo-alert-badge monitor">
+                Monitorear
+              </span>
+
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            {% if item.last_update %}
+
+              {{ item.last_update|date:"d/m/Y" }}
+
+            {% else %}
+
+              <span class="seo-empty">
+                —
+              </span>
+
+            {% endif %}
+
+          </td>
+
+
+          <td>
+
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm seo-open-modal"
+
+              data-id="{{ item.pk }}"
+
+              data-page-name="{{ item.page_name|default:''|escape }}"
+
+              data-url="{{ item.url|default:''|escape }}"
+
+              data-entry-date="{% if item.entry_date %}{{ item.entry_date|date:'Y-m-d' }}{% endif %}"
+
+              data-objective="{{ item.objective|default:''|escape }}"
+
+              data-status="{{ item.status|default:'unknown' }}"
+
+              data-current-position="{% if item.current_position %}{{ item.current_position }}{% endif %}"
+
+              data-previous-position="{% if item.previous_position %}{{ item.previous_position }}{% endif %}"
+
+              data-last-update="{% if item.last_update %}{{ item.last_update|date:'Y-m-d' }}{% endif %}"
+
+              data-last-sitemap-read="{% if item.last_sitemap_read %}{{ item.last_sitemap_read|date:'Y-m-d' }}{% endif %}"
+
+              data-pending-action="{{ item.pending_action|default:''|escape }}"
+
+              data-observations="{{ item.observations|default:''|escape }}"
+
+              data-alert="{{ item.alert|default:'monitor' }}"
+
+              data-updated-by="{% if item.updated_by %}{{ item.updated_by.display_name|default:item.updated_by.email|escape }}{% else %}—{% endif %}"
+            >
+              Editar
+            </button>
+
+          </td>
+
+        </tr>
+
+        {% empty %}
+
+        <tr>
+
+          <td
+            colspan="7"
+            class="seo-detail-empty"
+          >
+            No hay URLs registradas.
+          </td>
+
+        </tr>
+
+        {% endfor %}
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+</div>
+
+
+<div
+  class="seo-modal"
+  id="seo-url-modal"
+  aria-hidden="true"
+>
+
+  <div
+    class="seo-modal-backdrop"
+    data-close-modal
+  ></div>
+
+  <div
+    class="seo-modal-panel"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="seo-modal-title"
+  >
+
+    <form
+      method="post"
+      id="seo-url-form"
+    >
+
+      {% csrf_token %}
+
+      <input
+        type="hidden"
+        name="action"
+        value="save_url"
+      >
+
+      <input
+        type="hidden"
+        name="url_id"
+        id="seo-modal-id"
+      >
+
+
+      <div class="seo-modal-header">
+
+        <div>
+
+          <span class="eyebrow">
+            FICHA SEO
+          </span>
+
+          <h3 id="seo-modal-title">
+            Página
+          </h3>
+
+        </div>
+
+        <button
+          type="button"
+          class="seo-modal-close"
+          data-close-modal
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+
+      </div>
+
+
+      <div class="seo-modal-body">
+
+        <div class="seo-modal-grid">
+
+
+          <div class="seo-modal-field form-wide">
+
+            <label for="seo-modal-page-name">
+              Página / nombre
+            </label>
+
+            <input
+              type="text"
+              name="page_name"
+              id="seo-modal-page-name"
+              required
+            >
+
+          </div>
+
+
+          <div class="seo-modal-field form-wide">
+
+            <label for="seo-modal-url">
+              URL
+            </label>
+
+            <input
+              type="url"
+              name="url"
+              id="seo-modal-url"
+              required
+            >
+
+          </div>
+
+
+          <div class="seo-modal-field">
+
+            <label for="seo-modal-entry-date">
+              Fecha de ingreso
+            </label>
+
+            <input
+              type="date"
+              name="entry_date"
+              id="seo-modal-entry-date"
+            >
+
+          </div>
+
+
+          <div class="seo-modal-field">
+
+            <label for="seo-modal-status">
+              Estado de indexación
+            </label>
+
+            <select
+              name="status"
+              id="seo-modal-status"
+            >
+
+              <option value="indexed">
+                Indexada
+              </option>
+
+              <option value="not_indexed">
+                No indexada
+              </option>
+
+              <option value="pending">
+                Pendiente
+              </option>
+
+              <option value="unknown">
+                Sin estado
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <div class="seo-modal-field">
+
+            <label for="seo-modal-current-position">
+              Posición actual
+            </label>
+
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              name="current_position"
+              id="seo-modal-current-position"
+            >
+
+          </div>
+
+
+          <div class="seo-modal-field">
+
+            <label for="seo-modal-previous-position">
+              Posición anterior
+            </label>
+
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              name="previous_position"
+              id="seo-modal-previous-position"
+            >
+
+          </div>
+
+
+          <div class="seo-modal-field">
+
+            <label>
+              Evolución
+            </label>
+
+            <strong
+              id="seo-modal-evolution"
+              class="seo-modal-auto-value"
+            >
+              —
+            </strong>
+
+            <small>
+              Se calcula automáticamente.
+            </small>
+
+          </div>
+
+
+          <div class="seo-modal-field">
+
+            <label for="seo-modal-alert">
+              Alerta
+            </label>
+
+            <select
+              name="alert"
+              id="seo-modal-alert"
+            >
+
+              <option value="ok">
+                OK
+              </option>
+
+              <option value="attention">
+                Atención
+              </option>
+
+              <option value="critical">
+                Crítica
+              </option>
+
+              <option value="monitor">
+                Monitorear
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <div class="seo-modal-field">
+
+            <label for="seo-modal-last-update">
+              Última actualización
+            </label>
+
+            <input
+              type="date"
+              name="last_update"
+              id="seo-modal-last-update"
+            >
+
+          </div>
+
+
+          <div class="seo-modal-field">
+
+            <label for="seo-modal-last-sitemap-read">
+              Última lectura sitemap
+            </label>
+
+            <input
+              type="date"
+              name="last_sitemap_read"
+              id="seo-modal-last-sitemap-read"
+            >
+
+          </div>
+
+
+          <div class="seo-modal-field form-wide">
+
+            <label for="seo-modal-objective">
+              Objetivo
+            </label>
+
+            <textarea
+              name="objective"
+              id="seo-modal-objective"
+              rows="2"
+            ></textarea>
+
+          </div>
+
+
+          <div class="seo-modal-field form-wide">
+
+            <label for="seo-modal-pending-action">
+              Acción pendiente
+            </label>
+
+            <textarea
+              name="pending_action"
+              id="seo-modal-pending-action"
+              rows="3"
+            ></textarea>
+
+          </div>
+
+
+          <div class="seo-modal-field form-wide">
+
+            <label for="seo-modal-observations">
+              Observaciones
+            </label>
+
+            <textarea
+              name="observations"
+              id="seo-modal-observations"
+              rows="3"
+            ></textarea>
+
+          </div>
+
+
+          <div class="seo-modal-field form-wide">
+
+            <label>
+              Modificado por
+            </label>
+
+            <strong
+              id="seo-modal-updated-by"
+              class="seo-modal-auto-value"
+            >
+              —
+            </strong>
+
+          </div>
+
+
+        </div>
+
+      </div>
+
+
+      <div class="seo-modal-footer">
+
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-close-modal
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="submit"
+          class="btn btn-primary"
+        >
+          Guardar URL
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+
+<style>
+
+.seo-detail-intro{
+  margin-bottom:18px;
+}
+
+
+.seo-detail-kpis{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:18px;
+}
+
+
+.seo-detail-kpi{
+  min-height:108px;
+  padding:16px 17px;
+  border:1px solid #e2e7ef;
+  border-radius:15px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:4px;
+}
+
+
+.seo-detail-kpi span{
+  color:#7a8799;
+  font-size:11px;
+  font-weight:800;
+}
+
+
+.seo-detail-kpi strong{
+  color:#17243a;
+  font-size:27px;
+  line-height:1;
+}
+
+
+.seo-detail-kpi small{
+  color:#99a3b2;
+  font-size:10px;
+}
+
+
+.seo-detail-card{
+  padding:0;
+  overflow:hidden;
+}
+
+
+.seo-detail-head{
+  padding:20px 22px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  border-bottom:1px solid #e4e8ef;
+}
+
+
+.seo-detail-head h3{
+  margin:4px 0;
+  color:#17243a;
+  font-size:21px;
+}
+
+
+.seo-detail-head p{
+  margin:0;
+  color:#79869a;
+  font-size:12px;
+}
+
+
+.seo-detail-table-scroll{
+  width:100%;
+  overflow-x:auto;
+}
+
+
+.seo-detail-table{
+  width:100%;
+  min-width:1180px;
+  border-collapse:separate;
+  border-spacing:0;
+}
+
+
+.seo-detail-table th{
+  padding:12px 13px;
+  background:#f5f7fa;
+  border-right:1px solid #e5e9ef;
+  border-bottom:1px solid #dfe4ec;
+  color:#5b697e;
+  text-align:left;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+
+
+.seo-detail-table td{
+  padding:13px;
+  border-right:1px solid #edf0f4;
+  border-bottom:1px solid #edf0f4;
+  color:#35445b;
+  font-size:12px;
+  vertical-align:middle;
+}
+
+
+.seo-detail-table th:last-child,
+.seo-detail-table td:last-child{
+  border-right:0;
+}
+
+
+.seo-url-cell{
+  max-width:360px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+
+.seo-url-cell strong{
+  color:#17243a;
+  font-size:12px;
+}
+
+
+.seo-url-cell a{
+  color:#4d73ad;
+  font-size:10px;
+  text-decoration:none;
+  word-break:break-all;
+}
+
+
+.seo-url-cell a:hover{
+  text-decoration:underline;
+}
+
+
+.seo-status-badge,
+.seo-ranking-badge,
+.seo-alert-badge,
+.seo-evolution{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:5px 8px;
+  border-radius:999px;
+  white-space:nowrap;
+  font-size:10px;
+  font-weight:800;
+}
+
+
+.seo-status-badge.indexed{
+  background:#e9f8ef;
+  color:#177d49;
+}
+
+
+.seo-status-badge.not-indexed{
+  background:#fff0f0;
+  color:#b24040;
+}
+
+
+.seo-status-badge.pending{
+  background:#fff5df;
+  color:#936d18;
+}
+
+
+.seo-status-badge.unknown{
+  background:#eef1f5;
+  color:#6d7889;
+}
+
+
+.seo-ranking-badge.green{
+  background:#e8f7ef;
+  color:#167d48;
+}
+
+
+.seo-ranking-badge.orange{
+  background:#fff4dd;
+  color:#916c19;
+}
+
+
+.seo-ranking-badge.red{
+  background:#fff0f0;
+  color:#b53f3f;
+}
+
+
+.seo-evolution.improved{
+  background:#e9f8ef;
+  color:#177d49;
+}
+
+
+.seo-evolution.worsened{
+  background:#fff0f0;
+  color:#b43d3d;
+}
+
+
+.seo-evolution.stable{
+  background:#eef1f5;
+  color:#687588;
+}
+
+
+.seo-alert-badge.ok{
+  background:#e9f8ef;
+  color:#177d49;
+}
+
+
+.seo-alert-badge.attention{
+  background:#fff5df;
+  color:#936d18;
+}
+
+
+.seo-alert-badge.critical{
+  background:#fff0f0;
+  color:#b43d3d;
+}
+
+
+.seo-alert-badge.monitor{
+  background:#eef1f5;
+  color:#687588;
+}
+
+
+.seo-empty{
+  color:#9ca6b5;
+}
+
+
+.seo-detail-empty{
+  padding:35px !important;
+  text-align:center;
+  color:#8a95a6;
+}
+
+
+.seo-modal{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+
+
+.seo-modal.open{
+  display:flex;
+}
+
+
+.seo-modal-backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(15,23,42,.55);
+}
+
+
+.seo-modal-panel{
+  position:relative;
+  z-index:1;
+  width:min(900px,100%);
+  max-height:90vh;
+  overflow:auto;
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 28px 70px rgba(15,23,42,.22);
+}
+
+
+#seo-url-form{
+  margin:0;
+}
+
+
+.seo-modal-header{
+  padding:20px 22px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  border-bottom:1px solid #e6eaf0;
+  background:#fff;
+}
+
+
+.seo-modal-header h3{
+  margin:4px 0 0;
+  color:#17243a;
+  font-size:21px;
+}
+
+
+.seo-modal-close{
+  width:36px;
+  height:36px;
+  border:1px solid #dde3eb;
+  border-radius:10px;
+  background:#fff;
+  color:#5f6c80;
+  font-size:22px;
+  line-height:1;
+  cursor:pointer;
+}
+
+
+.seo-modal-body{
+  padding:22px;
+}
+
+
+.seo-modal-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+
+
+.seo-modal-field{
+  padding:14px;
+  border:1px solid #e5e9ef;
+  border-radius:12px;
+  background:#fafbfd;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+
+.seo-modal-field.form-wide{
+  grid-column:1 / -1;
+}
+
+
+.seo-modal-field label{
+  color:#7b8799;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+
+.seo-modal-field strong{
+  color:#27364d;
+  font-size:12px;
+}
+
+
+.seo-modal-field input,
+.seo-modal-field select,
+.seo-modal-field textarea{
+  width:100%;
+  min-width:0;
+  border:1px solid #d9e0e9;
+  border-radius:9px;
+  background:#fff;
+  color:#26364d;
+  font:inherit;
+  font-size:12px;
+  outline:none;
+  box-sizing:border-box;
+}
+
+
+.seo-modal-field input,
+.seo-modal-field select{
+  min-height:42px;
+  padding:0 11px;
+}
+
+
+.seo-modal-field textarea{
+  min-height:82px;
+  padding:10px 11px;
+  resize:vertical;
+  line-height:1.5;
+}
+
+
+.seo-modal-field input:focus,
+.seo-modal-field select:focus,
+.seo-modal-field textarea:focus{
+  border-color:#8aa5cb;
+}
+
+
+.seo-modal-field small{
+  color:#929dad;
+  font-size:10px;
+}
+
+
+.seo-modal-auto-value{
+  min-height:42px;
+  padding:0 11px;
+  border:1px solid #e2e6ec;
+  border-radius:9px;
+  background:#f3f5f8;
+  display:flex;
+  align-items:center;
+}
+
+
+.seo-modal-footer{
+  padding:16px 22px;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  border-top:1px solid #e6eaf0;
+  background:#fff;
+}
+
+
+body.seo-modal-open{
+  overflow:hidden;
+}
+
+
+@media(max-width:1200px){
+
+  .seo-detail-kpis{
+    grid-template-columns:
+      repeat(3,minmax(0,1fr));
+  }
+
+}
+
+
+@media(max-width:700px){
+
+  .seo-detail-kpis{
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
+
+  .seo-detail-head{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .seo-modal{
+    padding:12px;
+  }
+
+  .seo-modal-grid{
+    grid-template-columns:1fr;
+  }
+
+  .seo-modal-field.form-wide{
+    grid-column:auto;
+  }
+
+}
+
+
+@media(max-width:460px){
+
+  .seo-detail-kpis{
+    grid-template-columns:1fr;
+  }
+
+}
+
+</style>
+
+
+<script>
+
+(function(){
+
+  const modal =
+    document.getElementById(
+      "seo-url-modal"
+    );
+
+  if(!modal){
+    return;
+  }
+
+
+  const form =
+    document.getElementById(
+      "seo-url-form"
+    );
+
+  const id =
+    document.getElementById(
+      "seo-modal-id"
+    );
+
+  const title =
+    document.getElementById(
+      "seo-modal-title"
+    );
+
+  const pageName =
+    document.getElementById(
+      "seo-modal-page-name"
+    );
+
+  const url =
+    document.getElementById(
+      "seo-modal-url"
+    );
+
+  const entryDate =
+    document.getElementById(
+      "seo-modal-entry-date"
+    );
+
+  const status =
+    document.getElementById(
+      "seo-modal-status"
+    );
+
+  const currentPosition =
+    document.getElementById(
+      "seo-modal-current-position"
+    );
+
+  const previousPosition =
+    document.getElementById(
+      "seo-modal-previous-position"
+    );
+
+  const evolution =
+    document.getElementById(
+      "seo-modal-evolution"
+    );
+
+  const alert =
+    document.getElementById(
+      "seo-modal-alert"
+    );
+
+  const lastUpdate =
+    document.getElementById(
+      "seo-modal-last-update"
+    );
+
+  const lastSitemapRead =
+    document.getElementById(
+      "seo-modal-last-sitemap-read"
+    );
+
+  const objective =
+    document.getElementById(
+      "seo-modal-objective"
+    );
+
+  const pendingAction =
+    document.getElementById(
+      "seo-modal-pending-action"
+    );
+
+  const observations =
+    document.getElementById(
+      "seo-modal-observations"
+    );
+
+  const updatedBy =
+    document.getElementById(
+      "seo-modal-updated-by"
+    );
+
+
+  function updateEvolution(){
+
+    const current =
+      currentPosition.value.trim();
+
+    const previous =
+      previousPosition.value.trim();
+
+
+    if(
+      current === ""
+      ||
+      previous === ""
+    ){
+
+      evolution.textContent = "—";
+
+      return;
+
+    }
+
+
+    const currentNumber =
+      Number(current);
+
+    const previousNumber =
+      Number(previous);
+
+
+    if(
+      Number.isNaN(currentNumber)
+      ||
+      Number.isNaN(previousNumber)
+    ){
+
+      evolution.textContent = "—";
+
+      return;
+
+    }
+
+
+    if(currentNumber < previousNumber){
+
+      evolution.textContent =
+        "↑ Mejoró";
+
+      return;
+
+    }
+
+
+    if(currentNumber > previousNumber){
+
+      evolution.textContent =
+        "↓ Empeoró";
+
+      return;
+
+    }
+
+
+    evolution.textContent =
+      "= Sin cambio";
+
+  }
+
+
+  function openModal(button){
+
+    const data =
+      button.dataset;
+
+
+    id.value =
+      data.id || "";
+
+
+    title.textContent =
+      data.pageName || "Página";
+
+
+    pageName.value =
+      data.pageName || "";
+
+
+    url.value =
+      data.url || "";
+
+
+    entryDate.value =
+      data.entryDate || "";
+
+
+    status.value =
+      data.status || "unknown";
+
+
+    currentPosition.value =
+      data.currentPosition || "";
+
+
+    previousPosition.value =
+      data.previousPosition || "";
+
+
+    alert.value =
+      data.alert || "monitor";
+
+
+    lastUpdate.value =
+      data.lastUpdate || "";
+
+
+    lastSitemapRead.value =
+      data.lastSitemapRead || "";
+
+
+    objective.value =
+      data.objective || "";
+
+
+    pendingAction.value =
+      data.pendingAction || "";
+
+
+    observations.value =
+      data.observations || "";
+
+
+    updatedBy.textContent =
+      data.updatedBy || "—";
+
+
+    updateEvolution();
+
+
+    modal.classList.add(
+      "open"
+    );
+
+
+    modal.setAttribute(
+      "aria-hidden",
+      "false"
+    );
+
+
+    document.body.classList.add(
+      "seo-modal-open"
+    );
+
+
+    setTimeout(
+      function(){
+
+        pageName.focus();
+
+      },
+      50
+    );
+
+  }
+
+
+  function closeModal(){
+
+    modal.classList.remove(
+      "open"
+    );
+
+
+    modal.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+
+
+    document.body.classList.remove(
+      "seo-modal-open"
+    );
+
+  }
+
+
+  currentPosition.addEventListener(
+    "input",
+    updateEvolution
+  );
+
+
+  previousPosition.addEventListener(
+    "input",
+    updateEvolution
+  );
+
+
+  pageName.addEventListener(
+    "input",
+    function(){
+
+      title.textContent =
+        pageName.value.trim()
+        || "Página";
+
+    }
+  );
+
+
+  document
+    .querySelectorAll(
+      ".seo-open-modal"
+    )
+    .forEach(
+      function(button){
+
+        button.addEventListener(
+          "click",
+          function(){
+
+            openModal(
+              button
+            );
+
+          }
+        );
+
+      }
+    );
+
+
+  modal
+    .querySelectorAll(
+      "[data-close-modal]"
+    )
+    .forEach(
+      function(button){
+
+        button.addEventListener(
+          "click",
+          closeModal
+        );
+
+      }
+    );
+
+
+  document.addEventListener(
+    "keydown",
+    function(event){
+
+      if(
+        event.key === "Escape"
+        &&
+        modal.classList.contains(
+          "open"
+        )
+      ){
+
+        closeModal();
+
+      }
+
+    }
+  );
+
+
+  form.addEventListener(
+    "submit",
+    function(event){
+
+      if(!id.value){
+
+        event.preventDefault();
+
+        return;
+
+      }
+
+
+      if(
+        !pageName.value.trim()
+        ||
+        !url.value.trim()
+      ){
+
+        event.preventDefault();
+
+      }
+
+    }
+  );
+
+})();
+
+</script>
+
+{% endblock %}

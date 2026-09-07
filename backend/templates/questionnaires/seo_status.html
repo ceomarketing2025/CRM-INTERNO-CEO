@@ -381,14 +381,12 @@
 
             {% if row.seo_project %}
 
-              <button
-                type="button"
-                class="btn btn-secondary btn-sm seo-matrix-action"
-                disabled
-                title="La vista individual será habilitada en el siguiente paso"
-              >
-                Ver matriz
-              </button>
+          <a
+            href="{% url 'questionnaires:seo_status_detail' row.project.pk %}"
+            class="btn btn-secondary btn-sm seo-matrix-action"
+          >
+            Ver matriz
+          </a>
 
             {% else %}
 

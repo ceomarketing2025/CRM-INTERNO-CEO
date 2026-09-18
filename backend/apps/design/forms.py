@@ -59,18 +59,14 @@ class DesignTaskForm(forms.ModelForm):
     class Meta:
         model = DesignTask
         fields = [
-            "project_plan", "title", "description", "task_type",
-            "recurrence_frequency", "recurrence_start_date",
-            "status", "due_date", "assigned_to", "order",
+            "project_plan", "title", "description", "due_date", "assigned_to",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3}),
-            "recurrence_start_date": forms.DateInput(attrs={"type": "date"}),
             "due_date": forms.DateInput(attrs={"type": "date"}),
         }
-        labels = {
-            "recurrence_frequency": "Control / renovación de contenido",
-            "recurrence_start_date": "Fecha desde la que inicia el ciclo",
+        help_texts = {
+            "project_plan": "Selecciona el servicio de Diseño al que pertenece la actividad.",
         }
 
     def __init__(self, *args, user=None, **kwargs):

@@ -904,6 +904,9 @@ body[data-namespace="marketing"] .marketing-page-intro{margin-bottom:14px}.marke
   --crm-action-amber-a:#d3a04a;
   --crm-action-amber-b:#b68231;
   --crm-action-amber-i:#a97728;
+  --crm-action-back-a:#6d6aa5;
+  --crm-action-back-b:#565284;
+  --crm-action-back-i:#514c86;
   --crm-field-h:46px;
   --crm-field-radius:14px;
   --crm-field-border:#dfe6ef;
@@ -1034,6 +1037,7 @@ html body .btn.crm-action-button.crm-tone-danger{--btn-bg-top:var(--crm-action-r
 html body .btn.crm-action-button.crm-tone-neutral{--btn-bg-top:var(--crm-action-gray-a)!important;--btn-bg-bottom:var(--crm-action-gray-b)!important;--btn-icon-color:var(--crm-action-gray-i)!important}
 html body .btn.crm-action-button.crm-tone-info{--btn-bg-top:var(--crm-action-blue-a)!important;--btn-bg-bottom:var(--crm-action-blue-b)!important;--btn-icon-color:var(--crm-action-blue-i)!important}
 html body .btn.crm-action-button.crm-tone-warning{--btn-bg-top:var(--crm-action-amber-a)!important;--btn-bg-bottom:var(--crm-action-amber-b)!important;--btn-icon-color:var(--crm-action-amber-i)!important}
+html body .btn.crm-action-button.crm-tone-back{--btn-bg-top:var(--crm-action-back-a)!important;--btn-bg-bottom:var(--crm-action-back-b)!important;--btn-icon-color:var(--crm-action-back-i)!important}
 
 /* tamaños: también anulamos min-width locales de Diseño/Social Media/Auditoría */
 html body .app-shell .main .content .btn.crm-action-button.btn-sm,
@@ -1177,3 +1181,80 @@ html body .app-shell .main .content :where(.check-grid label,.network-checkbox-g
 html body .app-shell .main .content :where(.check-grid label,.network-checkbox-grid label,.radio-cards label,.toggle-line,.sm-network-grid li label):has(input:checked){
   border-color:#91a8bd!important;background:#f2f7fb!important;box-shadow:0 0 0 3px rgba(67,96,126,.07)!important;
 }
+
+
+/* ===== V26 · Información Diseño: acciones compactas de listado ===== */
+html body .app-shell .main .content .design-info-actions .btn.crm-action-button.design-list-action{
+  min-width:82px!important;
+  min-height:34px!important;
+  height:34px!important;
+  grid-template-columns:24px minmax(0,1fr) 24px!important;
+  column-gap:4px!important;
+  padding:4px 5px!important;
+  border-radius:999px!important;
+  font-size:7.5px!important;
+  box-shadow:0 6px 14px rgba(18,27,42,.10),inset 0 -1px 0 rgba(0,0,0,.06)!important;
+}
+html body .app-shell .main .content .design-info-actions .btn.crm-action-button.design-list-action:after{width:24px!important}
+html body .app-shell .main .content .design-info-actions .btn.crm-action-button.design-list-action .btn-icon{
+  width:24px!important;height:24px!important;min-width:24px!important;
+}
+html body .app-shell .main .content .design-info-actions .btn.crm-action-button.design-list-action .btn-icon svg{width:12px!important;height:12px!important}
+html body .app-shell .main .content .design-info-actions .btn.crm-action-button.design-list-eye{
+  width:34px!important;min-width:34px!important;max-width:34px!important;
+  height:34px!important;min-height:34px!important;max-height:34px!important;
+  grid-template-columns:1fr!important;padding:3px!important;border-radius:50%!important;
+}
+html body .app-shell .main .content .design-info-actions .btn.crm-action-button.design-list-eye:after,
+html body .app-shell .main .content .design-info-actions .btn.crm-action-button.design-list-eye .btn-label{display:none!important}
+html body .app-shell .main .content .design-info-actions .btn.crm-action-button.design-list-eye .btn-icon{
+  grid-column:1!important;justify-self:center!important;width:26px!important;height:26px!important;min-width:26px!important;
+}
+
+
+/* ===== V27 · Diseño: proceso visual + workflow de actividades ===== */
+.design-process-nav{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 16px;
+}
+.design-process-step{
+  position:relative;display:grid;grid-template-columns:34px minmax(0,1fr) 12px;align-items:center;gap:10px;
+  min-height:66px;padding:11px 13px;border:1px solid #e2e8f0;border-radius:15px;background:#fff;color:#26334a;
+  text-decoration:none!important;box-shadow:0 6px 18px rgba(22,34,55,.04);transition:border-color .16s ease,background .16s ease,transform .16s ease,box-shadow .16s ease;
+}
+.design-process-step:hover{transform:translateY(-1px);border-color:#cfd9e5;background:#fbfcfe;box-shadow:0 9px 22px rgba(22,34,55,.06)}
+.design-process-step.current{border-color:#8aa4be;background:#f5f9fc;box-shadow:0 0 0 3px rgba(67,96,126,.07)}
+.design-process-index{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#f2f5f8;color:#6d798b;font-size:9px;font-weight:950;letter-spacing:.05em}
+.design-process-copy strong,.design-process-copy small{display:block}.design-process-copy strong{font-size:10px;line-height:1.15}.design-process-copy small{margin-top:4px;font-size:8px;color:#8a95a6;font-weight:750}
+.design-process-dot{width:10px;height:10px;border-radius:50%;justify-self:end;background:#d9a23b;box-shadow:0 0 0 5px rgba(217,162,59,.10)}
+.design-process-step.done .design-process-dot{background:#2b9c66;box-shadow:0 0 0 5px rgba(43,156,102,.10)}
+.design-process-step.done .design-process-index{background:#eaf7f1;color:#217650}
+.design-process-step.current .design-process-index{background:#e7eff7;color:#3f6488}
+.design-process-step.summary .design-process-index{font-size:0}
+.design-process-step.summary .design-process-index:before{content:'✓';font-size:13px}
+@media(max-width:920px){.design-process-nav{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.design-process-nav{grid-template-columns:1fr}}
+
+.task-flow-actions{display:flex;gap:7px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.task-flow-actions .btn.crm-action-button{min-width:104px!important;min-height:34px!important;font-size:7.8px!important}
+.task-flow-actions .btn.crm-action-button.crm-icon-only{min-width:34px!important;width:34px!important;height:34px!important;min-height:34px!important}
+.task-status-note{margin-top:9px;padding:9px 11px;border-radius:11px;border:1px solid #e1e7ef;background:#f8fafc;font-size:9px;line-height:1.5;color:#5d6a7d}
+.task-status-note.paused{background:#f7f8fa;border-color:#dfe4ea;color:#66717f}
+.task-status-note.changes{background:#fff7ed;border-color:#f2d2ad;color:#8a5a20}
+.task-status-note strong{display:block;margin-bottom:2px;font-size:8px;text-transform:uppercase;letter-spacing:.06em}
+.task-pause-panel{margin-top:8px;padding:9px;border:1px solid #e1e7ef;border-radius:12px;background:#fafbfd}
+.task-pause-panel[hidden]{display:none!important}
+.task-pause-panel form{display:grid;grid-template-columns:minmax(180px,1fr) auto;gap:8px;align-items:end}
+.task-pause-panel textarea{min-height:64px!important}
+.task-state-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 8px;font-size:8px;font-weight:900;letter-spacing:.02em;background:#f1f4f7;color:#5f6d80}
+.task-state-pill.todo{background:#fff0f0;color:#a84040}.task-state-pill.doing{background:#fff7dd;color:#86620a}.task-state-pill.paused{background:#f0f2f5;color:#687383}.task-state-pill.review{background:#f1edff;color:#6253a5}.task-state-pill.changes{background:#fff0df;color:#9a5d18}.task-state-pill.done{background:#e9f2fb;color:#356b9b}
+.manager-task-row.status-paused:before{background:#8a95a6!important}.manager-task-row.status-changes:before{background:#dd8d31!important}.manager-task-row.status-done:before{background:#4f7e9f!important}
+.design-wide-row.state-blue:before{background:#4f7e9f!important}.design-task-kpi.done:before{background:#4f7e9f!important}
+.task-status.paused{background:#f0f2f5!important;color:#657080!important}.task-status.changes{background:#fff0df!important;color:#9a5d18!important}.task-status.review{background:#f1edff!important;color:#6253a5!important}.task-status.done,.task-status.blue{background:#e9f2fb!important;color:#356b9b!important}
+@media(max-width:720px){.task-pause-panel form{grid-template-columns:1fr}.task-flow-actions{justify-content:flex-start}}
+/* V27 · estados adicionales para tareas creadas por Gerencia */
+.mg-area-task.status-paused:before,.mg-task-table-row.status-paused:before{background:#8a95a6!important}
+.mg-area-task.status-changes:before,.mg-task-table-row.status-changes:before{background:#dd8d31!important}
+.mg-area-task.status-done:before,.mg-task-table-row.status-done:before{background:#4f7e9f!important}
+.mg-status-pill.paused{background:#f0f2f5!important;color:#657080!important}
+.mg-status-pill.changes{background:#fff0df!important;color:#9a5d18!important}
+.mg-status-pill.done{background:#e9f2fb!important;color:#356b9b!important}

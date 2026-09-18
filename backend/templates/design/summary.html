@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block page_heading %}Resumen Diseño{% endblock %}
+{% block content %}
+<style>
+.design-summary-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-bottom:14px}.design-summary-head h2{margin:4px 0 4px;font-size:27px}.design-summary-head p{margin:0;color:var(--muted);font-size:10px}.design-summary-head .actions .btn.crm-action-button{min-width:104px!important}
+.design-summary-status{display:grid;grid-template-columns:minmax(210px,1.3fr) repeat(3,minmax(130px,.55fr));gap:10px;margin-bottom:14px}.design-summary-progress,.design-summary-step{padding:14px 16px}.design-summary-progress strong{font-size:28px;display:block;line-height:1}.design-summary-progress small,.design-summary-step small{display:block;color:var(--muted);font-size:8px;margin-top:4px}.design-summary-progress .progress{margin-top:9px}.design-summary-step{display:flex;align-items:center;gap:10px}.design-summary-step i{width:10px;height:10px;border-radius:50%;background:#d75151;box-shadow:0 0 0 5px rgba(215,81,81,.08)}.design-summary-step.done i{background:#299568;box-shadow:0 0 0 5px rgba(41,149,104,.08)}.design-summary-step strong{font-size:11px}
+.design-summary-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:12px;align-items:start}.design-summary-stack{display:grid;gap:12px}.design-summary-card{padding:0;overflow:hidden}.design-summary-card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #edf0f5}.design-summary-card-head h3{margin:2px 0;font-size:15px}.design-summary-card-head p{margin:0;color:var(--muted);font-size:8px}.design-summary-card-head .btn.crm-action-button{min-width:92px!important;min-height:34px!important;font-size:7.7px!important}.design-summary-section{padding:14px 16px;border-top:1px solid #f0f2f6}.design-summary-section:first-of-type{border-top:0}.design-summary-section h4{margin:0 0 10px;font-size:11px}.design-summary-rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.design-summary-row{padding:10px 11px;border:1px solid #edf0f5;border-radius:11px;background:#fafbfd;min-width:0}.design-summary-row span{display:block;color:#7b8798;font-size:7.5px;font-weight:850;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}.design-summary-row strong,.design-summary-row p{display:block;margin:0;color:#253247;font-size:9px;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}.design-summary-row a{font-size:8px;font-weight:800}
+.palette-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;padding:14px 16px}.palette-summary-color{border:1px solid #edf0f5;border-radius:12px;overflow:hidden;background:#fff}.palette-summary-swatch{height:54px}.palette-summary-color div:last-child{padding:8px}.palette-summary-color strong,.palette-summary-color small,.palette-summary-color code{display:block}.palette-summary-color strong{font-size:8px}.palette-summary-color code{margin-top:3px;font-size:8px}.palette-summary-color small{margin-top:3px;color:var(--muted);font-size:7px;line-height:1.35}.gradient-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:0 16px 14px}.gradient-summary-item{height:58px;border-radius:11px;display:flex;align-items:flex-end;padding:8px;color:#fff;font-size:7px;font-weight:900;text-shadow:0 1px 3px rgba(0,0,0,.35)}.palette-rules{margin:0 16px 14px;padding:10px 11px;border-radius:11px;background:#f7f9fc;font-size:8px;line-height:1.55;color:#5f6d81;white-space:pre-line}
+.resource-list{padding:4px 16px 14px}.resource-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #f0f2f6}.resource-row:last-child{border-bottom:0}.resource-row strong,.resource-row small{display:block}.resource-row strong{font-size:9px}.resource-row small{margin-top:2px;color:var(--muted);font-size:7px}.resource-row a{font-size:8px;font-weight:850}.resource-group-title{padding:10px 16px 5px;font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:#7b8798;font-weight:900}.design-summary-empty{padding:16px;color:var(--muted);font-size:9px}.design-summary-scope{margin-top:12px;padding:11px 13px;border:1px solid #e7edf5;border-radius:12px;background:#f8fafc;color:#6b7789;font-size:8px;line-height:1.5}
+@media(max-width:1100px){.design-summary-status{grid-template-columns:1fr 1fr}.design-summary-grid{grid-template-columns:1fr}.palette-summary-grid{grid-template-columns:repeat(5,minmax(90px,1fr))}}@media(max-width:720px){.design-summary-status,.design-summary-rows{grid-template-columns:1fr}.palette-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));overflow:auto}.gradient-summary-grid{grid-template-columns:1fr}.design-summary-head{align-items:flex-start;flex-direction:column}}
+</style>
+
+<div class="design-summary-head">
+  <div><span class="eyebrow">Diseño · {{ project.project_code }}</span><h2>{{ project.client.business_name }}</h2><p>{{ project.name }} · Resumen exclusivo de la información recopilada por el área de Diseño.</p></div>
+  <div class="actions"><a class="btn btn-secondary btn-sm" href="{% url 'design:list' %}">Volver</a></div>
+</div>
+
+<div class="design-summary-status">
+  <div class="card design-summary-progress"><span class="eyebrow">Avance Diseño</span><strong>{{ design_percent }}%</strong><small>{{ done_count }}/3 bloques completos</small><div class="progress"><i style="width:{{ design_percent }}%"></i></div></div>
+  {% for step in steps %}<div class="card design-summary-step {% if step.done %}done{% endif %}"><i></i><div><strong>{{ step.label }}</strong><small>{% if step.done %}Completo{% else %}Pendiente{% endif %}</small></div></div>{% endfor %}
+</div>
+
+<div class="design-summary-grid">
+  <div class="design-summary-stack">
+    <section class="card design-summary-card">
+      <div class="design-summary-card-head"><div><span class="eyebrow">Ficha</span><h3>Información de Diseño</h3><p>Solo respuestas registradas en la ficha visual.</p></div><a class="btn btn-secondary btn-sm" href="{% url 'design:brief_edit' project.pk %}">Editar</a></div>
+      {% if brief %}
+        {% for section in brief_sections %}
+          <div class="design-summary-section"><h4>{{ section.title }}</h4>{% if section.rows %}<div class="design-summary-rows">{% for row in section.rows %}<div class="design-summary-row"><span>{{ row.label }}</span>{% if row.url %}<a href="{{ row.url }}" target="_blank" rel="noopener">{{ row.value }}</a>{% else %}<p>{{ row.value }}</p>{% endif %}</div>{% endfor %}</div>{% else %}<div class="design-summary-empty">Sin datos registrados en esta etapa.</div>{% endif %}</div>
+        {% endfor %}
+      {% else %}<div class="design-summary-empty">Todavía no existe una ficha de Diseño para este proyecto.</div>{% endif %}
+    </section>
+  </div>
+
+  <div class="design-summary-stack">
+    <section class="card design-summary-card">
+      <div class="design-summary-card-head"><div><span class="eyebrow">Paleta</span><h3>Identidad visual</h3><p>Colores y degradados definidos en Diseño.</p></div>{% if palette %}<a class="btn btn-secondary btn-sm" href="{% url 'design:palette_detail' palette.pk %}">Editar</a>{% endif %}</div>
+      {% if palette_colors %}<div class="palette-summary-grid">{% for color in palette_colors %}<div class="palette-summary-color"><div class="palette-summary-swatch" style="background:{{ color.hex_code }}"></div><div><strong>{{ color.label|default:color.get_role_display }}</strong><code>{{ color.hex_code }}</code>{% if color.usage %}<small>{{ color.usage }}</small>{% endif %}</div></div>{% endfor %}</div>{% else %}<div class="design-summary-empty">No hay colores guardados todavía.</div>{% endif %}
+      {% if auto_gradients %}<div class="gradient-summary-grid">{% for gradient in auto_gradients %}<div class="gradient-summary-item" style="background:linear-gradient(90deg,{{ gradient.start }},{{ gradient.end }})">{{ gradient.label }}</div>{% endfor %}</div>{% endif %}
+      {% if palette.general_rules %}<div class="palette-rules"><strong>Reglas generales</strong><br>{{ palette.general_rules }}</div>{% endif %}
+    </section>
+
+    <section class="card design-summary-card">
+      <div class="design-summary-card-head"><div><span class="eyebrow">Recursos</span><h3>Links e imágenes</h3><p>Material recopilado por Diseño para trabajar el proyecto.</p></div><a class="btn btn-secondary btn-sm" href="{% url 'resources:project' project.pk %}">Editar</a></div>
+      <div class="resource-group-title">Links principales</div>
+      <div class="resource-list">{% for item in design_links %}<div class="resource-row"><div><strong>{{ item.label }}</strong><small>{{ item.get_kind_display }}{% if item.notes %} · {{ item.notes }}{% endif %}</small></div><a href="{{ item.url }}" target="_blank" rel="noopener">Abrir ↗</a></div>{% empty %}<div class="design-summary-empty">Sin links de Diseño registrados.</div>{% endfor %}</div>
+      <div class="resource-group-title">Fotos del cliente</div>
+      <div class="resource-list">{% for item in client_images %}<div class="resource-row"><div><strong>{{ item.category }}</strong><small>{{ item.source|default:'Cliente' }}</small></div><a href="{{ item.image_url }}" target="_blank" rel="noopener">Abrir ↗</a></div>{% empty %}<div class="design-summary-empty">Sin fotos del cliente.</div>{% endfor %}</div>
+      <div class="resource-group-title">Fotos Stock</div>
+      <div class="resource-list">{% for item in stock_images %}<div class="resource-row"><div><strong>{{ item.category }}</strong><small>{{ item.source|default:'Stock' }}</small></div><a href="{{ item.image_url }}" target="_blank" rel="noopener">Abrir ↗</a></div>{% empty %}<div class="design-summary-empty">Sin fotos Stock.</div>{% endfor %}</div>
+      {% if other_images %}<div class="resource-group-title">Otras referencias</div><div class="resource-list">{% for item in other_images %}<div class="resource-row"><div><strong>{{ item.category }}</strong><small>{{ item.source|default:'Referencia' }}</small></div><a href="{{ item.image_url }}" target="_blank" rel="noopener">Abrir ↗</a></div>{% endfor %}</div>{% endif %}
+    </section>
+  </div>
+</div>
+
+<div class="design-summary-scope">Este resumen pertenece únicamente al área de Diseño. La información completa y transversal del cliente/proyecto se consulta desde el módulo <strong>Proyectos</strong>.</div>
+{% endblock %}

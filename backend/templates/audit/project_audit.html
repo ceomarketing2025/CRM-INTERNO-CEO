@@ -62,6 +62,7 @@
               {% if row.source_url %}<a class="audit-v22-source" href="{{ row.source_url }}">Abrir trabajo →</a>{% endif %}
             </div>
             {% if row.audit_note %}<div class="audit-v22-existing-note"><strong>Observación actual:</strong> {{ row.audit_note }}</div>{% endif %}
+            {% if row.workflow_reviewable %}
             <form method="post" action="{% url 'audit:project_check' row.check.pk %}" class="audit-v22-review-form">
               {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
               <textarea name="note" placeholder="Observaciones de auditoría. Para rechazar, indica qué debe corregirse…">{{ row.audit_note }}</textarea>
@@ -71,6 +72,9 @@
                 {% if row.audit_decision != 'pending' %}<button class="btn btn-ghost btn-sm" name="action" value="reopen" type="submit">Reabrir</button>{% endif %}
               </div>
             </form>
+            {% elif row.source_key|slice:':12' == 'design:task:' or row.source_key|slice:':16' == 'management:task:' %}
+              <div class="audit-v22-existing-note"><strong>Flujo operativo:</strong> {% if row.source_status == 'Cerrada' %}Actividad cerrada por Auditoría.{% elif row.source_status == 'Con novedad' %}Esperando corrección del responsable.{% else %}El responsable debe enviarla a <em>Para revisión</em> antes de aprobar o rechazar.{% endif %}</div>
+            {% endif %}
           </article>
           {% endfor %}
         </div>

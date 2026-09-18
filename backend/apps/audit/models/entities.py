@@ -73,8 +73,10 @@ class ManagementTask(models.Model):
     class Status(models.TextChoices):
         TODO = "todo", "Pendiente"
         DOING = "doing", "En proceso"
+        PAUSED = "paused", "Pausada"
         REVIEW = "review", "Para revisión"
-        DONE = "done", "Completada"
+        CHANGES = "changes", "Con novedad"
+        DONE = "done", "Cerrada"
 
     class Priority(models.TextChoices):
         LOW = "low", "Baja"
@@ -111,6 +113,7 @@ class ManagementTask(models.Model):
     )
     priority = models.CharField(max_length=16, choices=Priority.choices, default=Priority.MEDIUM, verbose_name="Prioridad")
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.TODO, verbose_name="Estado")
+    status_note = models.TextField(blank=True, verbose_name="Motivo / novedad")
     due_date = models.DateField(null=True, blank=True, verbose_name="Fecha límite")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -141,8 +144,10 @@ class ManagementTask(models.Model):
     def progress_percent(self):
         return {
             self.Status.TODO: 0,
-            self.Status.DOING: 55,
-            self.Status.REVIEW: 85,
+            self.Status.DOING: 50,
+            self.Status.PAUSED: 35,
+            self.Status.CHANGES: 70,
+            self.Status.REVIEW: 90,
             self.Status.DONE: 100,
         }.get(self.status, 0)
 

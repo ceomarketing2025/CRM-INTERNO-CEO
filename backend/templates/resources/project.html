@@ -3,8 +3,10 @@
 {% block content %}
 <div class="page-intro">
   <div><span class="eyebrow">Diseño · {{ project.project_code }}</span><h2>{{ project.client.business_name }}</h2><p>Solo lo necesario: links fijos de respaldo y fotos organizadas por servicio.</p></div>
-  <div class="actions"><a class="btn btn-secondary" href="{% url 'design:list' %}">Diseño</a><a class="btn btn-secondary" href="{% url 'design:brief_edit' project.pk %}">Ficha de diseño</a><a class="btn btn-primary" href="{% url 'handoff:summary' project.pk %}">Resumen</a></div>
+  <div class="actions"><a class="btn btn-secondary btn-sm" href="{% url 'design:list' %}">Volver</a></div>
 </div>
+{% include 'design/_process_nav.html' %}
+
 
 <div class="card resource-core-card">
   <div class="card-head"><div><h3>Links principales</h3><p>Estos tres campos quedan definidos para todos los proyectos. No necesitas crear categorías ni tipos manualmente.</p></div></div>

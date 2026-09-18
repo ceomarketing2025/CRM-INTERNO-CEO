@@ -5,6 +5,7 @@ from apps.audit.services import log_activity
 from apps.core.decorators import role_required
 from apps.projects.models import Project
 from apps.projects.selectors import can_access_project
+from apps.design.services import design_process_state
 from .forms import DesignCoreLinksForm, DesignPhotoLinkForm
 from .models import ImageReference, ProjectResourceLink
 
@@ -110,4 +111,6 @@ def project_resources(request, project_pk):
         "client_photos": client_photos,
         "stock_photos": stock_photos,
         "other_photos": other_photos,
+        "design_process": design_process_state(project),
+        "design_current_step": "resources",
     })

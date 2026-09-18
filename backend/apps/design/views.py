@@ -19,6 +19,7 @@ from .services import (
     build_palette_pdf, complete_design_brief, design_task_progress,
     ensure_current_design_task_cycle, ensure_current_social_media_cycle,
     ensure_default_design_tasks_for_project, _refresh_design_cycle_summary,
+    design_process_state,
 )
 
 
@@ -168,6 +169,137 @@ def design_list(request):
     })
 
 
+DESIGN_SUMMARY_GROUPS = [
+    ("Datos generales", [
+        "general_location", "business_notes", "social_notes", "meeting_attendees",
+    ]),
+    ("Logo e identidad", [
+        "logo_status", "logo_change_notes", "logo_format", "logo_file",
+    ]),
+    ("Dirección visual", [
+        "visual_structure", "visual_structure_notes", "style_direction",
+        "color_base_notes", "background_style",
+    ]),
+    ("Contenido y composición", [
+        "photo_availability", "stock_usage", "services", "page_style_notes",
+        "typography_direction", "layout_preferences", "visual_references",
+        "elements_to_avoid", "designer_notes",
+    ]),
+]
+
+
+def _design_brief_summary_sections(brief):
+    if not brief:
+        return []
+    sections = []
+    for title, field_names in DESIGN_SUMMARY_GROUPS:
+        rows = []
+        for field_name in field_names:
+            field = brief._meta.get_field(field_name)
+            raw_value = getattr(brief, field_name, None)
+            if field_name == "logo_file":
+                if raw_value:
+                    rows.append({
+                        "label": str(field.verbose_name),
+                        "value": getattr(raw_value, "name", "Logo cargado"),
+                        "url": getattr(raw_value, "url", ""),
+                    })
+                continue
+            if raw_value in (None, "", [], {}):
+                continue
+            display_method = getattr(brief, f"get_{field_name}_display", None)
+            value = display_method() if callable(display_method) else raw_value
+            rows.append({"label": str(field.verbose_name), "value": value, "url": ""})
+        sections.append({"title": title, "rows": rows})
+    return sections
+
+
+@role_required("design")
+def design_summary(request, project_pk):
+    """Resumen exclusivo del área de Diseño.
+
+    No consume handoff ni datos de Marketing, Desarrollo, Finanzas, credenciales o
+    Administración. La ficha transversal completa permanece únicamente en Proyectos.
+    """
+    project = get_object_or_404(
+        Project.objects.select_related("client").prefetch_related(
+            "color_palettes__colors",
+            "color_palettes__gradients",
+            "resource_links",
+            "image_references",
+        ),
+        pk=project_pk,
+    )
+    if not can_access_project(request.user, project):
+        raise PermissionDenied("Este proyecto no está asignado a Diseño.")
+
+    try:
+        brief = project.design_brief
+    except DesignBrief.DoesNotExist:
+        brief = None
+
+    palette = next((item for item in project.color_palettes.all() if item.is_primary), None)
+    palette_colors = list(palette.colors.all()) if palette else []
+    color_map = {item.role: item.hex_code for item in palette_colors}
+    palette_done = bool(palette and all(role in color_map for role in PALETTE_DEFAULTS))
+
+    auto_gradients = []
+    gradient_pairs = [
+        ("Acento → Primario", "accent", "primary"),
+        ("Secundario → Acento", "secondary", "accent"),
+        ("Fondo → Primario", "background", "primary"),
+    ]
+    for label, start_role, end_role in gradient_pairs:
+        start_hex = color_map.get(start_role)
+        end_hex = color_map.get(end_role)
+        if start_hex and end_hex:
+            auto_gradients.append({"label": label, "start": start_hex, "end": end_hex})
+
+    design_links = [
+        item for item in project.resource_links.all()
+        if item.area == ProjectResourceLink.Area.DESIGN
+    ]
+    resource_kinds = {item.kind for item in design_links}
+    resources_ready = (
+        ProjectResourceLink.Kind.LOGO in resource_kinds
+        and ProjectResourceLink.Kind.PALETTE_DRIVE in resource_kinds
+    )
+    image_rows = list(project.image_references.all())
+    client_images = [item for item in image_rows if item.source == "client"]
+    stock_images = [item for item in image_rows if item.source == "stock"]
+    other_images = [item for item in image_rows if item.source not in {"client", "stock"}]
+
+    brief_done = bool(brief and brief.completed)
+    steps = [
+        {"label": "Ficha", "done": brief_done},
+        {"label": "Paleta", "done": palette_done},
+        {"label": "Recursos", "done": resources_ready},
+    ]
+    done_count = sum(1 for item in steps if item["done"])
+    design_percent = round(done_count * 100 / len(steps))
+
+    process = design_process_state(project)
+    return render(request, "design/summary.html", {
+        "project": project,
+        "design_process": process,
+        "brief": brief,
+        "brief_sections": _design_brief_summary_sections(brief),
+        "palette": palette,
+        "palette_colors": palette_colors,
+        "auto_gradients": auto_gradients,
+        "design_links": design_links,
+        "client_images": client_images,
+        "stock_images": stock_images,
+        "other_images": other_images,
+        "steps": steps,
+        "done_count": done_count,
+        "design_percent": design_percent,
+        "brief_done": brief_done,
+        "palette_done": palette_done,
+        "resources_ready": resources_ready,
+    })
+
+
 @role_required("design")
 def brief_edit(request, project_pk):
     project = get_object_or_404(Project.objects.select_related("client", "purchased_plan__plan"), pk=project_pk)
@@ -191,7 +323,14 @@ def brief_edit(request, project_pk):
         log_activity(request.user, "design", "brief_update", brief)
         messages.success(request, "Ficha de Diseño guardada.")
         return redirect("design:list")
-    return render(request, "design/brief.html", {"form": form, "project": project, "brief": brief, "palette": palette})
+    return render(request, "design/brief.html", {
+        "form": form,
+        "project": project,
+        "brief": brief,
+        "palette": palette,
+        "design_process": design_process_state(project),
+        "design_current_step": "brief",
+    })
 
 
 @role_required("design")
@@ -236,7 +375,13 @@ def palette_detail(request, pk):
             log_activity(request.user, "design", "palette_update", palette)
             messages.success(request, "Paleta guardada correctamente.")
             return redirect("design:list")
-    return render(request, "design/palette_detail.html", {"palette": palette, "form": form})
+    return render(request, "design/palette_detail.html", {
+        "palette": palette,
+        "project": palette.project,
+        "form": form,
+        "design_process": design_process_state(palette.project),
+        "design_current_step": "palette",
+    })
 
 
 @role_required("design")
@@ -254,10 +399,11 @@ def palette_pdf(request, pk):
 
 @role_required("design")
 def social_media_dashboard(request):
-    """Bandeja operativa de Diseño: solo actividades únicas del área.
+    """Bandeja operativa de Diseño: actividades únicas y asignaciones de Gerencia.
 
-    Social Media NO se mezcla aquí. Las tareas creadas por Gerencia para Diseño
-    sí forman parte de esta bandeja y se filtran por responsable cuando aplica.
+    Social Media vive exclusivamente en su módulo. El estado de cada actividad
+    sigue el flujo Pendiente → En proceso → Pausada / Con novedad → Para revisión
+    → Cerrada (esta última solo después de aprobación de Auditoría).
     """
     from django.db.models import Q
     from django.utils import timezone
@@ -269,6 +415,10 @@ def social_media_dashboard(request):
     q = (request.GET.get("q") or "").strip()
     status = (request.GET.get("status") or "all").strip()
     responsible = (request.GET.get("responsible") or "all").strip()
+    if status == "pending":
+        status = "open"
+
+    valid_statuses = {choice[0] for choice in DesignTask.Status.choices}
 
     projects = (
         projects_for_area("design")
@@ -315,6 +465,7 @@ def social_media_dashboard(request):
     for project in projects:
         service_rows = []
         all_project_tasks = []
+        preview_tasks = []
         assignments = [
             assignment for assignment in project.contracted_plans.all()
             if assignment.is_active
@@ -322,45 +473,65 @@ def social_media_dashboard(request):
             and assignment.plan.service_type != ServiceType.SOCIAL_MEDIA
         ]
         for assignment in assignments:
-            tasks = [task for task in assignment.design_tasks.all() if task.task_type == DesignTask.TaskType.STANDARD]
+            tasks = [
+                task for task in assignment.design_tasks.all()
+                if task.task_type == DesignTask.TaskType.STANDARD
+            ]
             if responsible != "all" and responsible.isdigit():
-                tasks_for_progress = [task for task in tasks if task.assigned_to_id == int(responsible)]
-            else:
-                tasks_for_progress = tasks
-            states = [design_task_progress(task, today=today) for task in tasks_for_progress]
-            if not tasks_for_progress and responsible != "all":
+                tasks = [task for task in tasks if task.assigned_to_id == int(responsible)]
+            if not tasks and responsible != "all":
                 continue
+
+            matching_tasks = tasks
+            if status == "open":
+                matching_tasks = [task for task in tasks if task.status != DesignTask.Status.DONE]
+            elif status in valid_statuses:
+                matching_tasks = [task for task in tasks if task.status == status]
+            if status != "all" and not matching_tasks:
+                continue
+
+            states = [design_task_progress(task, today=today) for task in tasks]
             progress = round(sum(item["progress"] for item in states) / len(states)) if states else 0
             service_rows.append({
                 "assignment": assignment,
                 "plan": assignment.plan,
-                "tasks": tasks_for_progress,
+                "tasks": tasks,
                 "progress": progress,
-                "dot_state": "green" if progress >= 100 else ("yellow" if progress >= 50 else "red"),
-                "status_label": "Completado" if progress >= 100 else ("En proceso" if progress > 0 else "Pendiente"),
+                "dot_state": "blue" if progress >= 100 else ("yellow" if progress >= 50 else "red"),
+                "status_label": "Cerrado" if progress >= 100 else ("En proceso" if progress > 0 else "Pendiente"),
             })
-            all_project_tasks.extend(tasks_for_progress)
+            all_project_tasks.extend(tasks)
+            preview_tasks.extend(matching_tasks if status != "all" else tasks)
 
         if not service_rows:
             continue
+
         project_progress = round(sum(item["progress"] for item in service_rows) / len(service_rows))
-        if status == "pending" and project_progress >= 100:
-            continue
-        if status == "done" and project_progress < 100:
-            continue
-        state = "green" if project_progress >= 100 else ("yellow" if project_progress >= 50 else "red")
-        last_task = max(all_project_tasks, key=lambda task: task.updated_at, default=None)
+        state = "blue" if project_progress >= 100 else ("yellow" if project_progress >= 50 else "red")
+        last_task = max(all_project_tasks, key=lambda task: task.created_at, default=None)
+        preview_tasks = sorted(
+            preview_tasks,
+            key=lambda task: (
+                task.status == DesignTask.Status.DONE,
+                -(task.created_at.timestamp() if task.created_at else 0),
+            ),
+        )[:5]
         rows.append({
             "project": project,
             "services": service_rows,
             "service_count": len(service_rows),
             "task_count": len(all_project_tasks),
-            "tasks_preview": sorted(all_project_tasks, key=lambda task: (task.status == DesignTask.Status.DONE, task.order, task.pk))[:5],
+            "tasks_preview": preview_tasks,
             "progress": project_progress,
             "state": state,
             "last_task": last_task,
         })
         overall_parts.append(project_progress)
+
+    rows.sort(key=lambda row: (
+        row["progress"] >= 100,
+        -(row["last_task"].created_at.timestamp() if row["last_task"] and row["last_task"].created_at else 0),
+    ))
 
     management_tasks = ManagementTask.objects.select_related(
         "assigned_to", "client", "project", "created_by"
@@ -371,17 +542,22 @@ def social_media_dashboard(request):
         management_tasks = management_tasks.filter(
             Q(title__icontains=q)
             | Q(description__icontains=q)
+            | Q(status_note__icontains=q)
             | Q(client__business_name__icontains=q)
             | Q(project__name__icontains=q)
             | Q(project__project_code__icontains=q)
         )
     if responsible != "all" and responsible.isdigit():
         management_tasks = management_tasks.filter(assigned_to_id=int(responsible))
-    if status == "pending":
+    if status == "open":
         management_tasks = management_tasks.exclude(status=ManagementTask.Status.DONE)
-    elif status == "done":
-        management_tasks = management_tasks.filter(status=ManagementTask.Status.DONE)
-    management_tasks = list(management_tasks.order_by("status", "due_date", "-created_at"))
+    elif status in {choice[0] for choice in ManagementTask.Status.choices}:
+        management_tasks = management_tasks.filter(status=status)
+    management_tasks = list(management_tasks)
+    management_tasks.sort(key=lambda task: (
+        task.status == ManagementTask.Status.DONE,
+        -(task.created_at.timestamp() if task.created_at else 0),
+    ))
 
     responsibles = UserAccount.objects.filter(
         is_active=True, role__in=[UserAccount.Role.DESIGN, UserAccount.Role.MANAGER]
@@ -412,6 +588,7 @@ def social_media_dashboard(request):
         "search_query": q,
         "selected_status": status,
         "selected_responsible": responsible,
+        "task_status_choices": DesignTask.Status.choices,
     })
 
 
@@ -492,32 +669,33 @@ def design_project_tasks(request, project_pk):
             continue
         task_rows = []
         task_parts = []
-        for task in assignment.design_tasks.all().order_by("order", "id"):
+        tasks = [task for task in assignment.design_tasks.all() if task.task_type == DesignTask.TaskType.STANDARD]
+        tasks.sort(key=lambda task: (
+            task.status == DesignTask.Status.DONE,
+            -(task.created_at.timestamp() if task.created_at else 0),
+            task.order,
+            task.pk,
+        ))
+        for task in tasks:
             state = design_task_progress(task, today=today)
-            current_cycle = state.get("cycle")
-            if current_cycle:
-                current_cycle = DesignTaskCycle.objects.prefetch_related("delivery_items__updated_by").get(pk=current_cycle.pk)
-            week_groups = _cycle_week_groups(current_cycle) if current_cycle else []
-            history = list(task.cycles.exclude(pk=getattr(current_cycle, "pk", None)).order_by("-period_start")[:6]) if task.task_type == DesignTask.TaskType.CONTENT else []
             locked = _design_task_audit_locked(task)
             task_rows.append({
                 "task": task,
                 "state": state,
-                "cycle": current_cycle,
-                "week_groups": week_groups,
-                "history": history,
+                "cycle": None,
+                "week_groups": [],
+                "history": [],
                 "locked": locked,
             })
             task_parts.append(state["progress"])
         service_progress = round(sum(task_parts) / len(task_parts)) if task_parts else 0
-        recurring = any(row["task"].task_type == DesignTask.TaskType.CONTENT for row in task_rows)
         service_rows.append({
             "assignment": assignment,
             "plan": assignment.plan,
             "tasks": task_rows,
             "progress": service_progress,
-            "state": "blue" if recurring else ("green" if service_progress >= 100 else "red"),
-            "recurring": recurring,
+            "state": "blue" if service_progress >= 100 else ("yellow" if service_progress >= 50 else "red"),
+            "recurring": False,
         })
         project_parts.append(service_progress)
 
@@ -526,7 +704,7 @@ def design_project_tasks(request, project_pk):
         "project": project,
         "services": service_rows,
         "project_progress": project_progress,
-        "project_state": "green" if project_progress >= 100 else ("yellow" if project_progress >= 50 else "red"),
+        "project_state": "blue" if project_progress >= 100 else ("yellow" if project_progress >= 50 else "red"),
         "today": today,
     })
 
@@ -594,8 +772,10 @@ def design_task_create(request):
         task = form.save(commit=False)
         task.created_by = request.user
         task.updated_by = request.user
+        task.task_type = DesignTask.TaskType.STANDARD
+        task.status = DesignTask.Status.TODO
+        task.status_note = ""
         task.save()
-        ensure_current_design_task_cycle(task)
         log_activity(request.user, "design", "design_task_create", task, task.title)
         messages.success(request, "Actividad de Diseño creada.")
         return redirect("design:tasks")
@@ -614,7 +794,7 @@ def design_task_edit(request, pk):
     locked = _design_task_audit_locked(task)
     if locked and request.method == "POST":
         messages.error(request, "Esta tarea única ya fue completada y aprobada en Auditoría Proyectos. Quedó bloqueada como registro histórico.")
-        return redirect("design:project_tasks", project_pk=task.project_plan.project_id)
+        return redirect("design:tasks")
     form = DesignTaskForm(request.POST or None, instance=task, user=request.user)
     if locked:
         for field in form.fields.values():
@@ -624,7 +804,6 @@ def design_task_edit(request, pk):
         task = form.save(commit=False)
         task.updated_by = request.user
         task.save()
-        ensure_current_design_task_cycle(task)
         log_activity(request.user, "design", "design_task_update", task, task.title)
         messages.success(request, "Actividad actualizada y registrada en bitácora.")
         return redirect("design:tasks")
@@ -636,23 +815,77 @@ def design_task_edit(request, pk):
 
 
 @role_required("design")
-def design_task_toggle(request, pk):
+def design_task_status(request, pk):
+    """Transición controlada de una actividad única de Diseño.
+
+    Los empleados no pueden cerrar manualmente una tarea: la envían a revisión
+    y Auditoría Proyectos es quien la cierra al aprobarla.
+    """
     if request.method != "POST":
         return redirect("design:tasks")
-    task = get_object_or_404(DesignTask.objects.select_related("project_plan__project"), pk=pk)
+    task = get_object_or_404(
+        DesignTask.objects.select_related("project_plan__project", "assigned_to"), pk=pk
+    )
     if not can_access_project(request.user, task.project_plan.project):
         raise PermissionDenied("Esta tarea no pertenece a un proyecto asignado a Diseño.")
-    if task.task_type == DesignTask.TaskType.CONTENT:
-        messages.warning(request, "El contenido se completa con los checks Creado y Publicado de cada entregable.")
-        return redirect("design:project_tasks", project_pk=task.project_plan.project_id)
+    if task.task_type != DesignTask.TaskType.STANDARD:
+        messages.warning(request, "Social Media y contenido recurrente se gestionan en su módulo independiente.")
+        return redirect("design:tasks")
     if _design_task_audit_locked(task):
-        messages.error(request, "No se puede reabrir: esta tarea ya fue aprobada en Auditoría Proyectos.")
-        return redirect("design:project_tasks", project_pk=task.project_plan.project_id)
-    task.status = DesignTask.Status.TODO if task.status == DesignTask.Status.DONE else DesignTask.Status.DONE
+        messages.error(request, "La actividad ya fue aprobada por Auditoría y está cerrada.")
+        return redirect("design:tasks")
+
+    action = (request.POST.get("action") or "").strip().lower()
+    note = (request.POST.get("note") or "").strip()
+    old_status = task.status
+
+    if action in {"start", "resume"}:
+        if task.status not in {DesignTask.Status.TODO, DesignTask.Status.PAUSED, DesignTask.Status.CHANGES}:
+            messages.warning(request, "La actividad no puede iniciarse desde su estado actual.")
+            return redirect("design:tasks")
+        task.status = DesignTask.Status.DOING
+        task.status_note = ""
+    elif action == "pause":
+        if task.status not in {DesignTask.Status.DOING, DesignTask.Status.CHANGES, DesignTask.Status.REVIEW}:
+            messages.warning(request, "Primero debes iniciar la actividad para poder pausarla.")
+            return redirect("design:tasks")
+        if not note:
+            messages.error(request, "Indica el motivo de la pausa.")
+            return redirect("design:tasks")
+        task.status = DesignTask.Status.PAUSED
+        task.status_note = note
+    elif action == "review":
+        if task.status not in {DesignTask.Status.DOING, DesignTask.Status.CHANGES}:
+            messages.warning(request, "La actividad debe estar en proceso antes de enviarla a revisión.")
+            return redirect("design:tasks")
+        task.status = DesignTask.Status.REVIEW
+        task.status_note = ""
+    else:
+        messages.error(request, "Acción de estado inválida.")
+        return redirect("design:tasks")
+
     task.updated_by = request.user
-    task.save(update_fields=["status", "updated_by", "updated_at"])
-    log_activity(request.user, "design", "design_task_toggle", task, task.get_status_display())
-    return redirect(request.POST.get("next") or "design:project_tasks", project_pk=task.project_plan.project_id) if not request.POST.get("next") else redirect(request.POST.get("next"))
+    task.save(update_fields=["status", "status_note", "updated_by", "updated_at"])
+    description = f"{dict(DesignTask.Status.choices).get(old_status, old_status)} → {task.get_status_display()}"
+    if note:
+        description += f" · {note}"
+    log_activity(
+        request.user,
+        "design",
+        "design_task_status",
+        task,
+        description=description,
+        metadata={"task_id": task.pk, "from": old_status, "to": task.status},
+    )
+    messages.success(request, f"Actividad actualizada: {task.get_status_display()}.")
+    return redirect("design:tasks")
+
+
+@role_required("design")
+def design_task_toggle(request, pk):
+    """Ruta histórica conservada para no romper enlaces antiguos."""
+    messages.info(request, "El estado ahora se controla con Iniciar, Pausar y Enviar a revisión.")
+    return redirect("design:tasks")
 
 
 @role_required("design")

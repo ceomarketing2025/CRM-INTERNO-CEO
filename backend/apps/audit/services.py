@@ -109,7 +109,7 @@ def _ensure_general_check(*, project, source_key, area, category, label):
 
 def _general_audit_row(*, project, source_key, area, area_label, category, label,
                        source_progress, source_status, source_updated_at, source_url="",
-                       detail="", counts_for_progress=True, historical=False):
+                       detail="", counts_for_progress=True, historical=False, workflow_reviewable=True):
     from .models import GeneralAuditCheck
 
     progress = max(0, min(100, int(source_progress or 0)))
@@ -137,6 +137,7 @@ def _general_audit_row(*, project, source_key, area, area_label, category, label
         audit_label, audit_state = "Por revisar", "muted"
     return {
         "check": check,
+        "source_key": source_key,
         "project": project,
         "client": project.client,
         "area": area,
@@ -157,6 +158,7 @@ def _general_audit_row(*, project, source_key, area, area_label, category, label
         "audit_note": check.note or "",
         "counts_for_progress": bool(counts_for_progress),
         "historical": bool(historical),
+        "workflow_reviewable": bool(workflow_reviewable),
     }
 
 
@@ -246,6 +248,7 @@ def build_general_audit_rows(include_recurring=True):
                 source_updated_at=task.updated_at,
                 source_url=reverse("design:project_tasks", args=[project.pk]),
                 detail=task.description,
+                workflow_reviewable=task.status == DesignTask.Status.REVIEW,
             ))
 
     # MARKETING: Gerencia audita los cuatro módulos que Marketing ve en su panel,
@@ -452,7 +455,7 @@ def build_general_audit_rows(include_recurring=True):
     # TAREAS CREADAS POR GERENCIA: cuando están vinculadas a un proyecto se
     # incorporan como una actividad única del área y se auditan desde aquí.
     from .models import ManagementTask
-    management_progress = {"todo": 0, "doing": 55, "review": 85, "done": 100}
+    management_progress = {"todo": 0, "doing": 50, "paused": 35, "changes": 70, "review": 90, "done": 100}
     management_urls = {
         "design": "design:tasks",
         "marketing": "marketing:tasks",
@@ -475,6 +478,7 @@ def build_general_audit_rows(include_recurring=True):
             source_updated_at=task.updated_at,
             source_url=reverse(url_name) if url_name else "",
             detail=task.description,
+            workflow_reviewable=task.status == ManagementTask.Status.REVIEW,
         ))
 
     area_order = {"design": 0, "marketing": 1, "development": 2}
@@ -486,6 +490,46 @@ def build_general_audit_rows(include_recurring=True):
         row["label"].lower(),
     ))
     return rows
+
+
+def _sync_audited_source_state(*, check, decision, note, user):
+    """Sincroniza la decisión de Gerencia con la actividad operativa viva."""
+    from .models import GeneralAuditCheck, ManagementTask
+
+    source_key = check.source_key or ""
+    if source_key.startswith("design:task:"):
+        parts = source_key.split(":")
+        if len(parts) == 3 and parts[2].isdigit():
+            from apps.design.models import DesignTask
+            task = DesignTask.objects.filter(pk=int(parts[2])).first()
+            if task and task.task_type == DesignTask.TaskType.STANDARD:
+                if decision == GeneralAuditCheck.Decision.APPROVED:
+                    task.status = DesignTask.Status.DONE
+                    task.status_note = ""
+                elif decision == GeneralAuditCheck.Decision.REJECTED:
+                    task.status = DesignTask.Status.CHANGES
+                    task.status_note = (note or "").strip()
+                elif decision == GeneralAuditCheck.Decision.PENDING and task.status == DesignTask.Status.DONE:
+                    task.status = DesignTask.Status.REVIEW
+                task.updated_by = user
+                task.save(update_fields=["status", "status_note", "updated_by", "updated_at"])
+        return
+
+    if source_key.startswith("management:task:"):
+        parts = source_key.split(":")
+        if len(parts) == 3 and parts[2].isdigit():
+            task = ManagementTask.objects.filter(pk=int(parts[2])).first()
+            if task:
+                if decision == GeneralAuditCheck.Decision.APPROVED:
+                    task.status = ManagementTask.Status.DONE
+                    task.status_note = ""
+                elif decision == GeneralAuditCheck.Decision.REJECTED:
+                    task.status = ManagementTask.Status.CHANGES
+                    task.status_note = (note or "").strip()
+                elif decision == GeneralAuditCheck.Decision.PENDING and task.status == ManagementTask.Status.DONE:
+                    task.status = ManagementTask.Status.REVIEW
+                task.updated_by = user
+                task.save(update_fields=["status", "status_note", "updated_by", "updated_at"])
 
 
 def review_general_audit_check(*, check, user, ready=None, decision=None, note=None):
@@ -505,11 +549,15 @@ def review_general_audit_check(*, check, user, ready=None, decision=None, note=N
         decision = GeneralAuditCheck.Decision.PENDING
 
     check.decision = decision
-    # Compatibilidad con los bloqueos históricos de Diseño: únicamente aprobar
-    # equivale a is_ready=True; rechazar deja el trabajo abierto para corrección.
     check.is_ready = decision == GeneralAuditCheck.Decision.APPROVED
     if note is not None:
         check.note = (note or "").strip()
+
+    # Primero actualizamos la fuente y después sellamos reviewed_at. Así el
+    # timestamp de Auditoría queda posterior al cambio que ella misma provoca.
+    _sync_audited_source_state(
+        check=check, decision=decision, note=check.note, user=user
+    )
 
     if decision == GeneralAuditCheck.Decision.PENDING:
         check.reviewed_at = None

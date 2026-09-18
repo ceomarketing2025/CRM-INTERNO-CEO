@@ -201,8 +201,10 @@ class DesignTask(TimestampedModel):
     class Status(models.TextChoices):
         TODO = "todo", "Pendiente"
         DOING = "doing", "En proceso"
-        REVIEW = "review", "En revisión"
-        DONE = "done", "Lista"
+        PAUSED = "paused", "Pausada"
+        REVIEW = "review", "Para revisión"
+        CHANGES = "changes", "Con novedad"
+        DONE = "done", "Cerrada"
 
     class TaskType(models.TextChoices):
         STANDARD = "standard", "Tarea única"
@@ -223,6 +225,7 @@ class DesignTask(TimestampedModel):
     title = models.CharField(max_length=180, verbose_name="Actividad")
     description = models.TextField(blank=True, verbose_name="Detalle")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.TODO, verbose_name="Estado")
+    status_note = models.TextField(blank=True, verbose_name="Motivo / novedad")
     due_date = models.DateField(null=True, blank=True, verbose_name="Fecha límite")
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -298,8 +301,10 @@ class DesignTask(TimestampedModel):
     def standard_progress_percent(self):
         return {
             self.Status.TODO: 0,
-            self.Status.DOING: 60,
-            self.Status.REVIEW: 80,
+            self.Status.DOING: 50,
+            self.Status.PAUSED: 35,
+            self.Status.CHANGES: 70,
+            self.Status.REVIEW: 90,
             self.Status.DONE: 100,
         }.get(self.status, 0)
 

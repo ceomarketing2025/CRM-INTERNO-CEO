@@ -242,6 +242,26 @@ def project_audit_check(request, pk):
         next_url = request.POST.get("next") or request.META.get("HTTP_REFERER")
         return redirect(next_url or "audit:projects")
 
+    # Las tareas con workflow solo pueden aprobarse/rechazarse cuando el
+    # responsable las envió explícitamente a Para revisión.
+    if decision in {GeneralAuditCheck.Decision.APPROVED, GeneralAuditCheck.Decision.REJECTED}:
+        source_key = check.source_key or ""
+        if source_key.startswith("design:task:"):
+            parts = source_key.split(":")
+            if len(parts) == 3 and parts[2].isdigit():
+                from apps.design.models import DesignTask
+                source_task = DesignTask.objects.filter(pk=int(parts[2])).first()
+                if source_task and source_task.status != DesignTask.Status.REVIEW:
+                    messages.error(request, "Esta actividad de Diseño todavía no está en Para revisión.")
+                    return redirect(request.POST.get("next") or "audit:projects")
+        elif source_key.startswith("management:task:"):
+            parts = source_key.split(":")
+            if len(parts) == 3 and parts[2].isdigit():
+                source_task = ManagementTask.objects.filter(pk=int(parts[2])).first()
+                if source_task and source_task.status != ManagementTask.Status.REVIEW:
+                    messages.error(request, "Esta tarea todavía no está en Para revisión.")
+                    return redirect(request.POST.get("next") or "audit:projects")
+
     review_general_audit_check(
         check=check,
         user=request.user,
@@ -290,6 +310,8 @@ def management_task_list(request):
         "total": base.count(),
         "pending": base.filter(status=ManagementTask.Status.TODO).count(),
         "doing": base.filter(status=ManagementTask.Status.DOING).count(),
+        "paused": base.filter(status=ManagementTask.Status.PAUSED).count(),
+        "changes": base.filter(status=ManagementTask.Status.CHANGES).count(),
         "review": base.filter(status=ManagementTask.Status.REVIEW).count(),
         "done": base.filter(status=ManagementTask.Status.DONE).count(),
     }
@@ -369,23 +391,65 @@ def management_task_status(request, pk):
     user = request.user
     if not (user.is_manager or user.is_superuser or task.assigned_to_id == user.pk):
         raise PermissionDenied("Esta tarea no está asignada a tu usuario.")
-    new_status = (request.POST.get("status") or "").strip()
-    allowed = {choice[0] for choice in ManagementTask.Status.choices}
-    if new_status not in allowed:
-        messages.error(request, "Estado inválido.")
+
+    action = (request.POST.get("action") or "").strip().lower()
+    note = (request.POST.get("note") or "").strip()
+    old_status = task.status
+
+    if action:
+        if action in {"start", "resume"}:
+            if task.status not in {ManagementTask.Status.TODO, ManagementTask.Status.PAUSED, ManagementTask.Status.CHANGES}:
+                messages.warning(request, "La tarea no puede iniciarse desde su estado actual.")
+                return redirect(request.POST.get("next") or "dashboard:home")
+            task.status = ManagementTask.Status.DOING
+            task.status_note = ""
+        elif action == "pause":
+            if task.status not in {ManagementTask.Status.DOING, ManagementTask.Status.CHANGES, ManagementTask.Status.REVIEW}:
+                messages.warning(request, "Primero debes iniciar la tarea para poder pausarla.")
+                return redirect(request.POST.get("next") or "dashboard:home")
+            if not note:
+                messages.error(request, "Indica el motivo de la pausa.")
+                return redirect(request.POST.get("next") or "dashboard:home")
+            task.status = ManagementTask.Status.PAUSED
+            task.status_note = note
+        elif action == "review":
+            if task.status not in {ManagementTask.Status.DOING, ManagementTask.Status.CHANGES}:
+                messages.warning(request, "La tarea debe estar en proceso antes de enviarla a revisión.")
+                return redirect(request.POST.get("next") or "dashboard:home")
+            task.status = ManagementTask.Status.REVIEW
+            task.status_note = ""
+        elif action == "close" and (user.is_manager or user.is_superuser):
+            task.status = ManagementTask.Status.DONE
+            task.status_note = ""
+        else:
+            messages.error(request, "Acción de estado inválida.")
+            return redirect(request.POST.get("next") or "dashboard:home")
     else:
+        # Compatibilidad con paneles antiguos de otras áreas que todavía envían
+        # un select de estado. Diseño ya usa el workflow por acciones.
+        new_status = (request.POST.get("status") or "").strip()
+        allowed = {choice[0] for choice in ManagementTask.Status.choices}
+        if new_status not in allowed:
+            messages.error(request, "Estado inválido.")
+            return redirect(request.POST.get("next") or request.META.get("HTTP_REFERER") or "dashboard:home")
         task.status = new_status
-        task.updated_by = user
-        task.save(update_fields=["status", "updated_by", "updated_at"])
-        log_activity(
-            user,
-            "management_tasks",
-            "status",
-            task.project or task,
-            description=f"{task.title} · {task.get_status_display()}",
-            metadata={"management_task_id": task.pk, "area": task.area},
-        )
-        messages.success(request, "Estado de la tarea actualizado.")
+        if new_status not in {ManagementTask.Status.PAUSED, ManagementTask.Status.CHANGES}:
+            task.status_note = ""
+
+    task.updated_by = user
+    task.save(update_fields=["status", "status_note", "updated_by", "updated_at"])
+    description = f"{dict(ManagementTask.Status.choices).get(old_status, old_status)} → {task.get_status_display()}"
+    if note:
+        description += f" · {note}"
+    log_activity(
+        user,
+        "management_tasks",
+        "status",
+        task.project or task,
+        description=f"{task.title} · {description}",
+        metadata={"management_task_id": task.pk, "area": task.area, "from": old_status, "to": task.status},
+    )
+    messages.success(request, f"Estado actualizado: {task.get_status_display()}.")
     return redirect(request.POST.get("next") or request.META.get("HTTP_REFERER") or "dashboard:home")
 
 

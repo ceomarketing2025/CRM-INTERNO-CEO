@@ -108,6 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
     login: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8l4 4-4 4M18 12H8"/><path d="M10 4H5v16h5"/></svg>',
     logout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/></svg>',
     pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6v12M16 6v12"/></svg>',
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z"/></svg>',
     home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-7 9 7"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></svg>',
     globe: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
     video: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>',
@@ -202,13 +203,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (actionValue === 'rejected') return ['close', 'danger'];
     if (actionValue === 'approved' || actionValue === 'ready' || actionValue === 'complete') return ['check', 'success'];
+    if (actionValue === 'start') return ['play', 'success'];
+    if (actionValue === 'resume') return ['refresh', 'success'];
+    if (actionValue === 'pause') return ['pause', 'warning'];
+    if (actionValue === 'review') return ['send', 'info'];
     if (actionValue === 'reopen') return ['reset', 'neutral'];
     if (actionValue === 'toggle_created') return ['check', 'success'];
     if (actionValue === 'toggle_published') return ['send', 'success'];
 
     if (/mes anterior|\banterior\b/.test(value)) return ['back', 'neutral'];
     if (/mes siguiente|\bsiguiente\b/.test(value)) return ['next', 'info'];
-    if (/volver|regresar|atrás|atras/.test(value)) return ['back', 'neutral'];
+    if (/volver|regresar|atrás|atras/.test(value)) return ['back', 'back'];
     if (/cancelar|rechazar|denegar|cerrar$/.test(value)) return ['close', 'danger'];
     if (/eliminar|borrar|delete|quitar/.test(value)) return ['trash', 'danger'];
     if (/desconectar/.test(value)) return ['unlink', 'danger'];
@@ -286,7 +291,7 @@ document.addEventListener("DOMContentLoaded", () => {
     button.dataset.crmLabel = label;
     button.classList.add('crm-action-button');
     if (button.classList.contains('icon-only')) button.classList.add('crm-icon-only');
-    button.classList.remove('crm-tone-success','crm-tone-danger','crm-tone-neutral','crm-tone-info','crm-tone-warning');
+    button.classList.remove('crm-tone-success','crm-tone-danger','crm-tone-neutral','crm-tone-info','crm-tone-warning','crm-tone-back');
     button.classList.add(`crm-tone-${tone}`);
 
     let icon = button.querySelector(':scope > .btn-icon');
@@ -326,6 +331,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.addEventListener('DOMContentLoaded', () => {
     decorateAllButtons(document);
+
+    document.addEventListener('click', (event) => {
+      const trigger = event.target.closest('[data-pause-trigger]');
+      if (!trigger) return;
+      const targetId = trigger.getAttribute('data-pause-trigger');
+      const panel = targetId ? document.getElementById(targetId) : null;
+      if (!panel) return;
+      event.preventDefault();
+      panel.hidden = !panel.hidden;
+      trigger.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+      if (!panel.hidden) {
+        const field = panel.querySelector('textarea, input[name="note"]');
+        if (field) field.focus();
+      }
+    });
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         mutation.addedNodes.forEach((node) => {

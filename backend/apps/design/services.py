@@ -521,16 +521,61 @@ def design_task_progress(task, today=None):
         }
 
     progress = task.standard_progress_percent
-    if progress >= 100:
-        state = "green"
-    elif progress >= 50:
-        state = "yellow"
-    else:
-        state = "red"
+    state = {
+        task.Status.TODO: "red",
+        task.Status.DOING: "yellow",
+        task.Status.PAUSED: "paused",
+        task.Status.REVIEW: "review",
+        task.Status.CHANGES: "changes",
+        task.Status.DONE: "blue",
+    }.get(task.status, "red")
     return {
         "progress": progress,
         "state": state,
         "label": task.get_status_display(),
         "cycle": None,
         "needs_configuration": False,
+    }
+
+DESIGN_REQUIRED_PALETTE_ROLES = ("text", "background", "primary", "secondary", "accent")
+
+
+def design_process_state(project):
+    """Estado único del ciclo Ficha → Recursos → Paleta → Resumen.
+
+    Se usa en todas las pantallas de Diseño para que el usuario vea el mismo
+    proceso sin duplicar lógica ni depender de Marketing/Desarrollo.
+    """
+    from .models import ColorPalette, DesignBrief
+    from apps.resources.models import ProjectResourceLink
+
+    try:
+        brief = project.design_brief
+    except DesignBrief.DoesNotExist:
+        brief = None
+
+    palette = (
+        ColorPalette.objects.filter(project=project, is_primary=True)
+        .prefetch_related("colors")
+        .order_by("id")
+        .first()
+    )
+    roles = {item.role for item in palette.colors.all()} if palette else set()
+    resource_kinds = set(
+        project.resource_links.filter(area=ProjectResourceLink.Area.DESIGN)
+        .values_list("kind", flat=True)
+    )
+
+    brief_done = bool(brief and brief.completed)
+    resources_ready = (
+        ProjectResourceLink.Kind.LOGO in resource_kinds
+        and ProjectResourceLink.Kind.PALETTE_DRIVE in resource_kinds
+    )
+    palette_done = all(role in roles for role in DESIGN_REQUIRED_PALETTE_ROLES)
+    return {
+        "brief_done": brief_done,
+        "resources_ready": resources_ready,
+        "palette_done": palette_done,
+        "summary_ready": brief_done and resources_ready and palette_done,
+        "palette": palette,
     }

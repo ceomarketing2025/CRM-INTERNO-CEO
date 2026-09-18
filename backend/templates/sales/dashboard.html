@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block page_heading %}Vendedores{% endblock %}
+{% block content %}
+<div class="page-intro sales-page-intro">
+  <div><span class="eyebrow">Panel comercial</span><h2>Vendedores</h2><p>Tu espacio de trabajo está enfocado en agenda, reuniones y recordatorios asignados.</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'reminders:meeting_list' %}">Reuniones</a><a class="btn btn-primary" href="{% url 'reminders:list' %}">Recordatorios</a></div>
+</div>
+<div class="stats-grid">
+  <div class="stat-card warning"><span>Recordatorios urgentes</span><strong>{{ due_soon_count }}</strong><small>Vencidos o dentro de 48 horas</small></div>
+  <div class="stat-card"><span>Reuniones próximas</span><strong>{{ meeting_count }}</strong><small>Próximos 7 días</small></div>
+</div>
+<div class="two-col">
+  <section class="card"><div class="card-head"><div><h3>Recordatorios asignados</h3><p>Prioridad operativa personal.</p></div><a href="{% url 'reminders:list' %}">Ver todos</a></div><div class="list-stack">{% for r in upcoming_reminders %}<a class="list-row" href="{% url 'reminders:edit' r.pk %}"><div><strong>{{ r.title }}</strong><span>{{ r.client.business_name|default:'General' }}</span></div><b>{{ r.due_at|date:'d M H:i' }}</b></a>{% empty %}<div class="empty">Sin recordatorios pendientes.</div>{% endfor %}</div></section>
+  <section class="card"><div class="card-head"><div><h3>Reuniones asignadas</h3><p>Agenda comercial y Google Meet.</p></div><a href="{% url 'reminders:meeting_list' %}">Ver todas</a></div><div class="list-stack">{% for m in upcoming_meetings %}<a class="list-row" href="{% url 'reminders:meeting_edit' m.pk %}"><div><strong>{{ m.title }}</strong><span>{{ m.client.business_name }}</span></div><b>{{ m.scheduled_at|date:'d M H:i' }}</b></a>{% empty %}<div class="empty">Sin reuniones programadas.</div>{% endfor %}</div></section>
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block page_heading %}Auditoría Proyectos{% endblock %}
+{% block content %}
+<style>
+.audit-v22-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:16px;padding:24px 26px;border:1px solid #e6ebf2;border-radius:22px;background:linear-gradient(135deg,#fff,#f7f9fc);box-shadow:0 12px 32px rgba(24,39,64,.05)}.audit-v22-hero h2{margin:5px 0 7px;font-size:28px;letter-spacing:-.04em}.audit-v22-hero p{max-width:920px;margin:0;color:var(--muted);font-size:12px;line-height:1.55}.audit-v22-kpis{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:10px;margin-bottom:14px}.audit-v22-kpi{padding:15px;position:relative;overflow:hidden}.audit-v22-kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#8b96a6}.audit-v22-kpi.operational:before{background:#2d6cdf}.audit-v22-kpi.approved:before{background:#209568}.audit-v22-kpi.rejected:before{background:#d65454}.audit-v22-kpi.pending:before{background:#dda72c}.audit-v22-kpi span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:#7b8798;font-weight:850}.audit-v22-kpi strong{display:block;font-size:25px;margin:4px 0}.audit-v22-kpi small{display:block;color:#8b96a7;font-size:8px}.audit-v22-area-summary{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:10px;margin-bottom:14px}.audit-v22-area-summary .card{padding:14px}.audit-v22-area-top{display:flex;justify-content:space-between;gap:12px}.audit-v22-area-top strong{font-size:20px}.audit-v22-mini-bar{height:6px;border-radius:999px;background:#edf1f5;overflow:hidden;margin:9px 0 7px}.audit-v22-mini-bar i{display:block;height:100%;background:#527795;border-radius:999px}.audit-v22-area-foot{display:flex;justify-content:space-between;gap:12px;font-size:8px;color:#8590a1}.audit-v22-filter{display:grid;grid-template-columns:minmax(260px,1fr) 175px 190px auto auto;gap:9px;align-items:center;padding:11px 12px;margin-bottom:15px}.audit-v22-filter input,.audit-v22-filter select{min-height:44px}.audit-v22-project{padding:0;overflow:hidden;margin-bottom:15px}.audit-v22-project-head{display:grid;grid-template-columns:minmax(250px,1.2fr) 160px 210px;gap:16px;align-items:center;padding:17px 18px;border-bottom:1px solid #edf0f4;background:linear-gradient(180deg,#fff,#fbfcfe)}.audit-v22-project-head h3{margin:3px 0 4px}.audit-v22-project-head small{display:block;color:var(--muted);font-size:9px}.audit-v22-overall{display:flex;align-items:center;gap:11px}.audit-v22-ring{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:900;border:7px solid #dfe4ec}.audit-v22-ring.red{border-color:#d95b5b}.audit-v22-ring.yellow{border-color:#d9a63a}.audit-v22-ring.green{border-color:#2b9c66}.audit-v22-review-summary{display:flex;gap:7px;flex-wrap:wrap}.audit-v22-review-summary span{padding:6px 8px;border-radius:999px;font-size:8px;font-weight:850}.audit-v22-review-summary .approved{background:#e8f8f0;color:#237a57}.audit-v22-review-summary .rejected{background:#fdecec;color:#a84040}.audit-v22-review-summary .pending{background:#fff5dc;color:#8d680c}.audit-v22-area-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.audit-v22-area{border-right:1px solid #edf0f4}.audit-v22-area:last-child{border-right:0}.audit-v22-area summary{list-style:none;cursor:pointer;padding:15px 16px;min-height:116px}.audit-v22-area summary::-webkit-details-marker{display:none}.audit-v22-area summary:hover{background:#fbfcfe}.audit-v22-area-title{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.audit-v22-area-title h4{margin:2px 0}.audit-v22-area-title b{font-size:20px}.audit-v22-bar{height:7px;border-radius:999px;background:#edf1f5;overflow:hidden;margin-top:9px}.audit-v22-bar i{display:block;height:100%;border-radius:999px}.audit-v22-bar.red i{background:#d95b5b}.audit-v22-bar.yellow i{background:#d9a63a}.audit-v22-bar.green i{background:#2b9c66}.audit-v22-area-meta{display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-size:8px;color:var(--muted)}.audit-v22-area-body{border-top:1px solid #edf0f4;padding:0 12px 13px}.audit-v22-category{padding-top:12px}.audit-v22-category h5{font-size:9px;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px;color:#69768a}.audit-v22-row{border:1px solid #e9edf3;border-radius:14px;padding:12px;margin-bottom:9px;background:#fff}.audit-v22-row-top{display:grid;grid-template-columns:minmax(190px,1.35fr) 145px 120px auto;gap:10px;align-items:center}.audit-v22-row-title strong{display:block;font-size:11px}.audit-v22-row-title small{display:block;margin-top:4px;font-size:9px;color:var(--muted);line-height:1.45}.audit-v22-chip{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 8px;font-size:8px;font-weight:850;white-space:nowrap}.audit-v22-chip.red{background:#fdecec;color:#a84040}.audit-v22-chip.yellow{background:#fff5dc;color:#8d680c}.audit-v22-chip.green{background:#e9f8f0;color:#21754e}.audit-v22-chip.muted{background:#f0f2f5;color:#667286}.audit-v22-source{font-size:8px;font-weight:850;color:#456b91}.audit-v22-review-form{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:10px;align-items:end;padding-top:10px;margin-top:10px;border-top:1px solid #eef1f5}.audit-v22-review-form textarea{min-height:56px;resize:vertical;padding:9px 10px;font-size:10px}.audit-v22-review-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.audit-v22-existing-note{margin-top:8px;padding:8px 10px;border-radius:10px;background:#f7f9fb;font-size:9px;color:#5c687b}.audit-v22-empty{padding:16px;font-size:11px;color:var(--muted)}
+@media(max-width:1250px){.audit-v22-kpis{grid-template-columns:repeat(3,1fr)}.audit-v22-area-grid{grid-template-columns:1fr}.audit-v22-area{border-right:0;border-bottom:1px solid #edf0f4}.audit-v22-filter{grid-template-columns:1fr 1fr 1fr}.audit-v22-filter input{grid-column:1/-1}}@media(max-width:850px){.audit-v22-kpis{grid-template-columns:repeat(2,1fr)}.audit-v22-area-summary{grid-template-columns:1fr}.audit-v22-project-head,.audit-v22-row-top,.audit-v22-review-form{grid-template-columns:1fr}.audit-v22-review-actions{justify-content:flex-start}.audit-v22-filter{grid-template-columns:1fr}}
+</style>
+
+<div class="audit-v22-hero">
+  <div><span class="eyebrow">Gerencia · revisión del trabajo</span><h2>Auditoría Proyectos</h2><p>Gerencia revisa el trabajo real de cada área y registra <strong>Aprobado</strong>, <strong>Rechazado</strong> y observaciones. Marketing se audita por sus cuatro módulos reales y Desarrollo por las <strong>etapas reales de su ficha técnica y producción</strong>, evitando convertir cada pregunta, página o check interno en una auditoría separada.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'audit:management_task_create' %}">Nueva tarea</a><a class="btn btn-secondary" href="{% url 'audit:subscriptions' %}">Auditoría Suscripciones</a></div>
+</div>
+
+<div class="audit-v22-kpis">
+  <div class="card audit-v22-kpi"><span>Proyectos</span><strong>{{ project_count }}</strong><small>visibles con filtros</small></div>
+  <div class="card audit-v22-kpi operational"><span>Etapas / bloques auditables</span><strong>{{ total }}</strong><small>trabajo único / módulos / etapas</small></div>
+  <div class="card audit-v22-kpi operational"><span>Avance operativo</span><strong>{{ source_progress }}%</strong><small>estado vivo de las áreas</small></div>
+  <div class="card audit-v22-kpi approved"><span>Aprobados</span><strong>{{ approved }}</strong><small>revisión vigente</small></div>
+  <div class="card audit-v22-kpi rejected"><span>Rechazados</span><strong>{{ rejected }}</strong><small>requieren corrección</small></div>
+  <div class="card audit-v22-kpi pending"><span>Por revisar</span><strong>{{ needs_review }}</strong><small>{{ audit_progress }}% revisado</small></div>
+</div>
+
+<div class="audit-v22-area-summary">
+{% for stat in area_stats %}
+  <div class="card"><div class="audit-v22-area-top"><div><span class="eyebrow">{{ stat.label }}</span><strong>{{ stat.progress }}%</strong></div><small>{{ stat.projects }} proyecto{{ stat.projects|pluralize }}</small></div><div class="audit-v22-mini-bar"><i style="width:{{ stat.progress }}%"></i></div><div class="audit-v22-area-foot"><span>{{ stat.tasks }} bloques · {{ stat.audit_progress }}% revisado</span><span>{{ stat.approved }} aprob. · {{ stat.rejected }} rech.</span></div></div>
+{% endfor %}
+</div>
+
+<form method="get" class="card audit-v22-filter">
+  <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar cliente, proyecto, módulo o actividad…">
+  <select name="area"><option value="all" {% if selected_area == 'all' %}selected{% endif %}>Todas las áreas</option><option value="design" {% if selected_area == 'design' %}selected{% endif %}>Diseño</option><option value="marketing" {% if selected_area == 'marketing' %}selected{% endif %}>Marketing</option><option value="development" {% if selected_area == 'development' %}selected{% endif %}>Desarrollo</option></select>
+  <select name="status"><option value="all" {% if selected_status == 'all' %}selected{% endif %}>Todas las auditorías</option><option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Por revisar</option><option value="approved" {% if selected_status == 'approved' %}selected{% endif %}>Aprobados</option><option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>Rechazados</option><option value="changed" {% if selected_status == 'changed' %}selected{% endif %}>Cambios después de revisión</option><option value="source_pending" {% if selected_status == 'source_pending' %}selected{% endif %}>Trabajo pendiente</option><option value="source_done" {% if selected_status == 'source_done' %}selected{% endif %}>Trabajo al 100%</option></select>
+  <button class="btn btn-secondary" type="submit">Filtrar</button>
+  {% if search_query or selected_area != 'all' or selected_status != 'all' %}<a class="btn btn-ghost" href="{% url 'audit:projects' %}">Limpiar</a>{% endif %}
+</form>
+
+{% for item in projects %}
+<section class="card audit-v22-project">
+  <div class="audit-v22-project-head">
+    <div><span class="project-code">{{ item.project.project_code }}</span><h3>{{ item.project.client.business_name }}</h3><small>{{ item.project.name }} · {{ item.project.get_status_display }}</small></div>
+    <div class="audit-v22-overall"><div class="audit-v22-ring {{ item.overall_state }}">{{ item.overall }}%</div><div><strong>Avance operativo</strong><small>{{ item.applicable_areas }} área(s) activas</small></div></div>
+    <div class="audit-v22-review-summary"><span class="approved">{{ item.approved_tasks }} aprobados</span><span class="rejected">{{ item.rejected_tasks }} rechazados</span><span class="pending">{{ item.pending_tasks }} pendientes</span></div>
+  </div>
+
+  <div class="audit-v22-area-grid">
+    {% for area in item.areas %}
+    <details class="audit-v22-area" {% if selected_area == area.key %}open{% endif %}>
+      <summary>
+        <div class="audit-v22-area-title"><div><span class="eyebrow">{{ area.label }}</span><h4>{% if area.applies %}{{ area.current_done }}/{{ area.current_total }} completos{% else %}No aplica{% endif %}</h4></div><b>{% if area.applies %}{{ area.progress }}%{% else %}—{% endif %}</b></div>
+        {% if area.applies %}<div class="audit-v22-bar {{ area.state }}"><i style="width:{{ area.progress }}%"></i></div><div class="audit-v22-area-meta"><span>{{ area.current_total }} bloque{{ area.current_total|pluralize }} auditables</span><span>{{ area.current_approved }} aprob. · {{ area.current_rejected }} rech.</span></div>{% else %}<div class="audit-v22-empty">Sin trabajo auditable en esta área.</div>{% endif %}
+      </summary>
+      <div class="audit-v22-area-body">
+        {% for category in area.categories %}
+        <div class="audit-v22-category">
+          <h5>{{ category.name }}</h5>
+          {% for row in category.rows %}
+          <article class="audit-v22-row">
+            <div class="audit-v22-row-top">
+              <div class="audit-v22-row-title"><strong>{{ row.label }}</strong>{% if row.detail %}<small>{{ row.detail }}</small>{% endif %}</div>
+              <span class="audit-v22-chip {{ row.source_state }}">{{ row.source_progress }}% · {{ row.source_status }}</span>
+              <span class="audit-v22-chip {{ row.audit_state }}">{{ row.audit_label }}</span>
+              {% if row.source_url %}<a class="audit-v22-source" href="{{ row.source_url }}">Abrir trabajo →</a>{% endif %}
+            </div>
+            {% if row.audit_note %}<div class="audit-v22-existing-note"><strong>Observación actual:</strong> {{ row.audit_note }}</div>{% endif %}
+            <form method="post" action="{% url 'audit:project_check' row.check.pk %}" class="audit-v22-review-form">
+              {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <textarea name="note" placeholder="Observaciones de auditoría. Para rechazar, indica qué debe corregirse…">{{ row.audit_note }}</textarea>
+              <div class="audit-v22-review-actions">
+                <button class="btn btn-primary btn-sm" name="action" value="approved" type="submit">Aprobar</button>
+                <button class="btn btn-danger btn-sm" name="action" value="rejected" type="submit">Rechazar</button>
+                {% if row.audit_decision != 'pending' %}<button class="btn btn-ghost btn-sm" name="action" value="reopen" type="submit">Reabrir</button>{% endif %}
+              </div>
+            </form>
+          </article>
+          {% endfor %}
+        </div>
+        {% empty %}<div class="audit-v22-empty">No hay bloques que coincidan con el filtro en esta área.</div>{% endfor %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+</section>
+{% empty %}<div class="card audit-v22-empty"><strong>No hay proyectos que coincidan con los filtros.</strong></div>{% endfor %}
+{% endblock %}

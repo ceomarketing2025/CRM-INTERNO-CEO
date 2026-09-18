@@ -8,7 +8,7 @@
 
 <div class="dp-head">
   <div><span class="eyebrow">Diseño · {{ project.project_code }}</span><h2>{{ project.client.business_name }}</h2><p>{{ project.name }} · Bitácora operativa y renovaciones.</p></div>
-  <div class="actions"><a class="btn btn-ghost" href="{% url 'design:tasks' %}">← Proyectos</a><a class="btn btn-secondary" href="{% url 'design:service_manage' project.pk %}">Servicios</a><a class="btn btn-primary" href="{% url 'design:task_create' %}">＋ Tarea</a></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'design:tasks' %}"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/><path d="M9 12h11"/></svg></span><span class="btn-label">Proyectos</span></a><a class="btn btn-secondary" href="{% url 'design:service_manage' project.pk %}"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg></span><span class="btn-label">Servicios</span></a><a class="btn btn-primary" href="{% url 'design:task_create' %}"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="btn-label">Tarea</span></a></div>
 </div>
 
 <div class="card dp-summary">
@@ -33,13 +33,13 @@
       <div class="task-meta">Última edición<br><strong>{{ item.task.updated_by.display_name|default:'Sistema' }}</strong> · {{ item.task.updated_at|date:'d/m/Y H:i' }}{% if item.task.assigned_to %}<br>Responsable: {{ item.task.assigned_to.display_name }}{% endif %}</div>
       <div class="actions">
         {% if item.task.task_type == 'standard' %}
-          {% if item.locked %}<span class="badge">🔒 Auditada</span>{% else %}<form method="post" action="{% url 'design:task_toggle' item.task.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-primary btn-sm" type="submit">{% if item.state.progress == 100 %}↺ Reabrir{% else %}✓ Listo{% endif %}</button></form>{% endif %}
+          {% if item.locked %}<span class="badge">🔒 Auditada</span>{% else %}<form method="post" action="{% url 'design:task_toggle' item.task.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-primary btn-sm" type="submit">{% if item.state.progress == 100 %}<span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8v5h5"/><path d="M5.5 17a8 8 0 1 0 1-10L4 10"/></svg></span>{% else %}<span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></span>{% endif %}<span class="btn-label">{% if item.state.progress == 100 %}Reabrir{% else %}Listo{% endif %}</span></button></form>{% endif %}
         {% endif %}
-        <a class="btn btn-secondary btn-sm" href="{% url 'design:task_edit' item.task.pk %}">{% if item.locked %}Ver{% else %}Editar{% endif %}</a>
+        <a class="btn btn-secondary btn-sm" href="{% url 'design:task_edit' item.task.pk %}"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></span><span class="btn-label">{% if item.locked %}Ver{% else %}Editar{% endif %}</span></a>
       </div>
     </div>
 
-    {% if item.locked %}<div class="lock-note"><strong>🔒 Registro protegido.</strong> Esta tarea única ya fue completada y aprobada en Auditoría General. Se conserva como historial y no puede reabrirse ni retirarse con su servicio.</div>{% endif %}
+    {% if item.locked %}<div class="lock-note"><strong>🔒 Registro protegido.</strong> Esta tarea única ya fue completada y aprobada en Auditoría Proyectos. Se conserva como historial y no puede reabrirse ni retirarse con su servicio.</div>{% endif %}
 
     {% if item.task.task_type == 'content' %}
       {% if item.state.needs_configuration %}

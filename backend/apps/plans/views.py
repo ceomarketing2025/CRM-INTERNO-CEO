@@ -4,9 +4,10 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.audit.services import log_activity
+from apps.core.decorators import manager_required
 from .forms import ROLE_TO_DEPARTMENT, ServicePlanForm
 from .models import ServicePlan
-from .models.choices import PlanDepartment, service_type_choices_for_department
+from .models.choices import PlanDepartment, ServiceType, service_type_choices_for_department
 
 
 def _department_for_user(user):
@@ -16,7 +17,7 @@ def _department_for_user(user):
 
 
 def _can_create_plan(user):
-    return bool(user.is_authenticated and (user.is_manager or user.is_superuser or _department_for_user(user)))
+    return bool(user.is_authenticated and (user.is_manager or user.is_superuser))
 
 
 def _can_manage_plan(user, plan):
@@ -25,7 +26,7 @@ def _can_manage_plan(user, plan):
     return _department_for_user(user) == plan.department
 
 
-@login_required
+@manager_required
 def plan_list(request):
     # IMPORTANTE: no filtrar las banderas del JSONField con ``exclude``.
     # En PostgreSQL una clave inexistente produce NULL y el NOT del exclude
@@ -51,10 +52,30 @@ def plan_list(request):
     ]
 
     grouped = []
+    service_type_labels = dict(ServiceType.choices)
     for value, label in PlanDepartment.choices:
         items = [plan for plan in plans if plan.department == value]
-        if items:
-            grouped.append({"value": value, "label": label, "plans": items})
+        if not items:
+            continue
+        categories = []
+        # Mantener el orden definido por el catálogo del área y agrupar planes
+        # equivalentes (p.ej. varios niveles de Social Media) bajo una sola categoría.
+        ordered_types = [item_value for item_value, _ in service_type_choices_for_department(value)]
+        extra_types = [plan.service_type for plan in items if plan.service_type not in ordered_types]
+        for service_type in ordered_types + list(dict.fromkeys(extra_types)):
+            category_plans = [plan for plan in items if plan.service_type == service_type]
+            if category_plans:
+                categories.append({
+                    "value": service_type,
+                    "label": service_type_labels.get(service_type, service_type),
+                    "plans": category_plans,
+                })
+        grouped.append({
+            "value": value,
+            "label": label,
+            "plans": items,
+            "categories": categories,
+        })
 
     return render(request, "plans/list.html", {
         "grouped_plans": grouped,
@@ -67,7 +88,7 @@ def plan_list(request):
     })
 
 
-@login_required
+@manager_required
 def plan_create(request):
     if not _can_create_plan(request.user):
         raise PermissionDenied("Tu área no puede crear planes.")
@@ -99,7 +120,7 @@ def plan_create(request):
     })
 
 
-@login_required
+@manager_required
 def plan_edit(request, pk):
     obj = get_object_or_404(ServicePlan, pk=pk)
     if not _can_manage_plan(request.user, obj):
@@ -126,7 +147,7 @@ def plan_edit(request, pk):
     })
 
 
-@login_required
+@manager_required
 def purchase_create(request):
     messages.info(request, "Las suscripciones recurrentes se configuran desde el módulo correspondiente, por ejemplo Diseño · Social Media.")
     return redirect("plans:list")

@@ -49,15 +49,15 @@ def projects_for_client(request):
     if not client_id.isdigit():
         return JsonResponse({"projects": []})
     projects = Project.objects.filter(client_id=int(client_id)).order_by("-created_at")
-    if not (request.user.is_manager or request.user.role == "administration"):
-        projects = projects.filter(assignments__user=request.user).distinct()
+    if getattr(request.user, "role", "") == "sales":
+        projects = projects.none()
     return JsonResponse({"projects": [
         {"id": row.pk, "label": f"{row.project_code} · {row.name}"}
         for row in projects[:100]
     ]})
 
 
-@role_required("administration")
+@manager_required
 def general_list(request):
     q = request.GET.get("q", "").strip()
     base_records = DomainHostingRecord.objects.select_related("client", "project", "updated_by")
@@ -101,7 +101,7 @@ def _domain_form_context(form, title, subtitle, record=None):
     }
 
 
-@role_required("administration")
+@manager_required
 def general_create(request):
     initial = {"operation_type": DomainOperationType.NEW, "domain_status": DomainRecordStatus.PENDING_PURCHASE}
     if request.GET.get("client", "").isdigit():
@@ -118,7 +118,7 @@ def general_create(request):
     ))
 
 
-@role_required("administration")
+@manager_required
 def general_edit(request, pk):
     obj = get_object_or_404(DomainHostingRecord, pk=pk)
     form = DomainHostingRecordForm(request.POST or None, instance=obj, user=request.user)
@@ -131,13 +131,13 @@ def general_edit(request, pk):
     ))
 
 
-@role_required("administration")
+@manager_required
 def general_detail(request, pk):
     obj = get_object_or_404(DomainHostingRecord.objects.select_related("client", "project", "created_by", "updated_by"), pk=pk)
     return render(request, "operations/general_detail.html", {"record": obj})
 
 
-@role_required("administration")
+@manager_required
 @require_POST
 def general_quick_status(request, pk):
     obj = get_object_or_404(DomainHostingRecord, pk=pk)
@@ -166,7 +166,7 @@ def general_delete(request, pk):
     return redirect("operations:general_list")
 
 
-@role_required("administration")
+@manager_required
 def credential_list(request):
     q = request.GET.get("q", "").strip()
     records = ProjectCredential.objects.select_related("client", "project", "updated_by")
@@ -202,7 +202,7 @@ def _credential_record_for_group(project, code):
     return ProjectCredential.objects.filter(project=project, credential_type__in=legacy_types, enabled=True).order_by("-updated_at").first() if legacy_types else None
 
 
-@role_required("administration")
+@manager_required
 def credential_snapshot(request):
     project_id = request.GET.get("project", "").strip()
     if not project_id.isdigit():
@@ -242,7 +242,7 @@ def credential_snapshot(request):
     })
 
 
-@role_required("administration")
+@manager_required
 def credential_create(request):
     initial_client = request.GET.get("client", "")
     initial_project = request.GET.get("project", "")
@@ -333,7 +333,7 @@ def credential_create(request):
     })
 
 
-@role_required("administration")
+@manager_required
 def credential_edit(request, pk):
     obj = get_object_or_404(ProjectCredential, pk=pk)
     form = ProjectCredentialForm(request.POST or None, instance=obj, user=request.user)
@@ -349,14 +349,16 @@ def credential_edit(request, pk):
     })
 
 
-@role_required("administration")
+@login_required
 def credential_detail(request, pk):
     obj = get_object_or_404(ProjectCredential.objects.select_related("client", "project", "created_by", "updated_by"), pk=pk)
-    can_reveal = request.user.is_manager or obj.visible_to_team
+    can_reveal = bool(request.user.is_manager or (obj.enabled and obj.visible_to_team))
+    if not can_reveal:
+        raise PermissionDenied("Gerencia no ha habilitado esta credencial para el equipo.")
     return render(request, "operations/credential_detail.html", {
         "record": obj,
-        "can_reveal": can_reveal,
-        "password_value": obj.get_password() if can_reveal else "",
+        "can_reveal": True,
+        "password_value": obj.get_password(),
     })
 
 
@@ -371,13 +373,13 @@ def credential_delete(request, pk):
     return redirect("operations:credential_list")
 
 
-@role_required("administration")
+@manager_required
 def production_list(request):
     records = ProductionRecord.objects.select_related("client", "project", "collaborator")
     return render(request, "operations/production_list.html", {"records": records})
 
 
-@role_required("administration")
+@manager_required
 def production_create(request):
     form = ProductionRecordForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -385,7 +387,7 @@ def production_create(request):
     return render(request, "shared/form.html", {"form": form, "title": "Nuevo registro · Producción", "subtitle": "Plan, diseño, estado técnico, colaborador y valores."})
 
 
-@role_required("administration")
+@manager_required
 def production_edit(request, pk):
     obj = get_object_or_404(ProductionRecord, pk=pk)
     form = ProductionRecordForm(request.POST or None, instance=obj)

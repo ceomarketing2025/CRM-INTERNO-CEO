@@ -142,9 +142,9 @@ class ServicePlanForm(forms.ModelForm):
 class SocialMediaAssignmentForm(forms.ModelForm):
     project = forms.ModelChoiceField(
         queryset=Project.objects.none(),
-        required=False,
+        required=True,
         label="Proyecto",
-        help_text="Opcional. Vincula esta suscripción al proyecto donde fue contratado el plan.",
+        help_text="Selecciona el proyecto al que pertenece esta suscripción.",
     )
     social_networks = forms.MultipleChoiceField(
         choices=SOCIAL_NETWORK_CHOICES,
@@ -156,11 +156,12 @@ class SocialMediaAssignmentForm(forms.ModelForm):
     class Meta:
         model = ClientPlan
         fields = [
-            "client", "plan", "start_date", "renewal_frequency", "social_networks",
+            "client", "plan", "start_date", "renewal_frequency", "renewal_date", "social_networks",
             "notes", "is_active",
         ]
         widgets = {
             "start_date": forms.DateInput(attrs={"type": "date"}),
+            "renewal_date": forms.DateInput(attrs={"type": "date"}),
             "notes": forms.Textarea(attrs={"rows": 3, "placeholder": "Notas internas del plan, acuerdos o detalles importantes..."}),
         }
         labels = {
@@ -168,25 +169,63 @@ class SocialMediaAssignmentForm(forms.ModelForm):
             "plan": "Plan de Social Media",
             "start_date": "Fecha de inicio",
             "renewal_frequency": "¿Cada cuánto se renueva?",
+            "renewal_date": "Fecha de renovación",
             "is_active": "Suscripción activa",
         }
 
     def __init__(self, *args, project=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.bound_project = project
+
+        # Social Media NO crea cantidades aquí. El catálogo de Planes es la
+        # única fuente de verdad para posts/videos por ciclo.
         self.fields["plan"].queryset = ServicePlan.objects.filter(
             service_type=ServiceType.SOCIAL_MEDIA,
             department=PlanDepartment.DESIGN,
             is_active=True,
         ).order_by("name")
-        self.fields["project"].queryset = Project.objects.select_related("client").order_by("-created_at")
+        self.fields["plan"].label_from_instance = (
+            lambda obj: f"{obj.name} · {obj.content_goal_label}"
+        )
+        self.fields["plan"].help_text = (
+            "La cantidad de posts y videos se toma del plan creado en Planes; no se define en esta pantalla."
+        )
+
+        # Proyecto depende SIEMPRE del cliente seleccionado. En un GET nuevo no
+        # cargamos todos los proyectos; en POST filtramos el queryset antes de
+        # validar para impedir asociaciones cruzadas también desde backend.
+        selected_client_id = None
+        if project:
+            selected_client_id = project.client_id
+        elif self.is_bound:
+            raw_client_id = self.data.get(self.add_prefix("client")) or self.data.get("client")
+            if str(raw_client_id or "").isdigit():
+                selected_client_id = int(raw_client_id)
+        elif self.instance and self.instance.pk:
+            selected_client_id = self.instance.client_id
+        else:
+            initial_client = self.initial.get("client")
+            selected_client_id = getattr(initial_client, "pk", initial_client)
+            if not str(selected_client_id or "").isdigit():
+                selected_client_id = None
+
+        project_qs = Project.objects.select_related("client")
+        if selected_client_id:
+            project_qs = project_qs.filter(client_id=selected_client_id).order_by("-created_at")
+        else:
+            project_qs = Project.objects.none()
+        self.fields["project"].queryset = project_qs
+        self.fields["project"].empty_label = (
+            "Selecciona un proyecto" if selected_client_id else "Selecciona primero un cliente"
+        )
 
         if project:
             self.fields["project"].initial = project
             self.fields["project"].widget = forms.HiddenInput()
             self.fields["client"].initial = project.client
             self.fields["client"].widget = forms.HiddenInput()
-            # Solo mostrar planes de Social Media ya contratados por ese proyecto cuando existan.
+            # Si el proyecto ya tiene un plan Social Media contratado, priorizar
+            # esos planes sin fabricar uno nuevo desde esta pantalla.
             contracted_ids = project.contracted_plans.filter(
                 plan__department=PlanDepartment.DESIGN,
                 plan__service_type=ServiceType.SOCIAL_MEDIA,
@@ -204,15 +243,19 @@ class SocialMediaAssignmentForm(forms.ModelForm):
             self.fields["social_networks"].initial = self.instance.social_networks or []
         else:
             self.fields["start_date"].initial = timezone.localdate()
-            self.fields["renewal_frequency"].initial = RenewalFrequency.WEEKLY
+            self.fields["renewal_frequency"].initial = RenewalFrequency.MONTHLY
             self.fields["is_active"].initial = True
 
     def clean(self):
         cleaned = super().clean()
         project = cleaned.get("project") or self.bound_project
         client = cleaned.get("client")
+        start_date = cleaned.get("start_date")
+        renewal_date = cleaned.get("renewal_date")
         if project and client and project.client_id != client.pk:
             self.add_error("project", "El proyecto seleccionado pertenece a otro cliente.")
+        if start_date and renewal_date and renewal_date <= start_date:
+            self.add_error("renewal_date", "La fecha de renovación debe ser posterior a la fecha de inicio.")
         return cleaned
 
     def clean_plan(self):
@@ -231,8 +274,12 @@ class SocialMediaAssignmentForm(forms.ModelForm):
         if instance.plan_id:
             instance.agreed_price = instance.plan.base_price
             instance.currency = instance.plan.currency
-        _, due = current_cycle_bounds(instance.start_date or timezone.localdate(), instance.renewal_frequency)
-        instance.renewal_date = due
+        configured_renewal = self.cleaned_data.get("renewal_date")
+        if configured_renewal:
+            instance.renewal_date = configured_renewal
+        else:
+            _, due = current_cycle_bounds(instance.start_date or timezone.localdate(), instance.renewal_frequency)
+            instance.renewal_date = due
         if commit:
             instance.save()
         return instance

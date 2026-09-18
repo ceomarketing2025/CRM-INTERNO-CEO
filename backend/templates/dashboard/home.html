@@ -1,5 +1,5 @@
-{% extends 'base.html' %}{% block page_heading %}Dashboard{% endblock %}{% block content %}
-<div class="hero-card dashboard-hero"><div><span class="eyebrow light">{{ request.user.get_role_display }}</span><h2>Control general del sistema</h2><p>Resumen sincronizado de Administración, Diseño, Marketing y Desarrollo. Los porcentajes salen del avance real de cada módulo.</p></div>{% if current_role == 'administration' or request.user.is_manager %}<a class="btn btn-light" href="{% url 'clients:list' %}">Clientes</a>{% else %}<a class="btn btn-light" href="{% url 'projects:list' %}">Mis proyectos</a>{% endif %}</div>
+{% extends 'base.html' %}{% block page_heading %}Dashboard Gerencia{% endblock %}{% block content %}
+<div class="hero-card dashboard-hero"><div><span class="eyebrow light">{{ request.user.get_role_display }}</span><h2>Control general de Gerencia</h2><p>Resumen sincronizado de Administración, Diseño, Marketing y Desarrollo. Los porcentajes salen del avance real de cada módulo.</p></div>{% if request.user.is_manager %}<a class="btn btn-light" href="{% url 'clients:list' %}">Clientes</a>{% else %}<a class="btn btn-light" href="{% url 'projects:list' %}">Mis proyectos</a>{% endif %}</div>
 
 <div class="stats-grid executive-stats">
   <div class="stat-card"><span>Clientes activos</span><strong>{{ client_count }}</strong><small>Base central</small></div>
@@ -34,7 +34,7 @@
   </div>
 </div>
 
-{% if request.user.is_manager or current_role == 'administration' %}
+{% if request.user.is_manager %}
 <div class="stats-grid compact-management-stats">
   <div class="stat-card"><span>Producción comercial pendiente</span><strong>{{ production_pending|default:0 }}</strong><small>Hoja administrativa</small></div>
   <div class="stat-card"><span>Seguimientos Social incompletos</span><strong>{{ social_incomplete|default:0 }}</strong><small>Google / redes</small></div>

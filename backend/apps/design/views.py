@@ -91,6 +91,17 @@ def design_list(request):
         )
         .order_by("-updated_at", "-created_at")
     )
+    from django.db.models import Q
+    q = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "all").strip()
+    if q:
+        projects = projects.filter(
+            Q(client__business_name__icontains=q)
+            | Q(client__full_name__icontains=q)
+            | Q(project_code__icontains=q)
+            | Q(name__icontains=q)
+            | Q(contracted_plans__plan__name__icontains=q)
+        ).distinct()
 
     project_rows = []
     for project in projects:
@@ -107,13 +118,18 @@ def design_list(request):
         design_plans = [
             assignment.plan
             for assignment in project.contracted_plans.all()
-            if assignment.is_active and assignment.plan.department == PlanDepartment.DESIGN
+            if assignment.is_active
+            and assignment.plan.department == PlanDepartment.DESIGN
+            and assignment.plan.service_type != ServiceType.SOCIAL_MEDIA
         ]
         workflow_plans = [
             assignment.plan
             for assignment in project.contracted_plans.all()
-            if assignment.is_active
+            if assignment.is_active and assignment.plan.service_type != ServiceType.SOCIAL_MEDIA
         ]
+        if not design_plans and not workflow_plans:
+            # Social Media vive únicamente en su módulo independiente.
+            continue
         brief_done = bool(brief and brief.completed)
         palette_done = all(role in roles for role in PALETTE_DEFAULTS)
         design_steps = [
@@ -123,6 +139,10 @@ def design_list(request):
         ]
         design_done = sum(1 for _, done in design_steps if done)
         design_percent = round(design_done * 100 / len(design_steps))
+        if status == "pending" and design_percent >= 100:
+            continue
+        if status == "done" and design_percent < 100:
+            continue
         project_rows.append({
             "project": project,
             "design_plans": design_plans,
@@ -136,8 +156,16 @@ def design_list(request):
             "photo_count": project.image_references.count(),
             "last_log": last_log,
             "palette": palette,
+            "state": "green" if design_percent >= 100 else ("yellow" if design_percent >= 50 else "red"),
         })
-    return render(request, "design/list.html", {"project_rows": project_rows})
+    return render(request, "design/list.html", {
+        "project_rows": project_rows,
+        "project_count": len(project_rows),
+        "completed_count": sum(1 for row in project_rows if row["design_percent"] >= 100),
+        "pending_count": sum(1 for row in project_rows if row["design_percent"] < 100),
+        "search_query": q,
+        "selected_status": status,
+    })
 
 
 @role_required("design")
@@ -162,7 +190,7 @@ def brief_edit(request, project_pk):
             return redirect("design:list")
         log_activity(request.user, "design", "brief_update", brief)
         messages.success(request, "Ficha de Diseño guardada.")
-        return redirect("design:brief_edit", project_pk=project.pk)
+        return redirect("design:list")
     return render(request, "design/brief.html", {"form": form, "project": project, "brief": brief, "palette": palette})
 
 
@@ -206,8 +234,8 @@ def palette_detail(request, pk):
             palette.save(update_fields=["general_rules", "is_primary", "updated_at"])
             ColorPalette.objects.filter(project=palette.project, is_primary=True).exclude(pk=palette.pk).update(is_primary=False)
             log_activity(request.user, "design", "palette_update", palette)
-            messages.success(request, "Paleta guardada. Ya puedes verla aquí o descargar el PDF.")
-            return redirect("design:palette_detail", pk=pk)
+            messages.success(request, "Paleta guardada correctamente.")
+            return redirect("design:list")
     return render(request, "design/palette_detail.html", {"palette": palette, "form": form})
 
 
@@ -226,36 +254,48 @@ def palette_pdf(request, pk):
 
 @role_required("design")
 def social_media_dashboard(request):
-    """Dashboard compacto: una card por proyecto, sin desplegar tareas."""
+    """Bandeja operativa de Diseño: solo actividades únicas del área.
+
+    Social Media NO se mezcla aquí. Las tareas creadas por Gerencia para Diseño
+    sí forman parte de esta bandeja y se filtran por responsable cuando aplica.
+    """
     from django.db.models import Q
     from django.utils import timezone
+    from apps.accounts.models import UserAccount
+    from apps.audit.models import ManagementTask
     from apps.plans.models.choices import PlanDepartment
 
     today = timezone.localdate()
+    q = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "all").strip()
+    responsible = (request.GET.get("responsible") or "all").strip()
+
     projects = (
         projects_for_area("design")
         .prefetch_related(
             "contracted_plans__plan",
             "contracted_plans__design_tasks__assigned_to",
-            "contracted_plans__design_tasks__cycles__delivery_items",
         )
-        .filter(contracted_plans__is_active=True, contracted_plans__plan__department=PlanDepartment.DESIGN)
+        .filter(
+            contracted_plans__is_active=True,
+            contracted_plans__plan__department=PlanDepartment.DESIGN,
+            contracted_plans__plan__service_type__in=[
+                value for value, _label in ServiceType.choices if value != ServiceType.SOCIAL_MEDIA
+            ],
+        )
         .distinct()
         .order_by("client__business_name", "name")
     )
-    q = (request.GET.get("q") or "").strip()
-    status = (request.GET.get("status") or "all").strip()
     if q:
         projects = projects.filter(
             Q(client__business_name__icontains=q)
+            | Q(client__full_name__icontains=q)
             | Q(name__icontains=q)
             | Q(project_code__icontains=q)
             | Q(contracted_plans__plan__name__icontains=q)
             | Q(contracted_plans__design_tasks__title__icontains=q)
         ).distinct()
 
-    # Repara tareas base de proyectos existentes y vuelve a consultar para que el
-    # dashboard siempre refleje exactamente los servicios contratados actuales.
     project_ids = list(projects.values_list("pk", flat=True))
     for project in Project.objects.filter(pk__in=project_ids):
         ensure_default_design_tasks_for_project(project, user=request.user)
@@ -266,7 +306,6 @@ def social_media_dashboard(request):
         .prefetch_related(
             "contracted_plans__plan",
             "contracted_plans__design_tasks__assigned_to",
-            "contracted_plans__design_tasks__cycles__delivery_items",
         )
         .order_by("client__business_name", "name")
     )
@@ -275,32 +314,32 @@ def social_media_dashboard(request):
     overall_parts = []
     for project in projects:
         service_rows = []
+        all_project_tasks = []
         assignments = [
-            a for a in project.contracted_plans.all()
-            if a.is_active and a.plan.department == PlanDepartment.DESIGN
+            assignment for assignment in project.contracted_plans.all()
+            if assignment.is_active
+            and assignment.plan.department == PlanDepartment.DESIGN
+            and assignment.plan.service_type != ServiceType.SOCIAL_MEDIA
         ]
         for assignment in assignments:
-            states = []
-            has_recurring = False
-            for task in assignment.design_tasks.all():
-                state = design_task_progress(task, today=today)
-                states.append(state)
-                has_recurring = has_recurring or task.task_type == DesignTask.TaskType.CONTENT
-            progress = round(sum(item["progress"] for item in states) / len(states)) if states else 0
-            if has_recurring:
-                dot_state = "blue"
-                status_label = "Renovación · al día" if progress >= 100 else "Renovación · pendiente"
+            tasks = [task for task in assignment.design_tasks.all() if task.task_type == DesignTask.TaskType.STANDARD]
+            if responsible != "all" and responsible.isdigit():
+                tasks_for_progress = [task for task in tasks if task.assigned_to_id == int(responsible)]
             else:
-                dot_state = "green" if progress >= 100 else "red"
-                status_label = "Completado" if progress >= 100 else "Pendiente"
+                tasks_for_progress = tasks
+            states = [design_task_progress(task, today=today) for task in tasks_for_progress]
+            if not tasks_for_progress and responsible != "all":
+                continue
+            progress = round(sum(item["progress"] for item in states) / len(states)) if states else 0
             service_rows.append({
                 "assignment": assignment,
                 "plan": assignment.plan,
+                "tasks": tasks_for_progress,
                 "progress": progress,
-                "dot_state": dot_state,
-                "status_label": status_label,
-                "is_recurring": has_recurring,
+                "dot_state": "green" if progress >= 100 else ("yellow" if progress >= 50 else "red"),
+                "status_label": "Completado" if progress >= 100 else ("En proceso" if progress > 0 else "Pendiente"),
             })
+            all_project_tasks.extend(tasks_for_progress)
 
         if not service_rows:
             continue
@@ -309,38 +348,70 @@ def social_media_dashboard(request):
             continue
         if status == "done" and project_progress < 100:
             continue
-        if status == "renewal" and not any(item["is_recurring"] for item in service_rows):
-            continue
         state = "green" if project_progress >= 100 else ("yellow" if project_progress >= 50 else "red")
-        task_updates = [
-            task for assignment in assignments for task in assignment.design_tasks.all()
-        ]
-        last_task = max(task_updates, key=lambda task: task.updated_at, default=None)
+        last_task = max(all_project_tasks, key=lambda task: task.updated_at, default=None)
         rows.append({
             "project": project,
             "services": service_rows,
             "service_count": len(service_rows),
+            "task_count": len(all_project_tasks),
+            "tasks_preview": sorted(all_project_tasks, key=lambda task: (task.status == DesignTask.Status.DONE, task.order, task.pk))[:5],
             "progress": project_progress,
             "state": state,
             "last_task": last_task,
         })
         overall_parts.append(project_progress)
 
+    management_tasks = ManagementTask.objects.select_related(
+        "assigned_to", "client", "project", "created_by"
+    ).filter(area=ManagementTask.Area.DESIGN)
+    if not request.user.is_manager and not request.user.is_superuser:
+        management_tasks = management_tasks.filter(assigned_to=request.user)
+    if q:
+        management_tasks = management_tasks.filter(
+            Q(title__icontains=q)
+            | Q(description__icontains=q)
+            | Q(client__business_name__icontains=q)
+            | Q(project__name__icontains=q)
+            | Q(project__project_code__icontains=q)
+        )
+    if responsible != "all" and responsible.isdigit():
+        management_tasks = management_tasks.filter(assigned_to_id=int(responsible))
+    if status == "pending":
+        management_tasks = management_tasks.exclude(status=ManagementTask.Status.DONE)
+    elif status == "done":
+        management_tasks = management_tasks.filter(status=ManagementTask.Status.DONE)
+    management_tasks = list(management_tasks.order_by("status", "due_date", "-created_at"))
+
+    responsibles = UserAccount.objects.filter(
+        is_active=True, role__in=[UserAccount.Role.DESIGN, UserAccount.Role.MANAGER]
+    ).order_by("first_name", "last_name", "email")
+
+    visible_unique_tasks = [task for row in rows for service in row["services"] for task in service["tasks"]]
+    total_unique_tasks = len(visible_unique_tasks)
+    completed_unique_tasks = sum(1 for task in visible_unique_tasks if task.status == DesignTask.Status.DONE)
     overall_progress = round(sum(overall_parts) / len(overall_parts)) if overall_parts else 0
-    visible_services = [service for row in rows for service in row["services"]]
-    total_services = len(visible_services)
-    completed_services = sum(1 for service in visible_services if service["progress"] >= 100)
-    renewal_services = sum(1 for service in visible_services if service["is_recurring"])
+    completed_projects = sum(1 for row in rows if row["progress"] >= 100)
+    pending_projects = max(len(rows) - completed_projects, 0)
+    management_done = sum(1 for task in management_tasks if task.status == ManagementTask.Status.DONE)
+    management_pending = max(len(management_tasks) - management_done, 0)
+
     return render(request, "design/social_media.html", {
         "rows": rows,
         "project_count": len(rows),
-        "total_services": total_services,
-        "completed_services": completed_services,
-        "pending_services": max(total_services - completed_services, 0),
-        "renewal_services": renewal_services,
+        "pending_projects": pending_projects,
+        "completed_projects": completed_projects,
+        "total_unique_tasks": total_unique_tasks,
+        "completed_unique_tasks": completed_unique_tasks,
+        "pending_unique_tasks": max(total_unique_tasks - completed_unique_tasks, 0),
         "overall_progress": overall_progress,
+        "management_tasks": management_tasks,
+        "management_done": management_done,
+        "management_pending": management_pending,
+        "responsibles": responsibles,
         "search_query": q,
         "selected_status": status,
+        "selected_responsible": responsible,
     })
 
 
@@ -413,7 +484,11 @@ def design_project_tasks(request, project_pk):
     service_rows = []
     project_parts = []
     for assignment in project.contracted_plans.all():
-        if not assignment.is_active or assignment.plan.department != PlanDepartment.DESIGN:
+        if (
+            not assignment.is_active
+            or assignment.plan.department != PlanDepartment.DESIGN
+            or assignment.plan.service_type == ServiceType.SOCIAL_MEDIA
+        ):
             continue
         task_rows = []
         task_parts = []
@@ -463,8 +538,14 @@ def design_service_manage(request, project_pk):
     project = get_object_or_404(Project.objects.select_related("client"), pk=project_pk)
     if not can_access_project(request.user, project):
         raise PermissionDenied("Este proyecto no está asignado a Diseño.")
-    plans = ServicePlan.objects.filter(is_active=True, department=PlanDepartment.DESIGN).order_by("service_type", "name")
-    active_ids = set(project.contracted_plans.filter(is_active=True, plan__department=PlanDepartment.DESIGN).values_list("plan_id", flat=True))
+    plans = ServicePlan.objects.filter(
+        is_active=True, department=PlanDepartment.DESIGN
+    ).exclude(service_type=ServiceType.SOCIAL_MEDIA).order_by("service_type", "name")
+    active_ids = set(
+        project.contracted_plans.filter(is_active=True, plan__department=PlanDepartment.DESIGN)
+        .exclude(plan__service_type=ServiceType.SOCIAL_MEDIA)
+        .values_list("plan_id", flat=True)
+    )
 
     if request.method == "POST":
         selected_ids = {int(value) for value in request.POST.getlist("service_plans") if str(value).isdigit()}
@@ -481,10 +562,10 @@ def design_service_manage(request, project_pk):
 
         for assignment in project.contracted_plans.select_related("plan").filter(
             is_active=True, plan__department=PlanDepartment.DESIGN
-        ).exclude(plan_id__in=selected_ids):
+        ).exclude(plan__service_type=ServiceType.SOCIAL_MEDIA).exclude(plan_id__in=selected_ids):
             protected = any(_design_task_audit_locked(task) for task in assignment.design_tasks.all())
             if protected:
-                messages.warning(request, f"{assignment.plan.name} no se retiró porque contiene una tarea única completada y aprobada en Auditoría General.")
+                messages.warning(request, f"{assignment.plan.name} no se retiró porque contiene una tarea única completada y aprobada en Auditoría Proyectos.")
                 continue
             assignment.is_active = False
             assignment.save(update_fields=["is_active", "updated_at"])
@@ -494,7 +575,7 @@ def design_service_manage(request, project_pk):
         sync_project_area_records(project, request.user)
         log_activity(request.user, "design", "design_services_update", project, "Servicios de Diseño actualizados")
         messages.success(request, "Servicios de Diseño actualizados. La bitácora conservó todo el historial realizado.")
-        return redirect("design:project_tasks", project_pk=project.pk)
+        return redirect("design:tasks")
 
     return render(request, "design/service_manage.html", {
         "project": project,
@@ -517,11 +598,11 @@ def design_task_create(request):
         ensure_current_design_task_cycle(task)
         log_activity(request.user, "design", "design_task_create", task, task.title)
         messages.success(request, "Actividad de Diseño creada.")
-        return redirect("design:project_tasks", project_pk=task.project_plan.project_id)
+        return redirect("design:tasks")
     return render(request, "shared/form.html", {
         "form": form,
         "title": "Nueva tarea de Diseño",
-        "subtitle": "Las tareas únicas se completan una vez. El contenido recurrente se controla por periodo y por entregable.",
+        "subtitle": "Diseño trabaja aquí con actividades únicas. Social Media se controla en su módulo independiente.",
     })
 
 
@@ -532,13 +613,13 @@ def design_task_edit(request, pk):
         raise PermissionDenied("Esta tarea no pertenece a un proyecto asignado a Diseño.")
     locked = _design_task_audit_locked(task)
     if locked and request.method == "POST":
-        messages.error(request, "Esta tarea única ya fue completada y aprobada en Auditoría General. Quedó bloqueada como registro histórico.")
+        messages.error(request, "Esta tarea única ya fue completada y aprobada en Auditoría Proyectos. Quedó bloqueada como registro histórico.")
         return redirect("design:project_tasks", project_pk=task.project_plan.project_id)
     form = DesignTaskForm(request.POST or None, instance=task, user=request.user)
     if locked:
         for field in form.fields.values():
             field.disabled = True
-        messages.info(request, "Registro protegido: la tarea fue completada y aprobada por Auditoría General.")
+        messages.info(request, "Registro protegido: la tarea fue completada y aprobada por Auditoría Proyectos.")
     if request.method == "POST" and form.is_valid():
         task = form.save(commit=False)
         task.updated_by = request.user
@@ -546,7 +627,7 @@ def design_task_edit(request, pk):
         ensure_current_design_task_cycle(task)
         log_activity(request.user, "design", "design_task_update", task, task.title)
         messages.success(request, "Actividad actualizada y registrada en bitácora.")
-        return redirect("design:project_tasks", project_pk=task.project_plan.project_id)
+        return redirect("design:tasks")
     return render(request, "shared/form.html", {
         "form": form,
         "title": "Editar tarea de Diseño" if not locked else "Tarea protegida",
@@ -565,7 +646,7 @@ def design_task_toggle(request, pk):
         messages.warning(request, "El contenido se completa con los checks Creado y Publicado de cada entregable.")
         return redirect("design:project_tasks", project_pk=task.project_plan.project_id)
     if _design_task_audit_locked(task):
-        messages.error(request, "No se puede reabrir: esta tarea ya fue aprobada en Auditoría General.")
+        messages.error(request, "No se puede reabrir: esta tarea ya fue aprobada en Auditoría Proyectos.")
         return redirect("design:project_tasks", project_pk=task.project_plan.project_id)
     task.status = DesignTask.Status.TODO if task.status == DesignTask.Status.DONE else DesignTask.Status.DONE
     task.updated_by = request.user

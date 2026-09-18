@@ -155,20 +155,16 @@ def visible_projects_for_user(user):
     qs = Project.objects.select_related("client", "purchased_plan__plan").prefetch_related(
         "assignments__user", "contracted_plans__plan", "contracted_plans__subscription"
     )
-    if user.is_manager or user.role == "administration":
-        return qs
-
-    area = ROLE_AREA_MAP.get(user.role)
-    if area:
-        return qs.filter(area_filter(area)).distinct()
-    return qs.none()
+    # Proyectos es un panel transversal: todo el equipo puede consultar todos los
+    # proyectos. El rol Vendedor es la excepción y trabaja únicamente en su panel
+    # comercial + agenda. Los permisos de edición siguen controlados por cada vista.
+    if getattr(user, "role", "") == "sales" and not getattr(user, "is_superuser", False):
+        return qs.none()
+    return qs
 
 
 def can_access_project(user, project):
-    if user.is_manager or user.role == "administration":
-        return True
-
-    area = ROLE_AREA_MAP.get(user.role)
-    if not area:
-        return False
-    return project_belongs_to_area(project, area)
+    return bool(
+        getattr(user, "is_authenticated", False)
+        and (getattr(user, "is_superuser", False) or getattr(user, "role", "") != "sales")
+    )

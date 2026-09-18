@@ -139,9 +139,7 @@ def build_project_summary(project, viewer=None):
     campaign_rows = list(project.ad_campaigns.select_related("assigned_to").all())
     links = list(project.resource_links.all())
     images = list(project.image_references.all())
-    can_view_administration = bool(
-        viewer and (getattr(viewer, "is_manager", False) or getattr(viewer, "role", "") == "administration")
-    )
+    can_view_administration = bool(viewer and getattr(viewer, "is_manager", False))
     shared_contracted_plans = [
         item for item in contracted_plans
         if can_view_administration or item.plan.department != "administration"

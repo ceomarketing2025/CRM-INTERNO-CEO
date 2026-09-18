@@ -1,4 +1,5 @@
 from functools import wraps
+
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 
@@ -7,6 +8,7 @@ ROLE_ADMINISTRATION = "administration"
 ROLE_MARKETING = "marketing"
 ROLE_DESIGN = "design"
 ROLE_DEVELOPER = "developer"
+ROLE_SALES = "sales"
 
 
 def role_required(*roles):
@@ -26,3 +28,7 @@ def role_required(*roles):
 
 def manager_required(view_func):
     return role_required(ROLE_MANAGER)(view_func)
+
+
+def sales_required(view_func):
+    return role_required(ROLE_SALES)(view_func)

@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     "apps.finance.apps.FinanceConfig",
     "apps.audit.apps.AuditConfig",
     "apps.dashboard.apps.DashboardConfig",
+    "apps.sales.apps.SalesConfig",
+    "apps.socialmedia.apps.SocialMediaConfig",
 ]
 
 MIDDLEWARE = [
@@ -46,6 +48,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.core.middleware.SalesPortalRestrictionMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-intro">
   <div><h2>Clientes</h2><p>Aquí vive únicamente la información del cliente. Los servicios contratados se registran en Proyectos.</p></div>
-  {% if current_role == 'administration' or request.user.is_manager %}<a class="btn btn-primary" href="{% url 'clients:create' %}">+ Nuevo cliente</a>{% endif %}
+  {% if request.user.is_manager %}<a class="btn btn-primary" href="{% url 'clients:create' %}">+ Nuevo cliente</a>{% endif %}
 </div>
 <div class="card">
   <form class="toolbar" method="get"><input type="search" name="q" value="{{ q }}" placeholder="Buscar por cliente, empresa o teléfono..."><button class="btn btn-secondary">Buscar</button></form>

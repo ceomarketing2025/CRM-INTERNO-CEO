@@ -24,11 +24,12 @@
 
   {% if not marketing_only %}{% include 'reminders/_google_connection.html' %}{% endif %}
 
-  {% if warning_counts.overdue or warning_counts.today or warning_counts.soon %}
+  {% if warning_counts.overdue or warning_counts.today or warning_counts.soon or warning_counts.warning %}
   <div class="deadline-summary">
     {% if warning_counts.overdue %}<div class="deadline-stat danger"><strong>{{ warning_counts.overdue }}</strong><span>Vencidos</span><small>Requieren atención</small></div>{% endif %}
     {% if warning_counts.today %}<div class="deadline-stat wait"><strong>{{ warning_counts.today }}</strong><span>Para hoy</span><small>Vencen durante el día</small></div>{% endif %}
-    {% if warning_counts.soon %}<div class="deadline-stat wait"><strong>{{ warning_counts.soon }}</strong><span>Próximos</span><small>Dentro de 48 horas</small></div>{% endif %}
+    {% if warning_counts.soon %}<div class="deadline-stat soon"><strong>{{ warning_counts.soon }}</strong><span>Próximos</span><small>Dentro de 48 horas</small></div>{% endif %}
+    {% if warning_counts.warning %}<div class="deadline-stat warning"><strong>{{ warning_counts.warning }}</strong><span>Esta semana</span><small>Entre 3 y 7 días</small></div>{% endif %}
   </div>
   {% endif %}
 

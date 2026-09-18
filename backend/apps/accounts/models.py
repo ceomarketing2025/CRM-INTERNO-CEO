@@ -33,6 +33,7 @@ class UserAccount(AbstractUser):
         MARKETING = "marketing", "Marketing"
         DESIGN = "design", "Diseño"
         DEVELOPER = "developer", "Desarrollador"
+        SALES = "sales", "Vendedor"
 
     username = None
     email = models.EmailField(unique=True)

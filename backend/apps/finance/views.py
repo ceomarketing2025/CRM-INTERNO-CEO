@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.audit.services import log_activity
-from apps.core.decorators import manager_required, role_required
+from apps.core.decorators import manager_required
 from apps.plans.models import ClientPlan
 from apps.projects.models import Project
 from .forms import (
@@ -96,7 +96,7 @@ def operating_delete(request, pk):
 # Pagos del cliente: pago único de proyecto + suscripciones
 # ---------------------------------------------------------------------------
 
-@role_required("administration")
+@manager_required
 def project_payment_create(request, project_pk):
     project = get_object_or_404(Project.objects.select_related("client").prefetch_related("contracted_plans__plan", "client_payments"), pk=project_pk)
     summary = project_payment_summary(project)
@@ -108,7 +108,7 @@ def project_payment_create(request, project_pk):
         obj.save()
         log_activity(request.user, "finance", "project_payment_create", obj, description=f"Pago cliente · {project.project_code}")
         messages.success(request, "Pago del proyecto registrado y enviado a la billetera.")
-        return redirect("projects:detail", pk=project.pk)
+        return redirect("finance:dashboard")
     return render(request, "finance/project_payment_form.html", {
         "form": form,
         "project": project,
@@ -125,7 +125,7 @@ def project_payment_delete(request, pk):
         log_activity(request.user, "finance", "project_payment_delete", obj, description=label)
         obj.delete()
         messages.success(request, "Pago del proyecto eliminado.")
-    return redirect("projects:detail", pk=project_pk)
+    return redirect("finance:dashboard")
 
 
 @manager_required

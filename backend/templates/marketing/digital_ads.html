@@ -4,7 +4,7 @@
 {% with marketing_section='ads' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
 <div class="page-intro marketing-page-intro">
   <div><span class="eyebrow">Publicidad Digital</span><h2>Publicidad tradicional + plataformas</h2><p>Publicidad tradicional funciona como control de este flujo. Selecciona Sí y pulsa “Lanzar campaña”; después se habilitan Meta Ads, Google Ads y TikTok Ads. Cada plataforma debe guardarse antes de crear su campaña.</p></div>
-  <div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:campaign_list' %}">Todas las campañas</a><a class="btn btn-secondary" href="{% url 'marketing:social_plans' %}">Social Media</a></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:campaign_list' %}">Todas las campañas</a><a class="btn btn-secondary" href="{% url 'socialmedia:dashboard' %}">Social Media</a></div>
 </div>
 <div class="semantic-banner is-danger"><strong>Validación obligatoria</strong><span>Ninguna campaña puede lanzarse sin revisión del administrador/Gerencia. Si se modifica información crítica después de aprobar, la aprobación se invalida.</span></div>
 
@@ -105,7 +105,7 @@
 
 <div class="card social-bridge-card">
   <div><span class="eyebrow">Social Media</span><h3>Seguimiento y publicaciones</h3><p>Seguimiento diario y publicaciones dentro de Marketing.</p></div>
-  <div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:social_tracking' %}">Seguimiento</a><a class="btn btn-primary" href="{% url 'marketing:social_plans' %}">Planes y publicaciones</a></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:tasks' %}">Tareas Marketing</a><a class="btn btn-primary" href="{% url 'socialmedia:dashboard' %}">Planes y publicaciones</a></div>
 </div>
 
 <script>

@@ -1,0 +1,43 @@
+{% if management_area_tasks %}
+<section class="mg-area-panel">
+  <div class="mg-area-panel-head">
+    <div>
+      <span class="eyebrow">Asignaciones de Gerencia</span>
+      <h3>Tareas para {{ management_area_label }}</h3>
+      <p>Estas actividades fueron asignadas desde Gerencia y se sincronizan con Auditoría cuando pertenecen a un proyecto.</p>
+    </div>
+    {% if request.user.is_manager %}<a class="btn btn-secondary" href="{% url 'audit:management_tasks' %}">Ver tareas Gerencia</a>{% endif %}
+  </div>
+  <div class="mg-area-task-list">
+    {% for task in management_area_tasks %}
+    <article class="mg-area-task status-{{ task.status }} priority-{{ task.priority }}">
+      <div class="mg-area-task-main">
+        <div class="mg-area-task-tags">
+          <span class="mg-task-status">{{ task.get_status_display }}</span>
+          <span>{{ task.get_priority_display }}</span>
+          {% if task.due_date %}<span>Entrega {{ task.due_date|date:'d/m/Y' }}</span>{% endif %}
+        </div>
+        <strong>{{ task.title }}</strong>
+        {% if task.description %}<p>{{ task.description }}</p>{% endif %}
+        <small>
+          {% if task.client %}{{ task.client.business_name }}{% else %}Tarea general{% endif %}
+          {% if task.project %} · {{ task.project.project_code }} · {{ task.project.name }}{% endif %}
+          {% if request.user.is_manager and task.assigned_to %} · {{ task.assigned_to.display_name }}{% endif %}
+        </small>
+      </div>
+      <form method="post" action="{% url 'audit:management_task_status' task.pk %}" class="mg-area-task-action">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <select name="status" aria-label="Estado de {{ task.title }}">
+          <option value="todo" {% if task.status == 'todo' %}selected{% endif %}>Pendiente</option>
+          <option value="doing" {% if task.status == 'doing' %}selected{% endif %}>En proceso</option>
+          <option value="review" {% if task.status == 'review' %}selected{% endif %}>Para revisión</option>
+          <option value="done" {% if task.status == 'done' %}selected{% endif %}>Completada</option>
+        </select>
+        <button class="btn btn-primary btn-sm" type="submit">Actualizar</button>
+      </form>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}

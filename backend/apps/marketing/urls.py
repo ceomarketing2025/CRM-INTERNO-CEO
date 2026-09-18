@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import RedirectView
 from . import views
 
 app_name = "marketing"
@@ -31,8 +32,8 @@ urlpatterns = [
     path("social-tracking/<int:pk>/audit/", views.social_tracking_audit, name="social_tracking_audit"),
     path("social-tracking/new/", views.social_tracking_create, name="social_tracking_create"),
     path("social-tracking/<int:pk>/edit/", views.social_tracking_edit, name="social_tracking_edit"),
-    path("social-plans/", views.social_plan_list, name="social_plans"),
-    path("social-plans/new/", views.social_plan_create, name="social_plan_create"),
-    path("social-plans/<int:pk>/edit/", views.social_plan_edit, name="social_plan_edit"),
+    path("social-plans/", RedirectView.as_view(pattern_name="socialmedia:dashboard", permanent=False), name="social_plans"),
+    path("social-plans/new/", RedirectView.as_view(pattern_name="socialmedia:create", permanent=False), name="social_plan_create"),
+    path("social-plans/<int:pk>/edit/", RedirectView.as_view(pattern_name="socialmedia:edit", permanent=False), name="social_plan_edit"),
     path("social-plans/<int:plan_pk>/daily/new/", views.social_daily_add, name="social_daily_add"),
 ]

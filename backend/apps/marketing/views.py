@@ -8,7 +8,7 @@ import qrcode
 
 from apps.audit.models import ActivityLog, GeneralAuditCheck
 from apps.audit.services import build_general_audit_rows, log_activity, review_general_audit_check
-from apps.core.decorators import role_required
+from apps.core.decorators import manager_required, role_required
 from apps.projects.models import Project
 from apps.projects.selectors import can_access_project, projects_for_area
 
@@ -128,7 +128,68 @@ def marketing_list(request):
             "percent": percent,
             "last_log": last_log,
         })
-    return render(request, "marketing/dashboard.html", {"project_rows": project_rows, "tasks": tasks, "campaigns": campaigns, "current_page_label": "Ficha Marketing"})
+    # Social Media sincronizado: Marketing ve las MISMAS piezas creadas por Diseño.
+    # No se generan tareas paralelas en este dashboard.
+    from apps.design.services import ensure_current_social_media_cycle
+    from apps.plans.models import ClientPlan
+    from apps.plans.models.choices import ServiceType
+
+    social_qs = (
+        ClientPlan.objects.select_related("client", "plan")
+        .filter(is_active=True, plan__service_type=ServiceType.SOCIAL_MEDIA)
+        .prefetch_related("project_links__project", "social_media_cycles__items")
+        .order_by("client__business_name", "plan__name")
+    )
+    if not request.user.is_manager:
+        visible_project_ids = [row["project"].pk for row in project_rows]
+        social_qs = social_qs.filter(project_links__project_id__in=visible_project_ids).distinct()
+
+    social_rows = []
+    social_ready_publish = 0
+    social_waiting_design = 0
+    for assignment in social_qs:
+        cycle = ensure_current_social_media_cycle(assignment)
+        items = list(cycle.items.all()) if cycle else []
+        total = len(items)
+        design_done = sum(1 for item in items if item.ready)
+        marketing_done = sum(1 for item in items if item.is_complete)
+        ready_publish = sum(1 for item in items if item.ready and not item.is_complete)
+        waiting_design = sum(1 for item in items if not item.ready)
+        social_ready_publish += ready_publish
+        social_waiting_design += waiting_design
+        project_link = assignment.project_links.filter(is_active=True).select_related("project").first()
+        social_rows.append({
+            "assignment": assignment,
+            "project": project_link.project if project_link else None,
+            "total": total,
+            "design_done": design_done,
+            "marketing_done": marketing_done,
+            "ready_publish": ready_publish,
+            "waiting_design": waiting_design,
+            "design_percent": round(design_done * 100 / total) if total else 0,
+            "marketing_percent": round(marketing_done * 100 / total) if total else 0,
+            "publish_items": [item for item in items if item.ready and not item.is_complete][:4],
+        })
+
+    progress_values = [row["percent"] for row in project_rows]
+    dashboard_stats = {
+        "projects": len(project_rows),
+        "avg_progress": round(sum(progress_values) / len(progress_values)) if progress_values else 0,
+        "ready_projects": sum(1 for row in project_rows if row["percent"] >= 90),
+        "pending_tasks": tasks_qs.exclude(status="done").count(),
+        "campaigns_review": campaigns_qs.filter(status__in=["manager_review", "changes_requested"]).count(),
+        "social_subscriptions": len(social_rows),
+        "social_ready_publish": social_ready_publish,
+        "social_waiting_design": social_waiting_design,
+    }
+    return render(request, "marketing/dashboard.html", {
+        "project_rows": project_rows,
+        "tasks": tasks,
+        "campaigns": campaigns,
+        "social_rows": social_rows[:8],
+        "dashboard_stats": dashboard_stats,
+        "current_page_label": "Ficha Marketing",
+    })
 
 
 @role_required("marketing")
@@ -412,10 +473,10 @@ def review_qr(request, project_pk):
     return response
 
 
-@role_required("marketing", "administration")
+@role_required("marketing")
 def campaign_list(request):
     records = AdCampaign.objects.select_related("project__client", "assigned_to", "manager_approved_by")
-    if not request.user.is_manager and request.user.role != "administration":
+    if not request.user.is_manager:
         records = records.filter(project__assignments__user=request.user, project__assignments__area="marketing").distinct()
     return render(request, "marketing/campaign_list.html", {"records": records, "current_page_label": "Publicidad Digital"})
 
@@ -480,7 +541,7 @@ def campaign_edit(request, pk):
     })
 
 
-@role_required("manager", "administration")
+@manager_required
 def campaign_manager_review(request, pk):
     campaign = get_object_or_404(AdCampaign.objects.select_related("project__client"), pk=pk)
     form = CampaignManagerReviewForm(request.POST or None, instance=campaign)
@@ -517,9 +578,9 @@ def campaign_weekly_report(request, pk):
     })
 
 
-@role_required("administration")
+@manager_required
 def social_tracking_list(request):
-    """Auditoría General por proyecto. Solo Gerencia/Administración."""
+    """Auditoría General por proyecto. Solo Gerencia/Superadmin."""
     from collections import OrderedDict
     from apps.projects.models import Project
     from apps.projects.selectors import project_area_flags
@@ -679,7 +740,7 @@ def social_tracking_list(request):
     })
 
 
-@role_required("administration")
+@manager_required
 def social_tracking_audit(request, pk):
     if request.method != "POST":
         return redirect("marketing:general_audit")

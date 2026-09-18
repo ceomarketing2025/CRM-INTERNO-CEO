@@ -1,11 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from apps.audit.models import ActivityLog
 from apps.audit.services import log_activity
-from apps.core.decorators import manager_required, role_required
+from apps.core.decorators import manager_required
 from apps.design.models import DesignBrief
 from apps.finance.services import project_payment_summary
 from apps.marketing.models import MarketingWorkspace
@@ -21,6 +23,30 @@ from .services import sync_project_area_records
 
 
 REQUIRED_PALETTE_ROLES = {"text", "background", "primary", "secondary", "accent"}
+
+
+def _project_visual_status(project, overall_percent):
+    """Estado semántico único para listado y ficha del proyecto.
+
+    No reemplaza el status persistido: solo traduce estado + avance + fecha a un
+    lenguaje visual fácil de escanear en el panel transversal.
+    """
+    today = timezone.localdate()
+    if project.status in {"completed", "delivered"}:
+        return {"code": "complete", "label": "Completado", "hint": "Proyecto cerrado"}
+    if project.status == "cancelled":
+        return {"code": "neutral", "label": "Cancelado", "hint": "Sin operación"}
+    if project.status == "paused":
+        return {"code": "neutral", "label": "Pausado", "hint": "Esperando reactivación"}
+    if project.due_date and project.due_date < today and overall_percent < 100:
+        return {"code": "pending", "label": "Retrasado", "hint": "Fecha objetivo vencida"}
+    if project.status in {"development_intake", "in_development", "review"}:
+        return {"code": "development", "label": "En desarrollo", "hint": "Producción en curso"}
+    if overall_percent >= 90:
+        return {"code": "ready", "label": "Por completar", "hint": "Últimos pendientes"}
+    if overall_percent < 25 or project.status in {"administration", "design_intake", "information_ready"}:
+        return {"code": "pending", "label": "Pendiente", "hint": "Requiere avance"}
+    return {"code": "active", "label": "Activo", "hint": "Trabajo en curso"}
 
 
 def _contracted_by_department(project):
@@ -95,10 +121,9 @@ def _control_data(project, viewer=None):
     if area_flags["development"]:
         progress_parts.append(development_percent)
     overall_percent = round(sum(progress_parts) / len(progress_parts)) if progress_parts else 0
+    visual_status = _project_visual_status(project, overall_percent)
 
-    can_view_administration = bool(
-        viewer and (getattr(viewer, "is_manager", False) or getattr(viewer, "role", "") == "administration")
-    )
+    can_view_administration = bool(viewer and getattr(viewer, "is_manager", False))
     logs_qs = ActivityLog.objects.filter(metadata__project_id=project.pk).select_related("user")
     if not can_view_administration:
         logs_qs = logs_qs.exclude(module__in=["finance", "administration"]).exclude(
@@ -170,6 +195,7 @@ def _control_data(project, viewer=None):
         "production_done": production_done,
         "production_percent": production_percent,
         "overall_percent": overall_percent,
+        "visual_status": visual_status,
         "area_flags": area_flags,
         "can_view_administration": can_view_administration,
         "last_log": last_log,
@@ -179,15 +205,51 @@ def _control_data(project, viewer=None):
 
 @login_required
 def project_list(request):
-    projects = visible_projects_for_user(request.user).prefetch_related("contracted_plans__plan", "contracted_plans__subscription", "domain_hosting_records", "project_credentials")
-    status = request.GET.get("status", "")
+    projects = visible_projects_for_user(request.user).prefetch_related(
+        "contracted_plans__plan", "contracted_plans__subscription",
+        "domain_hosting_records", "project_credentials"
+    )
+    status = (request.GET.get("status") or "").strip()
+    area = (request.GET.get("area") or "").strip()
+    q = (request.GET.get("q") or "").strip()
+
     if status:
         projects = projects.filter(status=status)
+    if q:
+        projects = projects.filter(
+            Q(project_code__icontains=q)
+            | Q(name__icontains=q)
+            | Q(client__business_name__icontains=q)
+            | Q(client__first_name__icontains=q)
+            | Q(client__last_name__icontains=q)
+        ).distinct()
+
     rows = []
     for project in projects:
         sync_project_area_records(project, request.user)
-        rows.append({"project": project, "control": _control_data(project, viewer=request.user)})
-    return render(request, "projects/list.html", {"project_rows": rows, "status_filter": status})
+        control = _control_data(project, viewer=request.user)
+        if area in {"design", "marketing", "development"} and not control["area_flags"].get(area):
+            continue
+        rows.append({"project": project, "control": control})
+
+    project_summary = {
+        "total": len(rows),
+        "pending": sum(1 for row in rows if row["control"]["visual_status"]["code"] == "pending"),
+        "development": sum(1 for row in rows if row["control"]["visual_status"]["code"] == "development"),
+        "active": sum(1 for row in rows if row["control"]["visual_status"]["code"] in {"active", "ready"}),
+        "complete": sum(1 for row in rows if row["control"]["visual_status"]["code"] == "complete"),
+        "neutral": sum(1 for row in rows if row["control"]["visual_status"]["code"] == "neutral"),
+    }
+
+    return render(request, "projects/list.html", {
+        "project_rows": rows,
+        "project_summary": project_summary,
+        "status_filter": status,
+        "area_filter": area,
+        "search_query": q,
+        "status_choices": Project._meta.get_field("status").choices,
+        "area_choices": (("design", "Diseño"), ("marketing", "Marketing"), ("development", "Desarrollo")),
+    })
 
 
 @login_required
@@ -206,8 +268,8 @@ def project_detail(request, pk):
     sync_project_area_records(project, request.user)
     note_form = ProjectNoteForm()
     control = _control_data(project, viewer=request.user)
-    payment_summary = project_payment_summary(project)
-    project_payments = project.client_payments.select_related("created_by").all()
+    payment_summary = project_payment_summary(project) if request.user.is_manager else None
+    project_payments = project.client_payments.select_related("created_by").all() if request.user.is_manager else []
     return render(request, "projects/detail.html", {
         "project": project,
         "note_form": note_form,
@@ -217,7 +279,7 @@ def project_detail(request, pk):
     })
 
 
-@role_required("administration")
+@manager_required
 def project_create(request):
     initial = {}
     client_id = request.GET.get("client")
@@ -233,7 +295,7 @@ def project_create(request):
         sync_project_area_records(obj, request.user)
         log_activity(request.user, "projects", "create", obj)
         messages.success(request, "Proyecto creado y productos contratados asignados por área.")
-        return redirect("projects:detail", pk=obj.pk)
+        return redirect("projects:list")
     return render(request, "projects/form.html", {
         "form": form,
         "title": "Nuevo proyecto",
@@ -241,7 +303,7 @@ def project_create(request):
     })
 
 
-@role_required("administration")
+@manager_required
 def project_edit(request, pk):
     obj = get_object_or_404(Project.objects.prefetch_related("contracted_plans__plan"), pk=pk)
     form = ProjectForm(request.POST or None, instance=obj, user=request.user)
@@ -250,7 +312,7 @@ def project_edit(request, pk):
         sync_project_area_records(obj, request.user)
         log_activity(request.user, "projects", "update", obj)
         messages.success(request, "Proyecto actualizado.")
-        return redirect("projects:detail", pk=obj.pk)
+        return redirect("projects:list")
     return render(request, "projects/form.html", {
         "form": form,
         "title": "Editar proyecto",
@@ -279,7 +341,7 @@ def assignment_create(request, pk):
             obj.save()
         log_activity(request.user, "projects", "assign", obj)
         messages.success(request, "Responsable principal del área actualizado.")
-        return redirect("projects:detail", pk=project.pk)
+        return redirect("projects:list")
     return render(request, "shared/form.html", {"form": form, "title": "Asignar responsable", "subtitle": project.name})
 
 

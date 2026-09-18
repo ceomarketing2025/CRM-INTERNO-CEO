@@ -2,70 +2,56 @@
 {% block page_heading %}Tareas de Diseño{% endblock %}
 {% block content %}
 <style>
-.design-board-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-bottom:18px}.design-board-head h2{margin:4px 0}.design-board-head p{margin:0;max-width:820px}.design-kpis{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:12px;margin-bottom:15px}.design-kpi{padding:16px}.design-kpi span{display:block;font-size:11px;opacity:.62;text-transform:uppercase;letter-spacing:.06em}.design-kpi strong{display:block;font-size:26px;margin-top:4px}.design-kpi small{opacity:.6}.design-filter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;margin-bottom:15px}.design-filter input{flex:1;min-width:250px}.design-filter input,.design-filter select{min-height:42px}.project-task-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.design-project-summary{padding:18px;position:relative;overflow:hidden}.design-project-summary:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:rgba(127,127,127,.2)}.design-project-summary.state-red:before{background:#d94b4b}.design-project-summary.state-yellow:before{background:#d8a125}.design-project-summary.state-green:before{background:#2b9c66}.dps-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.dps-title h3{margin:4px 0 3px;font-size:19px}.dps-title p{margin:0;opacity:.65;font-size:12px}.eye-btn{width:42px;height:42px;display:grid;place-items:center;border-radius:12px;font-size:18px}.dps-stats{display:grid;grid-template-columns:1fr auto;align-items:end;gap:16px;margin:16px 0 12px}.dps-progress strong{font-size:28px;line-height:1}.dps-progress span{display:block;font-size:11px;opacity:.6;margin-top:4px}.dps-service-count{text-align:right}.dps-service-count strong{font-size:18px}.dps-service-count small{display:block;opacity:.6}.dps-bar{height:8px;border-radius:999px;background:rgba(127,127,127,.12);overflow:hidden;margin-bottom:14px}.dps-bar i{display:block;height:100%;border-radius:999px}.state-red .dps-bar i{background:#d94b4b}.state-yellow .dps-bar i{background:#d8a125}.state-green .dps-bar i{background:#2b9c66}.service-dots{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.service-dot{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:rgba(127,127,127,.07);font-size:11px;font-weight:700;max-width:190px}.service-dot i{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:#d94b4b}.service-dot.green i{background:#2b9c66}.service-dot.blue i{background:#2f6fe4}.service-dot span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dps-foot{display:flex;justify-content:space-between;gap:10px;margin-top:15px;padding-top:12px;border-top:1px solid rgba(127,127,127,.1);font-size:11px;opacity:.65}.legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:0 0 14px;font-size:11px;opacity:.72}.legend span{display:flex;gap:6px;align-items:center}.legend i{width:9px;height:9px;border-radius:50%;display:block}.legend .g{background:#2b9c66}.legend .r{background:#d94b4b}.legend .b{background:#2f6fe4}
-@media(max-width:980px){.design-kpis{grid-template-columns:repeat(3,1fr)}.project-task-grid{grid-template-columns:1fr}}@media(max-width:640px){.design-kpis{grid-template-columns:repeat(2,1fr)}.dps-foot{flex-direction:column}}
+.design-task-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}.design-task-hero h2{margin:4px 0 5px;font-size:27px}.design-task-hero p{margin:0;color:var(--muted);font-size:11px;max-width:820px}.design-task-kpis{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:10px;margin-bottom:14px}.design-task-kpi{padding:14px 15px;position:relative;overflow:hidden}.design-task-kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#9aa6b8}.design-task-kpi.pending:before{background:#d75151}.design-task-kpi.progress:before{background:#d6a027}.design-task-kpi.done:before{background:#299568}.design-task-kpi.management:before{background:#4d7398}.design-task-kpi span,.design-task-kpi small{display:block}.design-task-kpi span{font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:850}.design-task-kpi strong{display:block;font-size:23px;margin:4px 0 1px}.design-task-kpi small{font-size:8px;color:#8a95a6}.design-task-filter{display:grid;grid-template-columns:minmax(280px,1fr) 180px 210px auto auto;gap:9px;align-items:center;padding:11px 12px;margin-bottom:16px}.design-task-filter input,.design-task-filter select{height:44px}.design-section-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin:20px 0 10px}.design-section-head h3{margin:3px 0 0;font-size:16px}.design-section-head p{margin:3px 0 0;color:var(--muted);font-size:10px}.design-wide-list{display:grid;gap:10px}.design-wide-row{display:grid;grid-template-columns:minmax(250px,1.05fr) minmax(250px,1.2fr) minmax(230px,.9fr) 120px 62px;gap:16px;align-items:center;padding:16px 18px;background:#fff;border:1px solid #e5eaf1;border-radius:17px;box-shadow:0 7px 20px rgba(20,31,54,.04);position:relative;overflow:hidden}.design-wide-row:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:#d75151}.design-wide-row.state-yellow:before{background:#d6a027}.design-wide-row.state-green:before{background:#299568}.design-project-main h4{margin:4px 0 3px;font-size:15px}.design-project-main p{margin:0;color:var(--muted);font-size:9px}.design-service-list,.design-task-preview{display:flex;gap:6px;flex-wrap:wrap}.design-service-list span,.design-task-preview span{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:5px 8px;background:#f3f6fa;color:#59687e;font-size:8px;font-weight:800}.design-service-list span i{width:7px;height:7px;border-radius:50%;background:#d75151}.design-service-list span.yellow i{background:#d6a027}.design-service-list span.green i{background:#299568}.design-progress-block strong{display:block;font-size:21px}.design-progress-block small{display:block;color:var(--muted);font-size:8px;margin-top:2px}.design-progress-line{height:7px;background:#edf1f5;border-radius:999px;overflow:hidden;margin-top:7px}.design-progress-line i{display:block;height:100%;background:linear-gradient(90deg,#4d78d8,#38a8b9);border-radius:999px}.design-last{font-size:8px;color:var(--muted);line-height:1.5}.design-eye{display:flex;justify-content:flex-end}.manager-task-list{display:grid;gap:9px}.manager-task-row{display:grid;grid-template-columns:minmax(260px,1.3fr) 170px minmax(220px,.8fr) 210px;gap:14px;align-items:center;padding:14px 16px;background:#fff;border:1px solid #e5eaf1;border-radius:16px;position:relative;overflow:hidden}.manager-task-row:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#9ba7b8}.manager-task-row.status-doing:before{background:#d6a027}.manager-task-row.status-review:before{background:#4d78d8}.manager-task-row.status-done:before{background:#299568}.manager-task-main strong,.manager-task-main small{display:block}.manager-task-main strong{font-size:12px}.manager-task-main p{margin:4px 0;color:#657186;font-size:9px}.manager-task-main small{font-size:8px;color:var(--muted)}.manager-task-meta span,.manager-task-meta strong{display:block}.manager-task-meta span{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.manager-task-meta strong{font-size:10px;margin-top:3px}.manager-task-action{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.manager-task-action select{height:40px!important;min-height:40px!important}.design-empty{padding:24px;text-align:center;color:var(--muted);font-size:11px}
+@media(max-width:1250px){.design-task-kpis{grid-template-columns:repeat(3,1fr)}.design-wide-row{grid-template-columns:1fr 1fr 160px 62px}.design-task-preview{grid-column:1/-1}.manager-task-row{grid-template-columns:1fr 1fr}.manager-task-action{grid-column:1/-1}.design-task-filter{grid-template-columns:1fr 1fr 1fr}.design-task-filter input{grid-column:1/-1}}@media(max-width:760px){.design-task-kpis,.design-task-filter,.design-wide-row,.manager-task-row{grid-template-columns:1fr}.design-eye{justify-content:flex-start}.design-task-filter input{grid-column:auto}.manager-task-action{grid-template-columns:1fr}.design-task-hero{align-items:flex-start;flex-direction:column}}
 </style>
 
-<div class="design-board-head">
-  <div>
-    <span class="eyebrow">Diseño · gestión rápida por proyecto</span>
-    <h2>Tareas de Diseño</h2>
-    <p>Vista resumida. Cada card representa un proyecto; abre el ojo para completar tareas, revisar publicaciones y consultar la bitácora sin llenar esta pantalla de detalles.</p>
-  </div>
-  <div class="actions"><a class="btn btn-primary" href="{% url 'design:task_create' %}">＋ Nueva tarea</a></div>
+<div class="design-task-hero">
+  <div><span class="eyebrow">Diseño · actividades únicas</span><h2>Tareas de Diseño</h2><p>Aquí viven únicamente las actividades del área de Diseño y las asignaciones enviadas por Gerencia. Social Media se gestiona exclusivamente desde su módulo independiente.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'design:task_create' %}">Nueva tarea</a></div>
 </div>
 
-<div class="design-kpis">
-  <div class="card design-kpi"><span>Proyectos</span><strong>{{ project_count }}</strong><small>con Diseño contratado</small></div>
-  <div class="card design-kpi"><span>Servicios</span><strong>{{ total_services }}</strong><small>productos activos</small></div>
-  <div class="card design-kpi"><span>Completados</span><strong>{{ completed_services }}</strong><small>al 100% actual</small></div>
-  <div class="card design-kpi"><span>Renovación</span><strong>{{ renewal_services }}</strong><small>servicios recurrentes</small></div>
-  <div class="card design-kpi"><span>Avance general</span><strong>{{ overall_progress }}%</strong><small>estado actual</small></div>
+<div class="design-task-kpis">
+  <div class="card design-task-kpi"><span>Proyectos</span><strong>{{ project_count }}</strong><small>visibles con filtros</small></div>
+  <div class="card design-task-kpi pending"><span>Proyectos pendientes</span><strong>{{ pending_projects }}</strong><small>trabajo todavía abierto</small></div>
+  <div class="card design-task-kpi done"><span>Proyectos completos</span><strong>{{ completed_projects }}</strong><small>actividades al 100%</small></div>
+  <div class="card design-task-kpi progress"><span>Tareas únicas pendientes</span><strong>{{ pending_unique_tasks }}</strong><small>tareas propias de Diseño</small></div>
+  <div class="card design-task-kpi done"><span>Tareas únicas completas</span><strong>{{ completed_unique_tasks }}</strong><small>cerradas por el área</small></div>
+  <div class="card design-task-kpi management"><span>Asignadas por Gerencia</span><strong>{{ management_pending }}</strong><small>{{ management_done }} completadas</small></div>
 </div>
 
-<form method="get" class="card design-filter">
-  <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar cliente, proyecto o servicio…">
-  <select name="status">
-    <option value="all" {% if selected_status == 'all' %}selected{% endif %}>Todos</option>
-    <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Con pendientes</option>
-    <option value="done" {% if selected_status == 'done' %}selected{% endif %}>Completados</option>
-    <option value="renewal" {% if selected_status == 'renewal' %}selected{% endif %}>Con renovación</option>
-  </select>
+<form method="get" class="card design-task-filter">
+  <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar cliente, proyecto, servicio o tarea…">
+  <select name="status"><option value="all" {% if selected_status == 'all' %}selected{% endif %}>Todos los estados</option><option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Pendientes</option><option value="done" {% if selected_status == 'done' %}selected{% endif %}>Completados</option></select>
+  <select name="responsible"><option value="all">Todos los responsables</option>{% for user in responsibles %}<option value="{{ user.pk }}" {% if selected_responsible == user.pk|stringformat:'s' %}selected{% endif %}>{{ user.display_name }}</option>{% endfor %}</select>
   <button class="btn btn-secondary" type="submit">Filtrar</button>
-  {% if search_query or selected_status != 'all' %}<a class="btn btn-ghost" href="{% url 'design:tasks' %}">Limpiar</a>{% endif %}
+  {% if search_query or selected_status != 'all' or selected_responsible != 'all' %}<a class="btn btn-ghost" href="{% url 'design:tasks' %}">Limpiar</a>{% endif %}
 </form>
 
-<div class="legend">
-  <span><i class="g"></i> servicio único completado</span>
-  <span><i class="r"></i> servicio único pendiente</span>
-  <span><i class="b"></i> servicio con renovación</span>
-</div>
-
-<div class="project-task-grid">
-{% for row in rows %}
-  <article class="card design-project-summary state-{{ row.state }}">
-    <div class="dps-top">
-      <div class="dps-title"><span class="project-code">{{ row.project.project_code }}</span><h3>{{ row.project.client.business_name }}</h3><p>{{ row.project.name }}</p></div>
-      <a class="btn btn-secondary eye-btn" title="Ver y gestionar tareas" href="{% url 'design:project_tasks' row.project.pk %}">👁</a>
-    </div>
-    <div class="dps-stats">
-      <div class="dps-progress"><strong>{{ row.progress }}%</strong><span>avance actual del proyecto</span></div>
-      <div class="dps-service-count"><strong>{{ row.service_count }}</strong><small>servicio{{ row.service_count|pluralize }}</small></div>
-    </div>
-    <div class="dps-bar"><i style="width:{{ row.progress }}%"></i></div>
-    <div class="service-dots">
-      {% for service in row.services|slice:':5' %}
-        <span class="service-dot {{ service.dot_state }}" title="{{ service.plan.name }} · {{ service.status_label }}"><i></i><span>{{ service.plan.name }}</span></span>
-      {% endfor %}
-      {% if row.service_count > 5 %}<span class="service-dot"><span>＋{{ row.service_count|add:'-5' }} más</span></span>{% endif %}
-    </div>
-    <div class="dps-foot">
-      <span>{% if row.last_task %}Última edición: {{ row.last_task.updated_by.display_name|default:'Sistema' }}{% else %}Sin cambios todavía{% endif %}</span>
-      <span>{% if row.last_task %}{{ row.last_task.updated_at|date:'d/m/Y H:i' }}{% endif %}</span>
-    </div>
+{% if management_tasks %}
+<div class="design-section-head"><div><span class="eyebrow">Gerencia → Diseño</span><h3>Tareas asignadas por Gerencia</h3><p>Estas tareas se muestran directamente en el área correspondiente y, si tienen proyecto, también alimentan Auditoría Proyectos.</p></div></div>
+<div class="manager-task-list">
+  {% for task in management_tasks %}
+  <article class="manager-task-row status-{{ task.status }}">
+    <div class="manager-task-main"><strong>{{ task.title }}</strong>{% if task.description %}<p>{{ task.description }}</p>{% endif %}<small>{% if task.client %}{{ task.client.business_name }}{% else %}Tarea general{% endif %}{% if task.project %} · {{ task.project.project_code }} · {{ task.project.name }}{% endif %}</small></div>
+    <div class="manager-task-meta"><span>Responsable</span><strong>{{ task.assigned_to.display_name|default:'Sin asignar' }}</strong><span style="margin-top:6px">Prioridad</span><strong>{{ task.get_priority_display }}</strong></div>
+    <div class="manager-task-meta"><span>Estado actual</span><strong>{{ task.get_status_display }}</strong><span style="margin-top:6px">Fecha límite</span><strong>{% if task.due_date %}{{ task.due_date|date:'d/m/Y' }}{% else %}Sin fecha{% endif %}</strong></div>
+    <form method="post" action="{% url 'audit:management_task_status' task.pk %}" class="manager-task-action">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><select name="status"><option value="todo" {% if task.status == 'todo' %}selected{% endif %}>Pendiente</option><option value="doing" {% if task.status == 'doing' %}selected{% endif %}>En proceso</option><option value="review" {% if task.status == 'review' %}selected{% endif %}>Para revisión</option><option value="done" {% if task.status == 'done' %}selected{% endif %}>Completada</option></select><button class="btn btn-primary btn-sm" type="submit">Actualizar</button></form>
   </article>
-{% empty %}
-  <div class="card empty">No hay proyectos de Diseño que coincidan con el filtro.</div>
-{% endfor %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="design-section-head"><div><span class="eyebrow">Trabajo operativo</span><h3>Proyectos de Diseño</h3><p>Una fila por proyecto, con actividades únicas. Social Media no participa en estos cálculos.</p></div></div>
+<div class="design-wide-list">
+{% for row in rows %}
+  <article class="design-wide-row state-{{ row.state }}">
+    <div class="design-project-main"><span class="project-code">{{ row.project.project_code }}</span><h4>{{ row.project.client.business_name }}</h4><p>{{ row.project.name }} · {{ row.task_count }} tarea{{ row.task_count|pluralize }}</p></div>
+    <div><div class="design-service-list">{% for service in row.services %}<span class="{{ service.dot_state }}"><i></i>{{ service.plan.name }} · {{ service.progress }}%</span>{% endfor %}</div></div>
+    <div class="design-task-preview">{% for task in row.tasks_preview %}<span>{{ task.title }}{% if task.status == 'done' %} ✓{% endif %}</span>{% empty %}<span>Sin tareas registradas</span>{% endfor %}</div>
+    <div class="design-progress-block"><strong>{{ row.progress }}%</strong><small>avance general</small><div class="design-progress-line"><i style="width:{{ row.progress }}%"></i></div><div class="design-last">{% if row.last_task %}{{ row.last_task.updated_at|date:'d/m/Y H:i' }}{% else %}Sin cambios{% endif %}</div></div>
+    <div class="design-eye"><a class="btn btn-secondary icon-only" title="Ver tareas del proyecto" href="{% url 'design:project_tasks' row.project.pk %}">Ver</a></div>
+  </article>
+{% empty %}<div class="card design-empty">No hay proyectos de Diseño que coincidan con los filtros.</div>{% endfor %}
 </div>
 {% endblock %}

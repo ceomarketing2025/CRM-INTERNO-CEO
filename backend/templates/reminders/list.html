@@ -18,11 +18,12 @@
 
   {% include 'reminders/_google_connection.html' %}
 
-  {% if alert_counts.overdue or alert_counts.today or alert_counts.soon %}
+  {% if alert_counts.overdue or alert_counts.today or alert_counts.soon or alert_counts.warning %}
   <div class="deadline-summary">
     {% if alert_counts.overdue %}<div class="deadline-stat danger"><strong>{{ alert_counts.overdue }}</strong><span>Vencidos</span><small>Requieren atención inmediata</small></div>{% endif %}
     {% if alert_counts.today %}<div class="deadline-stat wait"><strong>{{ alert_counts.today }}</strong><span>Vencen hoy</span><small>Revisar durante el día</small></div>{% endif %}
-    {% if alert_counts.soon %}<div class="deadline-stat wait"><strong>{{ alert_counts.soon }}</strong><span>Vencen pronto</span><small>Dentro de las próximas 48 horas</small></div>{% endif %}
+    {% if alert_counts.soon %}<div class="deadline-stat soon"><strong>{{ alert_counts.soon }}</strong><span>Próximos</span><small>Dentro de las próximas 48 horas</small></div>{% endif %}
+    {% if alert_counts.warning %}<div class="deadline-stat warning"><strong>{{ alert_counts.warning }}</strong><span>Por atender</span><small>Entre 3 y 7 días</small></div>{% endif %}
   </div>
   {% endif %}
 

@@ -1,56 +1,65 @@
 {% extends 'base.html' %}
 {% block page_heading %}Planes{% endblock %}
 {% block content %}
-<div class="page-intro">
+<div class="page-intro plan-catalog-head-v12">
   <div>
-    <span class="eyebrow">Catálogo interno por área</span>
-    <h2>Planes · {{ department_label }}</h2>
-    <p>Cada departamento administra únicamente sus productos. Gerencia puede consultar y crear para cualquier área.</p>
+    <span class="eyebrow">Catálogo interno de Gerencia</span>
+    <h2>Planes</h2>
+    <p>Catálogo compacto por área y categoría. Desde aquí Gerencia administra precios, recurrencia y entregables sin tarjetas sobredimensionadas.</p>
   </div>
-  <div class="actions">
-    {% if request.user.is_manager or request.user.is_superuser %}
+  <div class="actions plan-catalog-actions-v12">
     <form method="get" class="inline-filter-form">
       <select name="department" onchange="this.form.submit()">
         <option value="">Todas las áreas</option>
         {% for value,label in department_choices %}<option value="{{ value }}" {% if selected_department == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
     </form>
-    {% endif %}
-    {% if can_create_plan %}<a class="btn btn-primary" href="{% url 'plans:create' %}{% if selected_department %}?department={{ selected_department }}{% endif %}">+ Crear plan</a>{% endif %}
+    {% if can_create_plan %}<a class="btn btn-primary" href="{% url 'plans:create' %}{% if selected_department %}?department={{ selected_department }}{% endif %}">Crear plan</a>{% endif %}
   </div>
 </div>
 
+<div class="plan-catalog-v12">
 {% for group in grouped_plans %}
-<section class="plan-section-v9">
-  <div class="section-title-row"><div><span class="eyebrow">{{ group.label }}</span><h3>Productos disponibles</h3></div><span class="count-pill">{{ group.plans|length }}</span></div>
-  <div class="plan-grid plan-grid-v9">
-    {% for plan in group.plans %}
-    <article class="plan-card plan-card-v9 {% if not plan.is_active %}is-disabled{% endif %}">
-      <div class="plan-card-top">
-        <div><span class="plan-type">{{ plan.get_service_type_display }}</span><h3>{{ plan.name }}</h3></div>
-        <span class="status-dot {% if plan.is_active %}active{% else %}inactive{% endif %}">{% if plan.is_active %}Activo{% else %}Desactivado{% endif %}</span>
+<section class="plan-department-v12">
+  <div class="plan-department-head-v12">
+    <div><span class="eyebrow">Área</span><h3>{{ group.label }}</h3></div>
+    <span class="count-pill">{{ group.plans|length }} plan{{ group.plans|length|pluralize:"es" }}</span>
+  </div>
+
+  <div class="plan-category-stack-v12">
+    {% for category in group.categories %}
+    <section class="plan-category-v12">
+      <div class="plan-category-head-v12">
+        <div><strong>{{ category.label }}</strong><span>{{ category.plans|length }} {% if category.plans|length == 1 %}opción{% else %}opciones{% endif %}</span></div>
       </div>
-      {% if plan.service_type == 'social_media' %}
-      <div class="plan-deliverables">
-        <div><span>Posts / ciclo</span><strong>{{ plan.weekly_posts }}</strong></div>
-        <div><span>Videos / ciclo</span><strong>{{ plan.weekly_videos }}</strong></div>
+      <div class="plan-compact-grid-v12">
+        {% for plan in category.plans %}
+        <article class="plan-compact-item-v12 {% if not plan.is_active %}is-disabled{% endif %}">
+          <div class="plan-compact-state-v12 {% if plan.is_active %}is-active{% else %}is-inactive{% endif %}"></div>
+          <div class="plan-compact-main-v12">
+            <div class="plan-compact-title-v12">
+              <strong>{{ plan.name }}</strong>
+              <span class="status-dot {% if plan.is_active %}active{% else %}inactive{% endif %}">{% if plan.is_active %}Activo{% else %}Desactivado{% endif %}</span>
+            </div>
+            <div class="plan-compact-meta-v12">
+              <span>{{ plan.get_billing_cycle_display }}</span>
+              {% if plan.service_type == 'social_media' %}<span>{{ plan.weekly_posts }} posts</span><span>{{ plan.weekly_videos }} videos</span>{% endif %}
+              {% if plan.department == 'developer' and plan.website_pages %}<span>{{ plan.website_pages }} pág.</span>{% endif %}
+              {% if plan.scope_range %}<span>{{ plan.scope_range|truncatechars:42 }}</span>{% endif %}
+            </div>
+            {% if plan.description %}<p>{{ plan.description|truncatechars:95 }}</p>{% endif %}
+          </div>
+          <div class="plan-compact-price-v12"><strong>${{ plan.base_price }}</strong><span>{{ plan.currency }}</span></div>
+          <a class="btn btn-secondary btn-small plan-compact-edit-v12" href="{% url 'plans:edit' plan.pk %}">Editar</a>
+        </article>
+        {% endfor %}
       </div>
-      {% elif plan.department == 'developer' %}
-      <div class="plan-deliverables">
-        <div><span>Páginas</span><strong>{{ plan.website_pages|default:0 }}</strong></div>
-        <div><span>Branding</span><strong>{{ plan.branding_pages|default:0 }}</strong></div>
-      </div>
-      {% if plan.scope_range %}<p class="plan-scope-note">{{ plan.scope_range }}</p>{% endif %}
-      {% endif %}
-      <div class="plan-price-v8"><strong>${{ plan.base_price }}</strong><span>{{ plan.currency }} · {{ plan.get_billing_cycle_display }}</span></div>
-      {% if plan.description %}<p class="plan-description-v9">{{ plan.description|truncatechars:130 }}</p>{% endif %}
-      <div class="plan-meta-v8"><span>Creado {{ plan.created_at|date:'d/m/Y' }}</span>{% if plan.created_by %}<span>por {{ plan.created_by.display_name }}</span>{% endif %}</div>
-      <div class="plan-card-actions"><a class="btn btn-secondary" href="{% url 'plans:edit' plan.pk %}">Editar</a></div>
-    </article>
+    </section>
     {% endfor %}
   </div>
 </section>
 {% empty %}
-<div class="card empty"><strong>No hay planes creados para esta área.</strong><span>Usa “Crear plan” para registrar el primero.</span></div>
+<div class="card empty"><strong>No hay planes creados para esta selección.</strong><span>Usa “Crear plan” para registrar el primero.</span></div>
 {% endfor %}
+</div>
 {% endblock %}

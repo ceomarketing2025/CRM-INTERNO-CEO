@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
-from apps.core.decorators import role_required
+from apps.core.decorators import manager_required, role_required
 
 from .forms import MeetingForm, ReminderForm
 from .google_calendar import (
@@ -31,7 +31,7 @@ from .models import GoogleSyncStatus, Meeting, Reminder, ReminderArea
 from .services import ensure_meeting_reminder
 
 
-ALLOWED_ROLES = ("administration", "marketing", "design", "developer")
+ALLOWED_ROLES = ("administration", "marketing", "design", "developer", "sales")
 PROJECT_COLORS = (
     "#2563eb", "#7c3aed", "#0891b2", "#d97706", "#db2777", "#059669",
     "#4f46e5", "#0f766e", "#9333ea", "#c2410c", "#0369a1", "#65a30d",
@@ -48,7 +48,7 @@ def _connection_context():
 
 
 def _manager_or_administration(user):
-    return bool(user.is_manager or user.role == "administration")
+    return bool(user.is_manager)
 
 
 def _sync_message(request, obj, label):
@@ -76,33 +76,58 @@ def _project_color(project=None, client=None):
     return PROJECT_COLORS[digest % len(PROJECT_COLORS)]
 
 
+def _remaining_label(delta):
+    seconds = max(int(delta.total_seconds()), 0)
+    hours = seconds // 3600
+    days, rem_hours = divmod(hours, 24)
+    if days >= 2:
+        return f"Quedan {days} días"
+    if days == 1:
+        return f"Queda 1 día {rem_hours} h" if rem_hours else "Queda 1 día"
+    if hours >= 1:
+        return f"Quedan {hours} h"
+    minutes = max(seconds // 60, 1)
+    return f"Quedan {minutes} min"
+
+
 def _deadline_meta(value):
-    """Estado visual para avisar vencidos y próximos a vencer."""
+    """Semáforo por tiempo restante: rojo, naranja, amarillo y verde."""
     if not value:
         return {"state": "normal", "label": ""}
     now = timezone.now()
-    local_value = timezone.localtime(value) if timezone.is_aware(value) else value
+    if timezone.is_naive(value):
+        value = timezone.make_aware(value, timezone.get_current_timezone())
+    local_value = timezone.localtime(value)
     local_now = timezone.localtime(now)
-    if value < now:
-        return {"state": "overdue", "label": "Vencido"}
+    delta = value - now
+    if delta.total_seconds() < 0:
+        elapsed = abs(delta)
+        hours = int(elapsed.total_seconds() // 3600)
+        label = f"Vencido hace {hours} h" if hours < 48 else f"Vencido hace {max(hours // 24, 1)} días"
+        return {"state": "overdue", "label": label}
     if local_value.date() == local_now.date():
-        return {"state": "today", "label": "Vence hoy"}
-    if value <= now + timedelta(hours=48):
-        return {"state": "soon", "label": "Vence pronto"}
-    return {"state": "normal", "label": ""}
+        return {"state": "today", "label": _remaining_label(delta)}
+    if delta <= timedelta(hours=48):
+        return {"state": "soon", "label": _remaining_label(delta)}
+    if delta <= timedelta(days=7):
+        return {"state": "warning", "label": _remaining_label(delta)}
+    return {"state": "safe", "label": _remaining_label(delta)}
 
 
 def _date_deadline_meta(value):
     if not value:
         return {"state": "normal", "label": ""}
     today = timezone.localdate()
-    if value < today:
-        return {"state": "overdue", "label": "Vencida"}
-    if value == today:
+    days = (value - today).days
+    if days < 0:
+        return {"state": "overdue", "label": f"Vencida hace {abs(days)} día(s)"}
+    if days == 0:
         return {"state": "today", "label": "Vence hoy"}
-    if value <= today + timedelta(days=2):
-        return {"state": "soon", "label": "Vence pronto"}
-    return {"state": "normal", "label": ""}
+    if days <= 2:
+        return {"state": "soon", "label": f"Quedan {days} día(s)"}
+    if days <= 7:
+        return {"state": "warning", "label": f"Quedan {days} días"}
+    return {"state": "safe", "label": f"Quedan {days} días"}
 
 
 def _decorate_reminder(reminder):
@@ -138,6 +163,7 @@ def reminder_list(request):
         "overdue": sum(1 for item in reminders if item.deadline_state == "overdue"),
         "today": sum(1 for item in reminders if item.deadline_state == "today"),
         "soon": sum(1 for item in reminders if item.deadline_state == "soon"),
+        "warning": sum(1 for item in reminders if item.deadline_state == "warning"),
     }
     context = {
         "reminders": reminders,
@@ -248,10 +274,16 @@ def reminder_retry_google(request, pk):
 def meeting_list(request):
     qs = Meeting.objects.select_related("client", "project").prefetch_related("attendees")
     meetings = [_decorate_meeting(item) for item in qs[:200]]
+    alert_counts = {
+        "overdue": sum(1 for item in meetings if item.deadline_state == "overdue"),
+        "today": sum(1 for item in meetings if item.deadline_state == "today"),
+        "soon": sum(1 for item in meetings if item.deadline_state == "soon"),
+        "warning": sum(1 for item in meetings if item.deadline_state == "warning"),
+    }
     return render(
         request,
         "reminders/meeting_list.html",
-        {"meetings": meetings, **_connection_context()},
+        {"meetings": meetings, "alert_counts": alert_counts, **_connection_context()},
     )
 
 
@@ -381,7 +413,7 @@ def _calendar_context(request, *, marketing_only=False):
 
     day_items = defaultdict(list)
     project_legend = {}
-    warning_counts = {"overdue": 0, "today": 0, "soon": 0}
+    warning_counts = {"overdue": 0, "today": 0, "soon": 0, "warning": 0}
 
     for reminder in reminders:
         local = timezone.localtime(reminder.due_at)
@@ -512,10 +544,10 @@ def marketing_calendar_view(request):
     return render(request, "reminders/calendar.html", _calendar_context(request, marketing_only=True))
 
 
-@role_required("administration")
+@manager_required
 def google_connect(request):
     if not _manager_or_administration(request.user):
-        raise PermissionDenied("Solo Gerencia/Administración puede conectar la cuenta central de Google.")
+        raise PermissionDenied("Solo Gerencia puede conectar la cuenta central de Google.")
 
     configured_redirect = getattr(__import__("django.conf", fromlist=["settings"]).settings, "GOOGLE_OAUTH_REDIRECT_URI", "")
     redirect_host = (urlparse(configured_redirect).hostname or "").lower()
@@ -535,10 +567,10 @@ def google_connect(request):
         return redirect("reminders:list")
 
 
-@role_required("administration")
+@manager_required
 def google_callback(request):
     if not _manager_or_administration(request.user):
-        raise PermissionDenied("Solo Gerencia/Administración puede conectar la cuenta central de Google.")
+        raise PermissionDenied("Solo Gerencia puede conectar la cuenta central de Google.")
     if request.GET.get("error"):
         messages.error(request, f"Google canceló la autorización: {request.GET.get('error')}")
         return redirect("reminders:list")
@@ -573,7 +605,7 @@ def google_callback(request):
     return redirect("reminders:list")
 
 
-@role_required("administration")
+@manager_required
 def google_disconnect(request):
     if request.method == "POST":
         disconnect_google_calendar()
@@ -581,7 +613,7 @@ def google_disconnect(request):
     return redirect("reminders:list")
 
 
-@role_required("administration")
+@manager_required
 def google_sync_now(request):
     if request.method == "POST":
         if not calendar_is_connected():

@@ -76,14 +76,14 @@ class DesignTaskForm(forms.ModelForm):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         from apps.accounts.models import UserAccount
-        from apps.plans.models.choices import PlanDepartment
+        from apps.plans.models.choices import PlanDepartment, ServiceType
         from apps.projects.models import ProjectPlanAssignment
         from apps.projects.selectors import projects_for_area
 
         qs = ProjectPlanAssignment.objects.select_related("project__client", "plan").filter(
             is_active=True,
             plan__department=PlanDepartment.DESIGN,
-        )
+        ).exclude(plan__service_type=ServiceType.SOCIAL_MEDIA)
         if user is not None and not getattr(user, "is_manager", False) and not getattr(user, "is_superuser", False):
             visible_ids = projects_for_area("design").values_list("pk", flat=True)
             qs = qs.filter(project_id__in=visible_ids)
@@ -94,18 +94,17 @@ class DesignTaskForm(forms.ModelForm):
             role__in=[UserAccount.Role.DESIGN, UserAccount.Role.MANAGER],
         ).order_by("first_name", "last_name", "email")
 
-        self.fields["task_type"].help_text = "Usa Contenido / publicación cuando necesites controlar Creado + Publicado por semana, quincena o mes."
-        self.fields["recurrence_frequency"].help_text = "Solo aplica a Contenido / publicación. Si queda sin renovación, la tarea mostrará una alerta de configuración."
+        # Diseño maneja aquí únicamente tareas sin renovación. Social Media tiene
+        # su propio flujo Diseño -> Marketing en el módulo independiente.
+        self.fields["task_type"].initial = DesignTask.TaskType.STANDARD
+        self.fields["task_type"].widget = forms.HiddenInput()
+        self.fields["recurrence_frequency"].initial = DesignTask.Recurrence.NONE
+        self.fields["recurrence_frequency"].widget = forms.HiddenInput()
+        self.fields["recurrence_start_date"].widget = forms.HiddenInput()
 
     def clean(self):
         cleaned = super().clean()
-        task_type = cleaned.get("task_type")
-        recurrence = cleaned.get("recurrence_frequency")
-        start = cleaned.get("recurrence_start_date")
-        if task_type == DesignTask.TaskType.CONTENT:
-            if recurrence and recurrence != DesignTask.Recurrence.NONE and not start:
-                self.add_error("recurrence_start_date", "Indica la fecha desde la que empiezan los periodos.")
-        else:
-            cleaned["recurrence_frequency"] = DesignTask.Recurrence.NONE
-            cleaned["recurrence_start_date"] = None
+        cleaned["task_type"] = DesignTask.TaskType.STANDARD
+        cleaned["recurrence_frequency"] = DesignTask.Recurrence.NONE
+        cleaned["recurrence_start_date"] = None
         return cleaned

@@ -1,7 +1,107 @@
 {% extends 'base.html' %}
 {% block page_heading %}Ficha Marketing{% endblock %}
 {% block content %}
-<div class="page-intro"><div><span class="eyebrow">Marketing · información fuente</span><h2>Ficha Marketing</h2><p>Esta vista concentra únicamente la información recopilada por proyecto, documentos y avance general. El trabajo operativo se gestiona desde Google Business, Google LSA, Publicidad Digital, Social Media y Tareas.</p></div><div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:tasks' %}">Tareas</a><a class="btn btn-primary" href="{% url 'marketing:task_create' %}">＋ Tarea</a></div></div>
-<div class="stats-grid"><a class="stat-card" href="{% url 'marketing:google_business_list' %}"><span>Google Business</span><strong>↗</strong><small>Perfiles, reviews y QR</small></a><a class="stat-card" href="{% url 'marketing:google_lsa_list' %}"><span>Google LSA</span><strong>↗</strong><small>Validación y seguimiento</small></a><a class="stat-card" href="{% url 'marketing:digital_ads_list' %}"><span>Publicidad Digital</span><strong>↗</strong><small>Meta / Google / TikTok</small></a><a class="stat-card" href="{% url 'marketing:social_plans' %}"><span>Social Media</span><strong>↗</strong><small>Planes y publicaciones</small></a></div>
-<div class="project-grid">{% for row in project_rows %}{% with p=row.project %}<div class="project-card area-project-card"><div class="project-card-top"><span class="project-code">{{ p.project_code }}</span><span class="badge">{{ p.get_project_type_display }}</span></div><h3>{{ p.client.business_name }}</h3><p>{{ p.client.full_name|default:'Sin contacto' }}{% if p.purchased_plan %} · {{ p.purchased_plan.plan.name }}{% endif %}</p><div class="area-checks"><span class="{% if row.workspace and row.workspace.intake_ready %}done{% endif %}"><i></i> Información inicial {% if row.workspace and row.workspace.intake_ready %}completa{% else %}pendiente{% endif %}</span><span class="{% if row.percent == 100 and row.checks_total %}done{% endif %}"><i></i> Checklist {{ row.checks_complete }}/{{ row.checks_total }}</span></div>{% if row.checks_total %}<div class="progress"><i style="width:{{ row.percent }}%"></i></div>{% endif %}<div class="quick-action-grid"><a href="{% url 'marketing:workspace' p.pk %}"><b>Abrir ficha</b><small>Reunión + información</small></a><a href="{% url 'marketing:task_create' %}?project={{ p.pk }}"><b>Crear tarea</b><small>Trabajo operativo</small></a><a href="{% url 'handoff:summary' p.pk %}"><b>Resumen</b><small>Ver todo el proyecto</small></a></div><div class="project-footer"><span>{% if row.last_log %}Última: {{ row.last_log.user.display_name|default:'Sistema' }}{% else %}Sin actividad registrada{% endif %}</span><span>{% if row.last_log %}{{ row.last_log.created_at|date:'d/m H:i' }}{% endif %}</span></div></div>{% endwith %}{% empty %}<div class="empty card">No hay proyectos asignados a Marketing.</div>{% endfor %}</div>
+<div class="marketing-premium-hero">
+  <div>
+    <span class="eyebrow">Marketing · centro operativo</span>
+    <h2>Todo Marketing, más claro y en un solo flujo</h2>
+    <p>Consulta el avance por proyecto, entra directamente al frente que necesitas y mantén separadas la información inicial, Google Business, Google LSA, publicidad y Social Media.</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-secondary" href="{% url 'marketing:tasks' %}">Tareas</a>
+    <a class="btn btn-primary" href="{% url 'marketing:task_create' %}">Nueva tarea</a>
+  </div>
+</div>
+
+<div class="marketing-kpi-strip">
+  <div class="marketing-kpi-card"><span>Proyectos</span><strong>{{ dashboard_stats.projects }}</strong><small>visibles en Marketing</small></div>
+  <div class="marketing-kpi-card"><span>Avance promedio</span><strong>{{ dashboard_stats.avg_progress }}%</strong><small>checklist operativo</small></div>
+  <div class="marketing-kpi-card"><span>Por completar</span><strong>{{ dashboard_stats.ready_projects }}</strong><small>90% o más de avance</small></div>
+  <div class="marketing-kpi-card"><span>Tareas pendientes</span><strong>{{ dashboard_stats.pending_tasks }}</strong><small>trabajo todavía abierto</small></div>
+  <div class="marketing-kpi-card"><span>Campañas en revisión</span><strong>{{ dashboard_stats.campaigns_review }}</strong><small>requieren seguimiento</small></div>
+  <div class="marketing-kpi-card"><span>Listas para publicar</span><strong>{{ dashboard_stats.social_ready_publish }}</strong><small>piezas que Diseño ya terminó</small></div>
+</div>
+
+<div class="marketing-launch-grid">
+  <a class="marketing-launch-card" href="{% url 'marketing:google_business_list' %}">
+    <span class="marketing-launch-icon"><svg viewBox="0 0 24 24"><path d="M5 10v9h14v-9"/><path d="M4 10l2-5h12l2 5"/><path d="M8 19v-5h4v5M4 10c0 2 3 2 4 0 1 2 3 2 4 0 1 2 3 2 4 0 1 2 4 2 4 0"/></svg></span>
+    <span><strong>Google Business</strong><small>Perfil, reviews, QR y validación.</small></span><i class="marketing-launch-arrow">→</i>
+  </a>
+  <a class="marketing-launch-card" href="{% url 'marketing:google_lsa_list' %}">
+    <span class="marketing-launch-icon"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.7 2.8 8 7 10 4.2-2 7-5.3 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-5"/></svg></span>
+    <span><strong>Google LSA</strong><small>Documentación, verificación y leads.</small></span><i class="marketing-launch-arrow">→</i>
+  </a>
+  <a class="marketing-launch-card" href="{% url 'marketing:digital_ads_list' %}">
+    <span class="marketing-launch-icon"><svg viewBox="0 0 24 24"><path d="M4 18V9m5 9V5m5 13v-7m5 7V3M3 21h18"/></svg></span>
+    <span><strong>Publicidad Digital</strong><small>Meta, Google, TikTok y campañas.</small></span><i class="marketing-launch-arrow">→</i>
+  </a>
+  <a class="marketing-launch-card" href="{% url 'socialmedia:dashboard' %}">
+    <span class="marketing-launch-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3"/><path d="M17.5 6.5h.01"/></svg></span>
+    <span><strong>Social Media</strong><small>Diseño, publicaciones y renovaciones.</small></span><i class="marketing-launch-arrow">→</i>
+  </a>
+</div>
+
+<div class="marketing-section-title">
+  <div><span class="eyebrow">Proyectos</span><h3>Avance operativo</h3><p>Entra a la ficha solo cuando necesites detalle; aquí ves el estado de un vistazo.</p></div>
+</div>
+
+<div class="marketing-projects-premium">
+{% for row in project_rows %}
+  {% with p=row.project %}
+  <article class="marketing-project-card">
+    <div class="marketing-project-top">
+      <div><span class="project-code">{{ p.project_code }}</span><h4>{{ p.client.business_name }}</h4><p>{{ p.name }}</p></div>
+      <div class="marketing-progress-ring"><strong>{{ row.percent }}%</strong><small>{{ row.checks_complete }}/{{ row.checks_total }} checks</small></div>
+    </div>
+    <div class="progress"><i style="width:{{ row.percent }}%"></i></div>
+    <div class="marketing-project-status">
+      <span class="{% if row.workspace and row.workspace.intake_ready %}done{% endif %}"><i></i>Información inicial {% if row.workspace and row.workspace.intake_ready %}lista{% else %}pendiente{% endif %}</span>
+      <span>{{ p.get_project_type_display }}</span>
+    </div>
+    <div class="marketing-project-actions">
+      <a href="{% url 'marketing:workspace' p.pk %}">Ficha</a>
+      <a href="{% url 'marketing:task_create' %}?project={{ p.pk }}">Tarea</a>
+      <a href="{% url 'handoff:summary' p.pk %}">Resumen</a>
+    </div>
+  </article>
+  {% endwith %}
+{% empty %}
+  <div class="empty card">No hay proyectos asignados a Marketing.</div>
+{% endfor %}
+</div>
+
+{% if social_rows %}
+<div class="marketing-section-title">
+  <div><span class="eyebrow">Social Media sincronizado</span><h3>Piezas listas y publicaciones pendientes</h3><p>Diseño y Marketing trabajan sobre las mismas piezas. Cuando Diseño marca una pieza lista, aparece aquí automáticamente para publicación.</p></div>
+  <a class="text-link" href="{% url 'socialmedia:dashboard' %}">Abrir Social Media →</a>
+</div>
+<div class="marketing-social-sync-grid">
+  {% for social in social_rows %}
+  <a class="marketing-social-sync" href="{% url 'socialmedia:detail' social.assignment.pk %}">
+    <div><span class="project-code">{% if social.project %}{{ social.project.project_code }}{% else %}SOCIAL{% endif %}</span><h4>{{ social.assignment.client.business_name }}</h4><p>{{ social.assignment.plan.name }}</p></div>
+    <div class="marketing-social-counts"><span><b>{{ social.ready_publish }}</b> listas para publicar</span><span><b>{{ social.waiting_design }}</b> esperando Diseño</span></div>
+    <div class="marketing-social-bars"><div><span>Diseño {{ social.design_percent }}%</span><div class="progress"><i style="width:{{ social.design_percent }}%"></i></div></div><div><span>Marketing {{ social.marketing_percent }}%</span><div class="progress marketing"><i style="width:{{ social.marketing_percent }}%"></i></div></div></div>{% if social.publish_items %}<div class="marketing-social-items">{% for item in social.publish_items %}<span>{{ item.label }} · publicar</span>{% endfor %}</div>{% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="marketing-activity-grid">
+  <section class="card marketing-activity-card">
+    <div class="card-head"><div><h3>Tareas recientes</h3><p>Último trabajo operativo registrado.</p></div><a href="{% url 'marketing:tasks' %}">Ver todas</a></div>
+    <div class="list-stack">
+      {% for task in tasks|slice:':6' %}
+      <a class="list-row" href="{% url 'marketing:task_edit' task.pk %}"><div><strong>{{ task.title }}</strong><span>{{ task.project.client.business_name }} · {{ task.get_area_display }}</span></div><span class="semantic-pill {% if task.status == 'done' %}is-success{% else %}is-wait{% endif %}">{{ task.get_status_display }}</span></a>
+      {% empty %}<div class="empty">No hay tareas recientes.</div>{% endfor %}
+    </div>
+  </section>
+  <section class="card marketing-activity-card">
+    <div class="card-head"><div><h3>Campañas recientes</h3><p>Estado de las campañas configuradas.</p></div><a href="{% url 'marketing:campaign_list' %}">Ver campañas</a></div>
+    <div class="list-stack">
+      {% for campaign in campaigns|slice:':6' %}
+      <a class="list-row" href="{% url 'marketing:campaign_edit' campaign.pk %}"><div><strong>{{ campaign.name }}</strong><span>{{ campaign.project.client.business_name }} · {{ campaign.get_platform_display }}</span></div><span class="semantic-pill {% if campaign.status == 'completed' or campaign.status == 'launched' or campaign.status == 'approved' %}is-success{% elif campaign.status == 'changes_requested' %}is-danger{% else %}is-wait{% endif %}">{{ campaign.get_status_display }}</span></a>
+      {% empty %}<div class="empty">No hay campañas recientes.</div>{% endfor %}
+    </div>
+  </section>
+</div>
 {% endblock %}

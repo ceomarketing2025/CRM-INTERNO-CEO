@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block page_heading %}Tareas del equipo{% endblock %}
+{% block content %}
+<div class="mg-task-hero">
+  <div><span class="eyebrow">Gerencia · asignación operativa</span><h2>Tareas del equipo</h2><p>Crea tareas simples para cada área, asigna responsable y, si corresponde, vincula Cliente → Proyecto. Las tareas vinculadas a proyecto también aparecen en Auditoría Proyectos.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'audit:management_task_create' %}">Nueva tarea</a></div>
+</div>
+
+<div class="mg-task-kpis">
+  <div class="card"><span>Total</span><strong>{{ stats.total }}</strong><small>tareas creadas</small></div>
+  <div class="card pending"><span>Pendientes</span><strong>{{ stats.pending }}</strong><small>sin iniciar</small></div>
+  <div class="card doing"><span>En proceso</span><strong>{{ stats.doing }}</strong><small>trabajo activo</small></div>
+  <div class="card review"><span>Para revisión</span><strong>{{ stats.review }}</strong><small>esperando control</small></div>
+  <div class="card done"><span>Completadas</span><strong>{{ stats.done }}</strong><small>cerradas</small></div>
+</div>
+
+<form method="get" class="card mg-task-filter">
+  <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar tarea, responsable, cliente o proyecto…">
+  <select name="area"><option value="all">Todas las áreas</option>{% for value,label in area_choices %}<option value="{{ value }}" {% if selected_area == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  <select name="status"><option value="all">Todos los estados</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  <button class="btn btn-secondary" type="submit">Filtrar</button>
+  {% if search_query or selected_area != 'all' or selected_status != 'all' %}<a class="btn btn-ghost" href="{% url 'audit:management_tasks' %}">Limpiar</a>{% endif %}
+</form>
+
+<div class="mg-task-table-shell card">
+  <div class="mg-task-table-head"><span>Tarea</span><span>Área / responsable</span><span>Proyecto</span><span>Estado</span><span></span></div>
+  {% for task in tasks %}
+  <div class="mg-task-table-row status-{{ task.status }}">
+    <div class="mg-task-title"><span class="mg-priority-dot priority-{{ task.priority }}"></span><div><strong>{{ task.title }}</strong><small>{{ task.description|default:'Sin descripción'|truncatechars:120 }}</small></div></div>
+    <div><strong>{{ task.get_area_display }}</strong><small>{{ task.assigned_to.display_name|default:'Sin responsable' }}</small></div>
+    <div>{% if task.project %}<strong>{{ task.project.project_code }}</strong><small>{{ task.client.business_name }} · {{ task.project.name }}</small>{% elif task.client %}<strong>{{ task.client.business_name }}</strong><small>Sin proyecto vinculado</small>{% else %}<strong>General</strong><small>Sin cliente / proyecto</small>{% endif %}</div>
+    <div><span class="mg-status-pill {{ task.status }}">{{ task.get_status_display }}</span>{% if task.due_date %}<small>Entrega {{ task.due_date|date:'d/m/Y' }}</small>{% endif %}</div>
+    <div class="actions"><a class="btn btn-secondary btn-sm" href="{% url 'audit:management_task_edit' task.pk %}">Editar</a></div>
+  </div>
+  {% empty %}<div class="empty">No hay tareas que coincidan con los filtros.</div>{% endfor %}
+</div>
+{% endblock %}

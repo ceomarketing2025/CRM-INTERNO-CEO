@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-intro">
   <div><span class="eyebrow">Suscripción recurrente</span><h2>{{ title }}</h2><p>{{ subtitle }}</p></div>
-  <div class="actions"><a class="btn btn-secondary" href="{% url 'design:social_media' %}">Volver</a></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'design:social_media' %}"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/><path d="M9 12h11"/></svg></span><span class="btn-label">Regresar</span></a></div>
 </div>
 
 <form method="post" class="card social-assignment-form-v9">
@@ -23,6 +23,6 @@
     {% endfor %}
   </div>
   <div class="assignment-help-v8"><strong>Renovación y pago</strong><span>La fecha “Próximo pago / renovación” se calcula desde la fecha de inicio y la frecuencia elegida. Finanzas mantiene el estado de pago y “pagado hasta”.</span></div>
-  <div class="form-actions"><button class="btn btn-primary btn-lg" type="submit">Guardar suscripción</button></div>
+  <div class="form-actions"><button class="btn btn-primary btn-lg" type="submit"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h12l2 2v14H5V4Z"/><path d="M8 4v6h8V4M8 20v-6h8v6"/></svg></span><span class="btn-label">Guardar suscripción</span></button></div>
 </form>
 {% endblock %}

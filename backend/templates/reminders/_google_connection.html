@@ -19,12 +19,12 @@
   </div>
   <div class="actions">
     {% if google_connected %}
-      {% if request.user.is_manager or request.user.role == 'administration' %}
+      {% if request.user.is_manager %}
       <form method="post" action="{% url 'reminders:google_sync_now' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="btn btn-secondary">Sincronizar ahora</button></form>
       <form method="post" action="{% url 'reminders:google_disconnect' %}" onsubmit="return confirm('¿Desconectar la cuenta Google del CRM? Los eventos ya creados permanecerán en Calendar.');">{% csrf_token %}<button class="btn btn-secondary">Desconectar</button></form>
       {% endif %}
     {% elif google_configured %}
-      {% if request.user.is_manager or request.user.role == 'administration' %}
+      {% if request.user.is_manager %}
         <a class="btn btn-primary" href="{% url 'reminders:google_connect' %}">Conectar Google</a>
       {% endif %}
     {% endif %}

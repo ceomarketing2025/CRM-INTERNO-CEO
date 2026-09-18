@@ -247,6 +247,11 @@ def ensure_current_social_media_cycle(client_plan, today=None):
         return None
 
     start, due = current_cycle_bounds(client_plan.start_date or today, client_plan.renewal_frequency, today=today)
+    # La fecha de renovación puede configurarse manualmente en Social Media.
+    # Mientras siga siendo futura y pertenezca al ciclo actual, se respeta.
+    configured_due = client_plan.renewal_date
+    if configured_due and configured_due > today and configured_due > start:
+        due = configured_due
 
     with transaction.atomic():
         cycle, _ = SocialMediaCycle.objects.get_or_create(
@@ -304,50 +309,39 @@ def _sync_social_items(cycle, content_type, target):
 # ---------------------------------------------------------------------------
 
 def ensure_default_design_tasks_for_project(project, user=None):
-    """Crea una actividad base por cada producto de Diseño contratado.
+    """Crea una tarea base por cada producto de Diseño no recurrente.
 
-    Es idempotente: si el producto ya tiene una o más tareas, no agrega otra.
-    Social Media nace como contenido recurrente *sin configurar* para que Diseño
-    defina si se controlará semanal, quincenal o mensualmente.
+    Social Media se gestiona exclusivamente desde el módulo independiente
+    Social Media (Diseño + Marketing), por lo que nunca se duplica aquí.
     """
     from apps.design.models import DesignTask
     from apps.plans.models.choices import PlanDepartment, ServiceType
 
-    assignments = project.contracted_plans.select_related("plan").filter(
-        is_active=True,
-        plan__department=PlanDepartment.DESIGN,
+    assignments = (
+        project.contracted_plans.select_related("plan")
+        .filter(is_active=True, plan__department=PlanDepartment.DESIGN)
+        .exclude(plan__service_type=ServiceType.SOCIAL_MEDIA)
     )
     created = []
     actor = user if getattr(user, "is_authenticated", False) else None
     for assignment in assignments:
-        is_social = assignment.plan.service_type == ServiceType.SOCIAL_MEDIA
-        if is_social:
-            # Un servicio Social Media siempre necesita al menos un control de
-            # publicaciones, incluso si el equipo ya creó otras tareas manuales.
-            if assignment.design_tasks.filter(task_type=DesignTask.TaskType.CONTENT).exists():
-                continue
-        elif assignment.design_tasks.exists():
+        if assignment.design_tasks.exists():
             continue
         task = DesignTask.objects.create(
             project_plan=assignment,
-            title="Publicaciones / contenido" if is_social else assignment.plan.name,
-            description=(
-                "Configura la frecuencia de publicación para comenzar el control por periodos."
-                if is_social
-                else f"Actividad creada automáticamente al contratar {assignment.plan.name}."
-            ),
+            title=assignment.plan.name,
+            description=f"Actividad creada automáticamente al contratar {assignment.plan.name}.",
             status=DesignTask.Status.TODO,
-            task_type=DesignTask.TaskType.CONTENT if is_social else DesignTask.TaskType.STANDARD,
+            task_type=DesignTask.TaskType.STANDARD,
             recurrence_frequency=DesignTask.Recurrence.NONE,
             recurrence_start_date=None,
-            configuration_required=is_social,
+            configuration_required=False,
             auto_generated=True,
             created_by=actor,
             updated_by=actor,
         )
         created.append(task)
     return created
-
 
 def ensure_current_design_task_cycle(task, today=None):
     """Devuelve/crea el periodo vigente y sincroniza sus entregables.
@@ -499,7 +493,7 @@ def design_cycle_label(frequency, start, end):
 
 
 def design_task_progress(task, today=None):
-    """Estado normalizado 0–100 usado por Diseño y Auditoría General."""
+    """Estado normalizado 0–100 usado por Diseño y Auditoría Proyectos."""
     if task.task_type == task.TaskType.CONTENT:
         if task.needs_configuration:
             return {

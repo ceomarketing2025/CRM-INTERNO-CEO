@@ -15,6 +15,14 @@
   </div>
 </div>
 
+<section class="team-metrics-card" aria-labelledby="teamMetricsTitle">
+  <div class="team-metrics-head"><div><span class="eyebrow">Carga del equipo</span><h3 id="teamMetricsTitle">Puntos por desarrollador</h3><p>Suma automática de páginas, áreas y secciones internas asignadas.</p></div></div>
+  <div class="team-metrics-grid" id="teamMetrics">
+    {% for item in balance_rows %}<div class="team-metric" data-team-developer="{{ item.id }}"><strong>{{ item.name }}</strong><b data-team-points>{{ item.points }} pts</b><span data-team-items>{{ item.items }} elementos asignados</span></div>{% endfor %}
+    <div class="team-metric warning-soft" data-team-developer="unassigned"><strong>Sin asignar</strong><b data-team-points>{{ unassigned_points }} pts</b><span data-team-items>{{ unassigned_items }} elementos sin responsable</span></div>
+  </div>
+</section>
+
 <div class="dev-sheet-accordion">
 
 <details class="dev-sheet-panel" open>
@@ -87,18 +95,14 @@
   </div>
 </details>
 
-<details class="dev-sheet-panel">
-  <summary><span class="dev-sheet-index">05</span><span><strong>Carga y equilibrio del equipo</strong><small>Suma automática de páginas, áreas y secciones internas por desarrollador</small></span><b class="dev-sheet-chevron">⌄</b></summary>
-  <div class="dev-sheet-content">
-    <div class="balance-grid points-balance">{% for item in balance_rows %}<div><strong>{{ item.name }}</strong><b>{{ item.points }} pts</b><span>{{ item.items }} elementos asignados</span></div>{% empty %}<div><strong>Sin asignaciones</strong><span>Asigna responsables para calcular la carga.</span></div>{% endfor %}{% if unassigned_points %}<div class="warning-soft"><strong>Sin asignar</strong><b>{{ unassigned_points }} pts</b><span>Puntos todavía sin responsable</span></div>{% endif %}</div>
-  </div>
-</details>
+
 
 </div>
 
 <style>
 .dev-sheet-accordion{display:grid;gap:14px}.dev-sheet-panel{border:1px solid #e3e8f0;border-radius:16px;background:#fff;overflow:hidden}.dev-sheet-panel>summary{list-style:none;display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:14px;padding:20px 22px;cursor:pointer}.dev-sheet-panel>summary::-webkit-details-marker{display:none}.dev-sheet-index{width:40px;height:40px;border-radius:12px;background:#eef3fb;display:grid;place-items:center;font-weight:900;color:#314f84}.dev-sheet-panel summary strong{display:block;font-size:16px}.dev-sheet-panel summary small{display:block;color:#748096;margin-top:4px}.dev-sheet-chevron{font-size:20px;transition:transform .2s}.dev-sheet-panel[open] .dev-sheet-chevron{transform:rotate(180deg)}.dev-sheet-content{border-top:1px solid #edf0f5;padding:20px}.dev-table-block{margin-top:20px;border:1px solid #e5eaf1;border-radius:14px;overflow:hidden}.dev-table-head,.county-workgroup-head,.header-builder-toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:16px 18px}.dev-table-head h3{margin:3px 0}.dev-production-table th,.dev-production-table td{vertical-align:middle}.work-chip{display:inline-grid;place-items:center;min-width:28px;height:28px;border-radius:8px;background:#eef3fb;font-weight:900}.dev-row-actions{display:flex;align-items:center;gap:7px}.dev-row-actions form{margin:0}.dev-delete-btn{width:32px;height:32px;border:1px solid #f0baba;border-radius:9px;background:#fff1f1;color:#b13939;font-size:18px;cursor:pointer}.county-workgroup{margin:14px;border:1px solid #e6eaf0;border-radius:12px;overflow:hidden}.county-workgroup-head{background:#f8fafc}.county-workgroup-head>div:first-child span{display:block;font-size:11px;color:#7c8799;margin-top:3px}.inline-add-section{display:flex;gap:8px}.inline-add-section input,.header-add-row input{min-width:240px;border:1px solid #dce2eb;border-radius:10px;padding:10px 12px}.smtp-ready{color:#176d57;background:#dcf4ea;padding:5px 9px;border-radius:999px;font-weight:800}.smtp-pending{color:#9d3636;background:#ffe8e8;padding:5px 9px;border-radius:999px;font-weight:800}.header-builder{display:flex;flex-wrap:wrap;gap:10px;padding:18px;border:1px dashed #cfd8e6;border-radius:14px;background:#f8fafc;min-height:74px}.header-builder-item{display:flex;align-items:center;gap:7px;padding:8px 9px;border:1px solid #dce3ed;border-radius:11px;background:#fff;cursor:grab}.header-builder-item.dragging{opacity:.45}.header-drag{color:#8b96a8;font-weight:900}.header-builder-item input{width:150px;border:0;outline:0;font-weight:800;background:transparent}.header-remove{border:0;background:#fff0f0;color:#b23d3d;border-radius:7px;width:26px;height:26px;cursor:pointer}.header-add-row{display:flex;gap:10px;margin-top:14px}.header-site-preview{margin-top:18px;padding:14px 16px;border-radius:12px;background:#f3f6fa}.header-site-preview>span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#7a8698;margin-bottom:10px}.header-site-preview nav{display:flex;flex-wrap:wrap;gap:18px;font-weight:800}.button-code-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.button-code-grid label{display:block;font-weight:800;margin-bottom:8px}.button-code-grid textarea{width:100%;font-family:Consolas,monospace;font-size:12px;border:1px solid #dce2eb;border-radius:12px;padding:14px;resize:vertical}.button-style-preview{width:100%;min-height:520px;border:1px solid #dce2eb;border-radius:12px;background:#fff}.button-delete-form{margin-top:12px}.points-balance>div{position:relative}.points-balance b{display:block;font-size:22px;color:#314f84;margin:4px 0}.production-table-v5.compact th,.production-table-v5.compact td{padding-top:9px;padding-bottom:9px}
 .dev-quick-form{margin:0;min-width:0}.dev-quick-form select,.dev-quick-form input[name="value"]{width:100%;min-width:92px;border:1px solid #dce2eb;border-radius:9px;background:#fff;padding:8px 9px;font:inherit}.dev-quick-form .complexity-select{min-width:58px;width:58px;font-weight:900}.quick-text-form input[name="value"]{min-width:155px}.dev-production-table td{min-width:90px}.dev-production-table td:nth-child(4),.dev-production-table td:nth-child(5){min-width:180px}.dev-async-busy{opacity:.72;pointer-events:none}
+.team-metrics-card{margin:0 0 18px;border:1px solid #e3e8f0;border-radius:16px;background:#fff;padding:20px}.team-metrics-head h3{margin:4px 0 3px;font-size:18px}.team-metrics-head p{margin:0;color:#748096}.team-metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:16px}.team-metric{border:1px solid #e4e9f1;border-radius:14px;background:#f9fbfd;padding:14px}.team-metric strong{display:block;font-size:12px}.team-metric b{display:block;font-size:24px;color:#314f84;margin:5px 0}.team-metric span{display:block;font-size:11px;color:#748096}.team-metric.warning-soft{background:#fff8e8;border-color:#f0d79b}
 @media(max-width:900px){.dev-table-head,.county-workgroup-head,.header-builder-toolbar{align-items:flex-start;flex-direction:column}.button-code-grid{grid-template-columns:1fr}.inline-add-section,.header-add-row{width:100%;flex-direction:column}.inline-add-section input,.header-add-row input{min-width:0;width:100%}.dev-sheet-content{padding:12px}.production-table-wrap{overflow:auto}}
 </style>
 <script>
@@ -1479,6 +1483,33 @@ document.addEventListener('DOMContentLoaded',function(){
     }
   }
 
+  function recalculateTeamMetrics(){
+    const totals=new Map();
+    document.querySelectorAll('[data-team-developer]').forEach(function(card){
+      totals.set(String(card.dataset.teamDeveloper),{points:0,items:0,card:card});
+    });
+    document.querySelectorAll('tr').forEach(function(row){
+      const pointsEl=row.querySelector('[data-quick-points]');
+      if(!pointsEl)return;
+      const responsibleForm=Array.from(row.querySelectorAll('.dev-quick-form')).find(function(candidate){
+        return candidate.querySelector('input[name="field"]')?.value==='responsible';
+      });
+      if(!responsibleForm)return;
+      const select=responsibleForm.querySelector('select[name="value"]');
+      const key=select&&select.value?String(select.value):'unassigned';
+      const bucket=totals.get(key)||totals.get('unassigned');
+      if(!bucket)return;
+      bucket.points+=parseInt(pointsEl.textContent,10)||0;
+      bucket.items+=1;
+    });
+    totals.forEach(function(bucket,key){
+      const points=bucket.card.querySelector('[data-team-points]');
+      const items=bucket.card.querySelector('[data-team-items]');
+      if(points)points.textContent=bucket.points+' pts';
+      if(items)items.textContent=key==='unassigned'?bucket.items+' elementos sin responsable':bucket.items+' elementos asignados';
+    });
+  }
+
   async function saveForm(form){
     if(saving) return;
     saving = true;
@@ -1509,6 +1540,14 @@ document.addEventListener('DOMContentLoaded',function(){
           if(payload.points !== null && payload.points !== undefined){
             const points = row.querySelector('[data-quick-points]');
             if(points) points.textContent = payload.points;
+          }
+          recalculateTeamMetrics();
+          if((field === 'state' || field === 'review_status')){
+            const statusSelect = form.querySelector('select[name="value"]');
+            if(statusSelect){
+              statusSelect.classList.toggle('yes', payload.value === 'complete');
+              statusSelect.classList.toggle('no', payload.value !== 'complete');
+            }
           }
           if((field === 'keyword' || field === 'slug') && payload.slug !== undefined){
             const slugForm = Array.from(row.querySelectorAll('.dev-quick-form')).find(function(candidate){
@@ -1584,6 +1623,7 @@ document.addEventListener('DOMContentLoaded',function(){
   }, true);
 
   initializeDynamic();
+  recalculateTeamMetrics();
 })();
 </script>
 

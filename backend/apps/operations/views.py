@@ -1813,6 +1813,15 @@ def web_production_sheet(
         + internal_sections
     )
 
+    # Mantener puntos siempre sincronizados con la complejidad, incluso
+    # para registros creados antes de la regla S=1, M=2, C=3.
+    complexity_points = {"S": 1, "M": 2, "C": 3}
+    for row in production_rows:
+        expected_points = complexity_points.get(row.complexity)
+        if expected_points is not None and row.points != expected_points:
+            type(row).objects.filter(pk=row.pk).update(points=expected_points)
+            row.points = expected_points
+
     total_rows = len(
         all_rows
     )
@@ -1911,45 +1920,28 @@ def web_production_sheet(
         else 0
     )
 
-    balance = defaultdict(
-        lambda: {
+    balance = {
+        developer.pk: {
+            "id": developer.pk,
+            "name": developer.display_name,
             "points": 0,
             "items": 0,
         }
-    )
+        for developer in project_developers
+    }
 
     unassigned_points = 0
+    unassigned_items = 0
 
     for row in production_rows:
-        if row.responsible:
-            key = (
-                row.responsible
-                .display_name
-            )
-
-            balance[key]["points"] += (
-                row.points
-                or 0
-            )
-
-            balance[key]["items"] += 1
-
+        if row.responsible_id in balance:
+            balance[row.responsible_id]["points"] += row.points or 0
+            balance[row.responsible_id]["items"] += 1
         else:
-            unassigned_points += (
-                row.points
-                or 0
-            )
+            unassigned_points += row.points or 0
+            unassigned_items += 1
 
-    balance_rows = [
-        {
-            "name": name,
-            **data,
-        }
-        for name, data
-        in sorted(
-            balance.items()
-        )
-    ]
+    balance_rows = list(balance.values())
 
     strategy_label = {
         "study":
@@ -2044,6 +2036,9 @@ def web_production_sheet(
 
             "unassigned_points":
                 unassigned_points,
+
+            "unassigned_items":
+                unassigned_items,
 
             "questionnaire":
                 questionnaire,

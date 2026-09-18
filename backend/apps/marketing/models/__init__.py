@@ -11,5 +11,7 @@ from .entities import (
     SocialMediaAudit,
     SocialMediaDailyLog,
     SocialMediaPlan,
+    SocialMediaSubscriptionProfile,
+    SocialMediaContentRecord,
     SocialMediaTracking,
 )

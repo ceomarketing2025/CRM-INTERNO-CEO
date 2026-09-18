@@ -12,6 +12,8 @@ from .models import (
     SocialMediaAudit,
     SocialMediaDailyLog,
     SocialMediaPlan,
+    SocialMediaSubscriptionProfile,
+    SocialMediaContentRecord,
     SocialMediaTracking,
 )
 
@@ -29,5 +31,7 @@ for model in [
     SocialMediaAudit,
     SocialMediaPlan,
     SocialMediaDailyLog,
+    SocialMediaSubscriptionProfile,
+    SocialMediaContentRecord,
 ]:
     admin.site.register(model)

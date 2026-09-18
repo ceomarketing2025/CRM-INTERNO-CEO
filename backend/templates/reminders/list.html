@@ -38,6 +38,7 @@
         <div class="project-stripe"></div>
         <div class="reminder-top">
           <span class="badge">{{ r.get_category_display }}</span>
+          {% if r.source_key %}<span class="sync-pill neutral" title="Generado automáticamente por el CRM">Automático</span>{% else %}<span class="sync-pill neutral" title="Creado manualmente">Manual</span>{% endif %}
           {% if r.deadline_label %}<span class="deadline-pill {{ r.deadline_state }}">{{ r.deadline_label }}</span>{% endif %}
           <time>{{ r.due_at|date:'d M Y H:i' }}</time>
         </div>

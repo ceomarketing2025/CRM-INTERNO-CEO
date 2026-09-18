@@ -1,5 +1,10 @@
 from django import forms
+from django.utils import timezone
 from apps.accounts.models import UserAccount
+from apps.plans.models import ClientPlan, ServicePlan
+from apps.plans.models.choices import BillingCycle, ClientPlanStatus, PlanDepartment, RenewalFrequency, ServiceType
+from apps.plans.services import current_cycle_bounds
+from apps.projects.models import Project
 from .models import (
     AdCampaign,
     AdvertisingAccount,
@@ -12,6 +17,8 @@ from .models import (
     MarketingWorkspace,
     SocialMediaDailyLog,
     SocialMediaPlan,
+    SocialMediaSubscriptionProfile,
+    SocialMediaContentRecord,
     SocialMediaTracking,
 )
 
@@ -19,7 +26,7 @@ from .models import (
 TEXTAREA_2 = forms.Textarea(attrs={"rows": 2})
 TEXTAREA_3 = forms.Textarea(attrs={"rows": 3})
 TEXTAREA_4 = forms.Textarea(attrs={"rows": 4})
-DATE = forms.DateInput(attrs={"type": "date"})
+DATE = forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"})
 NUMBER_MONEY = forms.NumberInput(attrs={"step": "0.01", "min": "0"})
 
 
@@ -56,7 +63,6 @@ class MarketingIntakeForm(forms.ModelForm):
     class Meta:
         model = MarketingWorkspace
         fields = [
-            "intake_status",
             "meeting_summary",
             "owner_name",
             "legal_business_name",
@@ -71,7 +77,7 @@ class MarketingIntakeForm(forms.ModelForm):
             "notes",
         ]
         widgets = {
-            "founding_date": DATE,
+            "founding_date": forms.TextInput(attrs={"placeholder": "Ej.: 2018, marzo de 2018, 15 años operando"}),
             "meeting_summary": TEXTAREA_4,
             "company_description": TEXTAREA_4,
             "notes": TEXTAREA_3,
@@ -84,7 +90,7 @@ class MarketingIntakeForm(forms.ModelForm):
         )
         self.fields["gmail_email"].label = "Correo / Gmail utilizado"
         self.fields["notes"].label = "Notas generales"
-        self.fields["intake_status"].help_text = "Marca Completo cuando los checks obligatorios de la reunión estén definidos."
+        self.fields["founding_date"].help_text = "Campo libre: puedes registrar una fecha, un año o una referencia indicada por el cliente."
         self.fields["email_account_mode"].help_text = "Indica si el correo ya existe o si Marketing lo crea. No se solicitan contraseñas aquí."
         self.fields["lsa_documents_available"].help_text = "Selecciona Sí o No. La respuesta condiciona los campos documentales dentro de Google LSA."
 
@@ -93,14 +99,13 @@ class MarketingIntakeForm(forms.ModelForm):
         email_mode = cleaned.get("email_account_mode")
         gmail_email = (cleaned.get("gmail_email") or "").strip()
         contact_email = (cleaned.get("contact_email") or "").strip()
-        intake_status = cleaned.get("intake_status")
-        business_profile_mode = cleaned.get("business_profile_mode")
-        lsa_documents_available = cleaned.get("lsa_documents_available")
+        # El estado de Información inicial ya no se selecciona manualmente.
+        # Se calcula automáticamente en services.sync_workspace_checks() usando
+        # los mismos cinco checks visibles en la pantalla.
 
         # El correo operativo puede venir del campo Correo electrónico o del
-        # campo Correo/Gmail utilizado. Antes el formulario exigía únicamente
-        # gmail_email mientras el checklist aceptaba cualquiera de los dos,
-        # provocando que la reunión pareciera completa pero nunca se guardara.
+        # campo Correo/Gmail utilizado. Si se define como existente/creado, sí
+        # necesitamos una dirección válida para guardar esa decisión.
         if email_mode in {"existing", "create"}:
             operational_email = gmail_email or contact_email
             if not operational_email:
@@ -113,36 +118,9 @@ class MarketingIntakeForm(forms.ModelForm):
                     "Registra el correo utilizado. Puedes usar el mismo correo electrónico del cliente.",
                 )
             elif not gmail_email:
-                # Evita pedir el mismo dato dos veces: si ya se registró arriba,
-                # se reutiliza como Gmail/correo operativo.
                 cleaned["gmail_email"] = operational_email
         elif email_mode == "pending":
             cleaned["gmail_email"] = ""
-
-        if intake_status == "complete":
-            if not (cleaned.get("meeting_summary") or "").strip():
-                self.add_error(
-                    "meeting_summary",
-                    "Para completar esta etapa registra la información levantada en la reunión.",
-                )
-
-            if email_mode not in {"existing", "create"}:
-                self.add_error(
-                    "email_account_mode",
-                    "Define si el correo ya existe o si Marketing lo creará.",
-                )
-
-            if business_profile_mode not in {"existing", "create", "no"}:
-                self.add_error(
-                    "business_profile_mode",
-                    "Define la situación de Google Business.",
-                )
-
-            if lsa_documents_available not in {"yes", "no"}:
-                self.add_error(
-                    "lsa_documents_available",
-                    "Selecciona Sí o No para la disponibilidad de documentos de LSA.",
-                )
 
         return cleaned
 
@@ -235,7 +213,7 @@ class GoogleLSAForm(forms.ModelForm):
         widgets = {
             "followup_mode": forms.HiddenInput(),
             "followup_start_date": DATE,
-            "custom_followup_date": DATE,
+            "custom_followup_date": forms.HiddenInput(),
             "photo_reminder_start_date": DATE,
             "last_lead_date": DATE,
             "weekly_cost": NUMBER_MONEY,
@@ -258,6 +236,8 @@ class GoogleLSAForm(forms.ModelForm):
         self.fields["custom_followup_date"].label = "Fecha del recordatorio personalizado"
         self.fields["photo_reminder_enabled"].label = "¿Activar recordatorio para subir fotos cada 15 días?"
         self.fields["photo_reminder_start_date"].label = "Primera fecha para subir fotos"
+        self.fields["photo_reminder_enabled"].help_text = "Sí es el valor predeterminado. Cada fecha genera una sola ocurrencia; guardar nuevamente no reactiva recordatorios ya atendidos."
+        self.fields["has_social_media"].help_text = "Sí = revisión semanal. No = sin recordatorio adicional y sin fecha obligatoria."
         self.fields["notes"].label = "Notas"
 
     def clean(self):
@@ -296,10 +276,11 @@ class GoogleLSAForm(forms.ModelForm):
             if not cleaned.get("followup_start_date"):
                 self.add_error("followup_start_date", "Selecciona la primera fecha de revisión semanal.")
         elif has_social == "no":
-            cleaned["followup_mode"] = "custom"
+            # Si no tiene Social Media no se solicita ninguna fecha adicional.
+            # El seguimiento LSA queda explícitamente sin recordatorio semanal.
+            cleaned["followup_mode"] = "none"
             cleaned["followup_start_date"] = None
-            if not cleaned.get("custom_followup_date"):
-                self.add_error("custom_followup_date", "Selecciona la fecha del recordatorio personalizado.")
+            cleaned["custom_followup_date"] = None
         else:
             cleaned["followup_mode"] = "none"
             cleaned["followup_start_date"] = None
@@ -584,6 +565,15 @@ class SocialMediaPlanForm(forms.ModelForm):
             self.fields["project"].queryset = self.fields["project"].queryset.filter(
                 assignments__user=user, assignments__area="marketing"
             ).distinct()
+        self.fields["project"].help_text = "Vincula el plan con el mismo proyecto usado por Diseño para mantener seguimiento y publicaciones relacionados."
+
+    def clean(self):
+        cleaned = super().clean()
+        client = cleaned.get("client")
+        project = cleaned.get("project")
+        if client and project and project.client_id != client.pk:
+            self.add_error("project", "El proyecto seleccionado debe pertenecer al mismo cliente del plan Social Media.")
+        return cleaned
 
 
 class SocialMediaDailyLogForm(forms.ModelForm):
@@ -591,3 +581,226 @@ class SocialMediaDailyLogForm(forms.ModelForm):
         model = SocialMediaDailyLog
         fields = ["date", "follow_up", "publication", "post_url", "notes"]
         widgets = {"date": DATE, "notes": TEXTAREA_2}
+
+
+SOCIAL_MEDIA_NETWORK_CHOICES = [
+    ("google_business", "Google"),
+    ("facebook", "Facebook"),
+    ("instagram", "Instagram"),
+    ("youtube", "YouTube"),
+    ("tiktok", "TikTok"),
+]
+
+SOCIAL_MEDIA_CYCLE_CHOICES = [
+    ("7", "7 días"),
+    ("15", "15 días"),
+    ("30", "30 días / mensual"),
+]
+
+
+class SocialMediaCatalogPlanForm(forms.ModelForm):
+    """Editor Marketing del catálogo Social Media compartido con Diseño.
+
+    No duplica planes: usa ``plans.ServicePlan`` y guarda redes/ciclo en el JSON
+    ``rules`` ya existente del plan.
+    """
+
+    default_networks = forms.MultipleChoiceField(
+        choices=SOCIAL_MEDIA_NETWORK_CHOICES,
+        required=True,
+        widget=forms.CheckboxSelectMultiple,
+        label="Redes incluidas",
+    )
+    extra_platforms = forms.CharField(
+        required=False,
+        label="Plataformas extras",
+        help_text="Ej.: LinkedIn, Pinterest u otra plataforma no listada.",
+    )
+    cycle_days = forms.ChoiceField(choices=SOCIAL_MEDIA_CYCLE_CHOICES, label="Duración del ciclo")
+
+    class Meta:
+        model = ServicePlan
+        fields = ["name", "weekly_posts", "weekly_videos", "base_price", "currency", "description", "is_active"]
+        widgets = {
+            "weekly_posts": forms.NumberInput(attrs={"min": 0}),
+            "weekly_videos": forms.NumberInput(attrs={"min": 0}),
+            "base_price": forms.NumberInput(attrs={"min": 0, "step": "0.01"}),
+            "description": TEXTAREA_3,
+        }
+        labels = {
+            "weekly_posts": "Posts por ciclo",
+            "weekly_videos": "Videos por ciclo",
+            "base_price": "Costo del plan",
+            "is_active": "Plan activo",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        rules = dict(getattr(self.instance, "rules", {}) or {}) if getattr(self.instance, "pk", None) else {}
+        self.fields["default_networks"].initial = rules.get("social_networks", [])
+        self.fields["extra_platforms"].initial = rules.get("extra_platforms", "")
+        self.fields["cycle_days"].initial = str(rules.get("cycle_days", 15))
+
+    def clean(self):
+        cleaned = super().clean()
+        if not (cleaned.get("weekly_posts") or cleaned.get("weekly_videos")):
+            raise forms.ValidationError("El plan debe incluir al menos 1 post o 1 video por ciclo.")
+        return cleaned
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        obj.department = PlanDepartment.DESIGN
+        obj.service_type = ServiceType.SOCIAL_MEDIA
+        obj.billing_cycle = BillingCycle.CUSTOM
+        rules = dict(obj.rules or {})
+        rules.update({
+            "social_networks": self.cleaned_data.get("default_networks", []),
+            "extra_platforms": (self.cleaned_data.get("extra_platforms") or "").strip(),
+            "cycle_days": int(self.cleaned_data.get("cycle_days") or 15),
+        })
+        obj.rules = rules
+        if commit:
+            if not obj.code:
+                from django.utils.text import slugify
+                base = slugify(obj.name)[:65] or "social-media"
+                code = base
+                n = 2
+                qs = ServicePlan.objects.exclude(pk=obj.pk) if obj.pk else ServicePlan.objects.all()
+                while qs.filter(code=code).exists():
+                    code = f"{base}-{n}"[:80]
+                    n += 1
+                obj.code = code
+            obj.full_clean()
+            obj.save()
+        return obj
+
+
+class SocialMediaSubscriptionV15Form(forms.ModelForm):
+    project = forms.ModelChoiceField(queryset=Project.objects.none(), label="Proyecto")
+    social_networks = forms.MultipleChoiceField(
+        choices=SOCIAL_MEDIA_NETWORK_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Redes que se manejarán",
+        help_text="Si no marcas ninguna, se usarán automáticamente las redes definidas en el plan.",
+    )
+    assigned_to = forms.ModelChoiceField(
+        queryset=UserAccount.objects.none(),
+        required=False,
+        label="Responsable de Marketing",
+    )
+    needs_photos = forms.ChoiceField(choices=(("no", "No"), ("yes", "Sí")), label="¿Hace falta pedir fotos al cliente?")
+    photo_request_status = forms.ChoiceField(choices=(("incomplete", "Pendiente"), ("complete", "Recibidas / completo")), label="Estado de fotos")
+    photo_request_notes = forms.CharField(required=False, widget=TEXTAREA_2, label="Detalle de fotos solicitadas")
+    extra_platforms = forms.CharField(required=False, label="Plataformas extras")
+
+    class Meta:
+        model = ClientPlan
+        fields = ["client", "plan", "start_date", "end_date", "notes", "is_active"]
+        widgets = {"start_date": DATE, "end_date": DATE, "notes": TEXTAREA_3}
+        labels = {
+            "client": "Empresa / cliente",
+            "plan": "Plan Social Media",
+            "start_date": "Desde cuándo",
+            "end_date": "Hasta cuándo",
+            "notes": "Notas de la suscripción",
+            "is_active": "Suscripción activa",
+        }
+
+    def __init__(self, *args, user=None, profile=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.profile = profile
+        plan_qs = ServicePlan.objects.filter(
+            department=PlanDepartment.DESIGN,
+            service_type=ServiceType.SOCIAL_MEDIA,
+        )
+        if not (self.instance and self.instance.pk):
+            plan_qs = plan_qs.filter(is_active=True)
+        self.fields["plan"].queryset = plan_qs.order_by("-is_active", "name")
+        projects = Project.objects.select_related("client").order_by("client__business_name", "project_code")
+        if user and not user.is_manager:
+            projects = projects.filter(assignments__user=user, assignments__area="marketing").distinct()
+        self.fields["project"].queryset = projects
+        self.fields["assigned_to"].queryset = UserAccount.objects.filter(
+            role__in=[UserAccount.Role.MARKETING, UserAccount.Role.MANAGER],
+            is_active=True,
+        ).order_by("display_name", "email")
+
+        if profile:
+            self.fields["project"].initial = profile.project
+            self.fields["assigned_to"].initial = profile.assigned_to
+            self.fields["needs_photos"].initial = profile.needs_photos
+            self.fields["photo_request_status"].initial = profile.photo_request_status
+            self.fields["photo_request_notes"].initial = profile.photo_request_notes
+            self.fields["extra_platforms"].initial = profile.extra_platforms
+        else:
+            self.fields["needs_photos"].initial = "no"
+            self.fields["photo_request_status"].initial = "incomplete"
+            self.fields["start_date"].initial = timezone.localdate()
+            plan_id = self.initial.get("plan")
+            if plan_id:
+                plan = self.fields["plan"].queryset.filter(pk=plan_id).first()
+                if plan:
+                    self.fields["social_networks"].initial = list((plan.rules or {}).get("social_networks", []))
+                    self.fields["extra_platforms"].initial = (plan.rules or {}).get("extra_platforms", "")
+
+        if self.instance and self.instance.pk:
+            self.fields["social_networks"].initial = self.instance.social_networks or []
+
+    def clean(self):
+        cleaned = super().clean()
+        project = cleaned.get("project")
+        client = cleaned.get("client")
+        plan = cleaned.get("plan")
+        if project and client and project.client_id != client.pk:
+            self.add_error("project", "El proyecto debe pertenecer a la misma empresa seleccionada.")
+        if plan and (plan.department != PlanDepartment.DESIGN or plan.service_type != ServiceType.SOCIAL_MEDIA):
+            self.add_error("plan", "Selecciona un plan válido de Social Media.")
+        if plan and not cleaned.get("social_networks"):
+            cleaned["social_networks"] = list((plan.rules or {}).get("social_networks", []))
+        if not cleaned.get("social_networks"):
+            self.add_error("social_networks", "Define al menos una red en la suscripción o en el plan seleccionado.")
+        start, end = cleaned.get("start_date"), cleaned.get("end_date")
+        if start and end and end < start:
+            self.add_error("end_date", "La fecha final no puede ser anterior a la fecha de inicio.")
+        if cleaned.get("needs_photos") == "no":
+            cleaned["photo_request_status"] = "complete"
+            cleaned["photo_request_notes"] = ""
+        return cleaned
+
+    def save_client_plan(self):
+        obj = super().save(commit=False)
+        obj.social_networks = self.cleaned_data.get("social_networks", [])
+        obj.purchase_date = obj.purchase_date or timezone.localdate()
+        obj.status = ClientPlanStatus.ACTIVE if obj.is_active else ClientPlanStatus.PAUSED
+        if obj.plan_id:
+            obj.agreed_price = obj.plan.base_price
+            obj.currency = obj.plan.currency
+            cycle_days = int((obj.plan.rules or {}).get("cycle_days", 15))
+            obj.renewal_frequency = {7: RenewalFrequency.WEEKLY, 15: RenewalFrequency.BIWEEKLY, 30: RenewalFrequency.MONTHLY}.get(cycle_days, RenewalFrequency.BIWEEKLY)
+            _, obj.renewal_date = current_cycle_bounds(obj.start_date or timezone.localdate(), obj.renewal_frequency)
+        obj.save()
+        return obj
+
+
+class SocialMediaContentRecordForm(forms.ModelForm):
+    planning_month = forms.DateField(
+        input_formats=["%Y-%m", "%Y-%m-%d"],
+        widget=forms.DateInput(format="%Y-%m", attrs={"type": "month"}),
+        label="Mes de planificación",
+    )
+
+    class Meta:
+        model = SocialMediaContentRecord
+        fields = ["planning_month", "service_used", "topic", "objective", "summary", "adjustment_notes", "published_on", "post_url"]
+        widgets = {
+            "objective": TEXTAREA_2,
+            "summary": TEXTAREA_3,
+            "adjustment_notes": TEXTAREA_2,
+            "published_on": DATE,
+        }
+
+    def clean_planning_month(self):
+        value = self.cleaned_data["planning_month"]
+        return value.replace(day=1)

@@ -3,7 +3,7 @@
 {% block content %}
 {% with marketing_section='ads' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
 <div class="page-intro marketing-page-intro">
-  <div><span class="eyebrow">Publicidad Digital</span><h2>Publicidad tradicional + plataformas</h2><p>Publicidad tradicional funciona como control de este flujo. Selecciona Sí y pulsa “Lanzar campaña”; después se habilitan Meta Ads, Google Ads y TikTok Ads. Cada plataforma debe guardarse antes de crear su campaña.</p></div>
+  <div><span class="eyebrow">Publicidad Digital</span><h2>Publicidad tradicional + plataformas</h2><p>Publicidad tradicional funciona como control de este flujo. Selecciona Sí y guarda para habilitar Meta Ads, Google Ads y TikTok Ads. Si seleccionas No, no se muestra ninguna configuración adicional.</p></div>
   <div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:campaign_list' %}">Todas las campañas</a><a class="btn btn-secondary" href="{% url 'marketing:social_plans' %}">Social Media</a></div>
 </div>
 <div class="semantic-banner is-danger"><strong>Validación obligatoria</strong><span>Ninguna campaña puede lanzarse sin revisión del administrador/Gerencia. Si se modifica información crítica después de aprobar, la aprobación se invalida.</span></div>
@@ -14,10 +14,10 @@
     {{ forms.traditional.non_field_errors }}
     <div class="form-grid">
       <div class="field"><label>{{ forms.traditional.enabled.label }}</label>{{ forms.traditional.enabled }}{{ forms.traditional.enabled.errors }}</div>
-      <div class="field form-wide"><label>{{ forms.traditional.notes.label }}</label>{{ forms.traditional.notes }}{{ forms.traditional.notes.errors }}</div>
+      <div class="field form-wide" id="traditional-notes-wrap"><label>{{ forms.traditional.notes.label }}</label>{{ forms.traditional.notes }}{{ forms.traditional.notes.errors }}</div>
     </div>
-    <div class="form-actions"><button class="btn btn-primary">Lanzar campaña</button></div>
-    <small>{% if traditional_enabled %}<b style="color:#19733a;">Configuración guardada:</b> las plataformas están habilitadas.{% else %}<b style="color:#b84b24;">Pendiente:</b> selecciona Sí y pulsa “Lanzar campaña” para guardar y habilitar las plataformas.{% endif %} El lanzamiento real de cada campaña sigue requiriendo validación del administrador/Gerencia.</small>
+    <div class="form-actions"><button class="btn btn-primary">Guardar</button></div>
+    <small>{% if traditional_enabled %}<b style="color:#19733a;">Configuración guardada:</b> las plataformas están habilitadas.{% elif accounts.traditional.enabled == 'no' %}<b>Configuración guardada:</b> no se trabajarán plataformas publicitarias en este flujo.{% else %}<b style="color:#b84b24;">Pendiente:</b> selecciona Sí o No y pulsa “Guardar”.{% endif %} El lanzamiento real de una campaña, cuando aplique, sigue requiriendo validación del administrador/Gerencia.</small>
   </form>
 </section>
 
@@ -104,23 +104,53 @@
 </div>
 
 <div class="card social-bridge-card">
-  <div><span class="eyebrow">Social Media</span><h3>Seguimiento y publicaciones</h3><p>Seguimiento diario y publicaciones dentro de Marketing.</p></div>
+  <div><span class="eyebrow">Social Media</span><h3>Seguimiento y publicaciones</h3><p>Este acceso se mantiene independiente de Publicidad Digital. “Planes y publicaciones” conserva la relación del proyecto con el trabajo de contenido en Diseño.</p></div>
   <div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:social_tracking' %}">Seguimiento</a><a class="btn btn-primary" href="{% url 'marketing:social_plans' %}">Planes y publicaciones</a></div>
 </div>
 
 <script>
 (function(){
   var area=document.getElementById('platforms-area');
-  var masterPersisted={{ traditional_enabled|yesno:"true,false" }};
-  function disableInside(panel,disabled){if(!panel)return;panel.querySelectorAll('input,select,textarea,button').forEach(function(el){el.disabled=disabled;});}
-  function showPanel(panel,show){if(!panel)return;panel.hidden=!show;panel.querySelectorAll('input,select,textarea').forEach(function(el){el.disabled=!show;});}
-  function refresh(){
-    if(area){area.hidden=!masterPersisted;disableInside(area,!masterPersisted);}
-    if(!masterPersisted)return;
-    document.querySelectorAll('[data-enabled-field]').forEach(function(panel){var s=document.getElementById(panel.dataset.enabledField);showPanel(panel,!!s&&s.value==='yes');});
-    document.querySelectorAll('[data-show-yes]').forEach(function(panel){var s=document.getElementById(panel.dataset.showYes);showPanel(panel,!!s&&s.value==='yes');});
+  var master=document.getElementById('id_traditional-enabled');
+  var notesWrap=document.getElementById('traditional-notes-wrap');
+
+  function disableInside(panel,disabled){
+    if(!panel)return;
+    panel.querySelectorAll('input,select,textarea,button').forEach(function(el){el.disabled=disabled;});
   }
-  document.addEventListener('change',refresh);refresh();
+
+  function showPanel(panel,show){
+    if(!panel)return;
+    panel.hidden=!show;
+    panel.querySelectorAll('input,select,textarea').forEach(function(el){el.disabled=!show;});
+  }
+
+  function refresh(){
+    var enabled=!!master && master.value==='yes';
+
+    if(notesWrap){
+      notesWrap.hidden=!enabled;
+      notesWrap.querySelectorAll('input,select,textarea').forEach(function(el){el.disabled=!enabled;});
+    }
+
+    if(area){
+      area.hidden=!enabled;
+      disableInside(area,!enabled);
+    }
+    if(!enabled)return;
+
+    document.querySelectorAll('[data-enabled-field]').forEach(function(panel){
+      var source=document.getElementById(panel.dataset.enabledField);
+      showPanel(panel,!!source&&source.value==='yes');
+    });
+    document.querySelectorAll('[data-show-yes]').forEach(function(panel){
+      var source=document.getElementById(panel.dataset.showYes);
+      showPanel(panel,!!source&&source.value==='yes');
+    });
+  }
+
+  document.addEventListener('change',refresh);
+  refresh();
 })();
 </script>
 {% include 'marketing/_custom_dropdowns.html' %}

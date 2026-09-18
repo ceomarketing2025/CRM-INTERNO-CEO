@@ -1,3 +1,64 @@
-{% extends 'base.html' %}{% block page_heading %}Planes Social Media{% endblock %}{% block content %}
-<div class="page-intro"><div><span class="eyebrow">Seguimiento diario</span><h2>Planes Social Media</h2><p>Registro diario de seguimiento/publicaciones y recordatorio mensual para pedir informe a Marketing.</p></div><a class="btn btn-primary" href="{% url 'marketing:social_plan_create' %}">＋ Nuevo plan</a></div>
-<div class="project-grid">{% for r in records %}<div class="card social-plan-card"><div class="card-head"><div><h3><a class="text-link" href="{% url 'marketing:social_plan_edit' r.pk %}">{{ r.client.business_name }}</a></h3><p>{{ r.start_date|date:'d M Y' }} · {% if r.active %}Activo{% else %}Inactivo{% endif %}</p></div><span class="badge">Informe {{ r.next_report_date|date:'d/m/Y'|default:'—' }}</span></div><div class="data-list"><div><dt>Responsable</dt><dd>{{ r.assigned_to.display_name|default:'—' }}</dd></div><div><dt>Logs</dt><dd>{{ r.daily_logs.count }}</dd></div></div><a class="btn btn-secondary btn-full" href="{% url 'marketing:social_daily_add' r.pk %}">＋ Seguimiento de hoy</a></div>{% empty %}<div class="card empty">No hay planes activos.</div>{% endfor %}</div>{% endblock %}
+{% extends 'base.html' %}
+{% block page_heading %}Planes Social Media{% endblock %}
+{% block content %}
+<style>
+.social-link-note{margin-bottom:14px}.social-plan-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.social-plan-relation{margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(47,95,242,.06);font-size:11px;line-height:1.5}.social-plan-relation strong{display:block;color:#244fb9}.social-plan-relation span{opacity:.72}@media(max-width:680px){.social-plan-actions{grid-template-columns:1fr}}
+</style>
+
+<div class="page-intro">
+  <div>
+    <span class="eyebrow">Social Media · Marketing</span>
+    <h2>Planes y publicaciones</h2>
+    <p>Marketing conserva el seguimiento diario y los recordatorios. Cuando el plan tiene proyecto vinculado, el contenido y las publicaciones pueden relacionarse con el trabajo operativo de Diseño sin duplicar información.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'marketing:social_plan_create' %}">＋ Nuevo plan</a>
+</div>
+
+<div class="semantic-banner is-wait compact social-link-note">
+  <strong>Relación Marketing ↔ Diseño</strong>
+  <span>Los planes no se eliminan ni se reemplazan desde esta pantalla. El vínculo se mantiene por cliente/proyecto; Gerencia puede abrir el proyecto de Diseño para corroborar las publicaciones.</span>
+</div>
+
+<div class="project-grid">
+{% for r in records %}
+  <div class="card social-plan-card">
+    <div class="card-head">
+      <div>
+        <h3><a class="text-link" href="{% url 'marketing:social_plan_edit' r.pk %}">{{ r.client.business_name }}</a></h3>
+        <p>{{ r.start_date|date:'d M Y' }} · {% if r.active %}Activo{% else %}Inactivo{% endif %}</p>
+      </div>
+      <span class="badge">Informe {{ r.next_report_date|date:'d/m/Y'|default:'—' }}</span>
+    </div>
+
+    <div class="data-list">
+      <div><dt>Responsable</dt><dd>{{ r.assigned_to.display_name|default:'—' }}</dd></div>
+      <div><dt>Logs</dt><dd>{{ r.daily_logs.count }}</dd></div>
+      <div><dt>Proyecto</dt><dd>{% if r.project %}{{ r.project.project_code }}{% else %}Sin vincular{% endif %}</dd></div>
+    </div>
+
+    {% if r.project %}
+    <div class="social-plan-relation">
+      <strong>Proyecto vinculado con Diseño</strong>
+      <span>Seguimiento Marketing: {{ r.project.project_code }}. Las publicaciones operativas del mismo proyecto se corroboran en Diseño.</span>
+    </div>
+    {% else %}
+    <div class="social-plan-relation">
+      <strong>Falta vincular proyecto</strong>
+      <span>Edita el plan y selecciona el proyecto del mismo cliente para mantener la relación con Diseño.</span>
+    </div>
+    {% endif %}
+
+    <div class="social-plan-actions">
+      <a class="btn btn-secondary btn-full" href="{% url 'marketing:social_daily_add' r.pk %}">＋ Seguimiento de hoy</a>
+      {% if request.user.is_manager and r.project %}
+      <a class="btn btn-primary btn-full" href="{% url 'design:project_tasks' r.project.pk %}">Publicaciones en Diseño →</a>
+      {% else %}
+      <a class="btn btn-primary btn-full" href="{% url 'marketing:social_plan_edit' r.pk %}">Editar plan</a>
+      {% endif %}
+    </div>
+  </div>
+{% empty %}
+  <div class="card empty">No hay planes activos.</div>
+{% endfor %}
+</div>
+{% endblock %}

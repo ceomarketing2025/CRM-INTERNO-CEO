@@ -8,6 +8,12 @@
     <a class="btn btn-secondary" href="{% if return_to == 'marketing_calendar' %}{% url 'reminders:marketing_calendar' %}{% else %}{% url 'reminders:list' %}{% endif %}">← Volver</a>
   </div>
   {% include 'reminders/_google_connection.html' %}
+  {% if source_context %}
+  <div class="semantic-banner is-success compact">
+    <strong>Contexto cargado desde Marketing</strong>
+    <span>Cliente, proyecto y área se precargaron automáticamente. Elige fecha y responsable antes de guardar.</span>
+  </div>
+  {% endif %}
   <div class="rem-form-layout">
     <form method="post" class="card rem-form-card">
       {% csrf_token %}
@@ -20,7 +26,8 @@
               {{ field }}
               <div><label for="{{ field.id_for_label }}">{{ field.label }}</label>{% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}</div>
             {% else %}
-              <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+              {% if field.name == 'project' %}<div class="help">Solo se muestran los proyectos del cliente seleccionado.</div>{% elif field.name == 'assigned_to' %}<div class="help">Solo se muestran responsables vinculados al proyecto seleccionado.</div>{% elif field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
             {% endif %}
             {% if field.errors %}<div class="field-errors">{{ field.errors }}</div>{% endif %}
           </div>
@@ -35,4 +42,94 @@
     </aside>
   </div>
 </div>
+<script>
+(function () {
+  var clientSelect = document.getElementById('id_client');
+  var projectSelect = document.getElementById('id_project');
+  var assignedSelect = document.getElementById('id_assigned_to');
+  if (!clientSelect || !projectSelect) return;
+
+  var originalProjects = Array.prototype.slice.call(projectSelect.options).map(function (option) {
+    return {
+      value: option.value,
+      label: option.textContent,
+      clientId: option.dataset.clientId || '',
+      assigneeIds: option.dataset.assigneeIds || ''
+    };
+  });
+  var originalAssignees = assignedSelect ? Array.prototype.slice.call(assignedSelect.options).map(function (option) {
+    return { value: option.value, label: option.textContent };
+  }) : [];
+  var initialProject = projectSelect.value;
+  var initialAssignee = assignedSelect ? assignedSelect.value : '';
+
+  function selectedProjectData() {
+    var option = projectSelect.options[projectSelect.selectedIndex];
+    return option ? (option.dataset.assigneeIds || '') : '';
+  }
+
+  function refreshAssignees() {
+    if (!assignedSelect) return;
+    var projectId = projectSelect.value || '';
+    var previous = assignedSelect.value || initialAssignee || '';
+    var allowed = selectedProjectData().split(',').filter(Boolean);
+    assignedSelect.innerHTML = '';
+
+    var placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = !projectId ? 'Selecciona un proyecto primero' : (allowed.length ? 'Seleccionar responsable...' : 'Sin responsables vinculados');
+    assignedSelect.appendChild(placeholder);
+
+    if (projectId) {
+      originalAssignees.forEach(function (item) {
+        if (!item.value || allowed.indexOf(item.value) === -1) return;
+        var option = document.createElement('option');
+        option.value = item.value;
+        option.textContent = item.label;
+        assignedSelect.appendChild(option);
+      });
+    }
+
+    if (allowed.indexOf(previous) !== -1) assignedSelect.value = previous;
+    else assignedSelect.value = '';
+    assignedSelect.disabled = !projectId || !allowed.length;
+    initialAssignee = '';
+  }
+
+  function refreshProjects() {
+    var clientId = clientSelect.value || '';
+    var previousValue = projectSelect.value || initialProject || '';
+    projectSelect.innerHTML = '';
+
+    var placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = clientId ? 'Seleccionar proyecto...' : 'Selecciona un cliente primero';
+    projectSelect.appendChild(placeholder);
+
+    var matching = [];
+    if (clientId) {
+      originalProjects.forEach(function (item) {
+        if (!item.value || item.clientId !== clientId) return;
+        matching.push(item.value);
+        var option = document.createElement('option');
+        option.value = item.value;
+        option.textContent = item.label;
+        option.dataset.clientId = item.clientId;
+        option.dataset.assigneeIds = item.assigneeIds;
+        projectSelect.appendChild(option);
+      });
+    }
+
+    if (matching.indexOf(previousValue) !== -1) projectSelect.value = previousValue;
+    else projectSelect.value = '';
+    projectSelect.disabled = !clientId;
+    initialProject = '';
+    refreshAssignees();
+  }
+
+  clientSelect.addEventListener('change', refreshProjects);
+  projectSelect.addEventListener('change', refreshAssignees);
+  refreshProjects();
+})();
+</script>
 {% endblock %}

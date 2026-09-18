@@ -1,4 +1,5 @@
 from io import BytesIO
+from datetime import timedelta
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
@@ -9,7 +10,9 @@ import qrcode
 from apps.audit.models import ActivityLog, GeneralAuditCheck
 from apps.audit.services import build_general_audit_rows, log_activity, review_general_audit_check
 from apps.core.decorators import role_required
-from apps.projects.models import Project
+from apps.projects.models import Project, ProjectPlanAssignment
+from apps.plans.models import ClientPlan, ServicePlan
+from apps.plans.models.choices import PlanDepartment, ServiceType
 from apps.projects.selectors import can_access_project, projects_for_area
 
 from .forms import (
@@ -26,6 +29,9 @@ from .forms import (
     MarketingTaskForm,
     SocialMediaDailyLogForm,
     SocialMediaPlanForm,
+    SocialMediaCatalogPlanForm,
+    SocialMediaSubscriptionV15Form,
+    SocialMediaContentRecordForm,
     SocialMediaTrackingForm,
     TraditionalAdvertisingForm,
 )
@@ -42,6 +48,8 @@ from .models import (
     SocialMediaAudit,
     SocialMediaDailyLog,
     SocialMediaPlan,
+    SocialMediaSubscriptionProfile,
+    SocialMediaContentRecord,
     SocialMediaTracking,
 )
 from .services import (
@@ -94,6 +102,78 @@ def _task_count_for_project(project, area):
         "total": qs.count(),
         "pending": qs.exclude(status="done").count(),
         "done": qs.filter(status="done").count(),
+    }
+
+
+def _social_compliance(subscription, profile=None):
+    """Resumen visual del cumplimiento del ciclo actual de Social Media.
+
+    Usa el mismo plan/suscripción ya existente. Cada registro de contenido creado
+    durante el ciclo cuenta como un entregable creado; se considera publicado si
+    tiene fecha de publicación o URL. No crea datos nuevos ni duplica Diseño.
+    """
+    today = timezone.localdate()
+    rules = dict(getattr(subscription.plan, "rules", {}) or {})
+    try:
+        cycle_days = int(rules.get("cycle_days") or 15)
+    except (TypeError, ValueError):
+        cycle_days = 15
+    cycle_days = max(1, cycle_days)
+
+    anchor = subscription.start_date or subscription.purchase_date or today
+    if today < anchor:
+        cycle_start = anchor
+        upcoming = True
+    else:
+        elapsed = (today - anchor).days
+        cycle_start = anchor + timedelta(days=(elapsed // cycle_days) * cycle_days)
+        upcoming = False
+    cycle_end = cycle_start + timedelta(days=cycle_days - 1)
+
+    target_posts = int(subscription.plan.weekly_posts or 0)
+    target_videos = int(subscription.plan.weekly_videos or 0)
+    target_total = target_posts + target_videos
+    created = 0
+    published = 0
+    if profile and profile.pk and not upcoming:
+        cycle_records = []
+        for item in profile.content_records.all():
+            created_date = (
+                timezone.localtime(item.created_at).date()
+                if timezone.is_aware(item.created_at)
+                else item.created_at.date()
+            )
+            if cycle_start <= created_date <= cycle_end:
+                cycle_records.append(item)
+        created = len(cycle_records)
+        published = sum(1 for item in cycle_records if item.published_on or item.post_url)
+
+    pending = max(target_total - created, 0)
+    extra = max(created - target_total, 0)
+    percent = min(100, round((created / target_total) * 100)) if target_total else 0
+    if upcoming or not subscription.is_active:
+        state = "neutral"
+    elif target_total and created >= target_total:
+        state = "success"
+    elif created:
+        state = "wait"
+    else:
+        state = "danger"
+
+    return {
+        "cycle_days": cycle_days,
+        "cycle_start": cycle_start,
+        "cycle_end": cycle_end,
+        "target_posts": target_posts,
+        "target_videos": target_videos,
+        "target_total": target_total,
+        "created": created,
+        "published": published,
+        "pending": pending,
+        "extra": extra,
+        "percent": percent,
+        "state": state,
+        "upcoming": upcoming,
     }
 
 
@@ -387,12 +467,12 @@ def document_add(request, project_pk):
         obj.save()
         sync_workspace_checks(workspace_obj)
         log_activity(request.user, "marketing", "document_add", obj, description=obj.title)
-        messages.success(request, "Documento agregado.")
+        messages.success(request, "Documentación Legal agregada.")
         return redirect("marketing:workspace", project_pk=project_pk)
     return render(request, "marketing/form.html", {
         "form": form,
-        "title": "Agregar documento de la reunión / Marketing",
-        "subtitle": "Sube PDF o registra un link de Drive. Las credenciales no se manejan en este módulo.",
+        "title": "Agregar Documentación Legal",
+        "subtitle": "Sube un PDF legal/de reunión o registra un link de Drive. Las credenciales no se manejan en este módulo.",
     })
 
 
@@ -436,7 +516,7 @@ def campaign_create(request):
             messages.error(request, "Selecciona Meta Ads, Google Ads o TikTok Ads para crear la campaña.")
             return redirect("marketing:digital_ads", project_pk=project.pk)
         if not controller or controller.enabled != "yes":
-            messages.error(request, "Primero selecciona Sí en Publicidad tradicional y pulsa ‘Lanzar campaña’ para guardar ese control. Después se habilitarán Meta Ads, Google Ads y TikTok Ads.")
+            messages.error(request, "Primero selecciona Sí en Publicidad tradicional y pulsa ‘Guardar’. Después se habilitarán Meta Ads, Google Ads y TikTok Ads.")
             return redirect("marketing:digital_ads", project_pk=project.pk)
         if not account or account.enabled != "yes":
             messages.error(request, f"Primero habilita {account.get_platform_display() if account else platform}.")
@@ -521,7 +601,7 @@ def campaign_weekly_report(request, pk):
 def social_tracking_list(request):
     """Auditoría General por proyecto. Solo Gerencia/Administración."""
     from collections import OrderedDict
-    from apps.projects.models import Project
+    from apps.projects.models import Project, ProjectPlanAssignment
     from apps.projects.selectors import project_area_flags
     from apps.projects.services import sync_project_area_records
 
@@ -733,45 +813,228 @@ def social_tracking_edit(request, pk):
 
 @role_required("marketing")
 def social_plan_list(request):
-    records = SocialMediaPlan.objects.select_related("client", "project", "assigned_to")
-    return render(request, "marketing/social_plans.html", {"records": records, "current_page_label": "Social Media"})
+    """Hub Social Media: separa catálogo de Planes y Suscripciones por cliente."""
+    plans = ServicePlan.objects.filter(
+        department=PlanDepartment.DESIGN, service_type=ServiceType.SOCIAL_MEDIA
+    ).order_by("-is_active", "name")
+    subscriptions = (
+        ClientPlan.objects
+        .filter(plan__department=PlanDepartment.DESIGN, plan__service_type=ServiceType.SOCIAL_MEDIA)
+        .select_related("client", "plan")
+        .order_by("-is_active", "client__business_name")
+    )
+    if not request.user.is_manager:
+        allowed_projects = _visible_marketing_projects(request)
+        allowed_client_ids = allowed_projects.values_list("client_id", flat=True)
+        subscriptions = subscriptions.filter(client_id__in=allowed_client_ids)
+    profiles = {
+        p.client_plan_id: p
+        for p in SocialMediaSubscriptionProfile.objects.filter(client_plan_id__in=subscriptions.values_list("id", flat=True)).select_related("project", "assigned_to").prefetch_related("content_records")
+    }
+    rows = []
+    for sub in subscriptions[:100]:
+        profile = profiles.get(sub.pk)
+        rows.append({"subscription": sub, "profile": profile, "compliance": _social_compliance(sub, profile)})
+    return render(request, "marketing/social_media_hub.html", {
+        "plans": plans[:12],
+        "rows": rows,
+        "plan_count": plans.count(),
+        "subscription_count": subscriptions.count(),
+        "current_page_label": "Social Media",
+    })
 
 
 @role_required("marketing")
-def social_plan_create(request):
-    form = SocialMediaPlanForm(request.POST or None, user=request.user)
+def social_catalog_list(request):
+    records = ServicePlan.objects.filter(
+        department=PlanDepartment.DESIGN, service_type=ServiceType.SOCIAL_MEDIA
+    ).order_by("-is_active", "name")
+    return render(request, "marketing/social_catalog.html", {"records": records, "current_page_label": "Social Media · Planes"})
+
+
+@role_required("marketing")
+def social_catalog_create(request):
+    form = SocialMediaCatalogPlanForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        save_social_plan(form=form, user=request.user)
-        messages.success(request, "Plan Social Media creado con recordatorio de informe mensual.")
-        return redirect("marketing:social_plans")
-    return render(request, "marketing/form.html", {"form": form, "title": "Nuevo plan Social Media", "subtitle": "Seguimiento diario + revisión mensual."})
+        obj = form.save()
+        log_activity(request.user, "marketing", "social_catalog_create", obj, description=obj.name)
+        messages.success(request, "Plan Social Media creado. Ya puede asignarse como suscripción a una empresa.")
+        return redirect("marketing:social_catalog")
+    return render(request, "marketing/form.html", {
+        "form": form,
+        "title": "Nuevo plan Social Media",
+        "subtitle": "Define redes, cantidad de posts/videos y duración del ciclo. Este mismo plan será visible para Diseño.",
+    })
+
+
+@role_required("marketing")
+def social_catalog_edit(request, pk):
+    obj = get_object_or_404(ServicePlan, pk=pk, department=PlanDepartment.DESIGN, service_type=ServiceType.SOCIAL_MEDIA)
+    form = SocialMediaCatalogPlanForm(request.POST or None, instance=obj)
+    if request.method == "POST" and form.is_valid():
+        obj = form.save()
+        log_activity(request.user, "marketing", "social_catalog_update", obj, description=obj.name)
+        messages.success(request, "Plan Social Media actualizado.")
+        return redirect("marketing:social_catalog")
+    return render(request, "marketing/form.html", {"form": form, "title": "Editar plan Social Media", "subtitle": obj.name})
+
+
+@role_required("marketing")
+def social_subscription_list(request):
+    records = (
+        ClientPlan.objects
+        .filter(plan__department=PlanDepartment.DESIGN, plan__service_type=ServiceType.SOCIAL_MEDIA)
+        .select_related("client", "plan")
+        .order_by("-is_active", "client__business_name")
+    )
+    if not request.user.is_manager:
+        allowed_client_ids = _visible_marketing_projects(request).values_list("client_id", flat=True)
+        records = records.filter(client_id__in=allowed_client_ids)
+    profiles = {
+        p.client_plan_id: p
+        for p in SocialMediaSubscriptionProfile.objects.filter(client_plan_id__in=records.values_list("id", flat=True)).select_related("project", "assigned_to").prefetch_related("content_records")
+    }
+    rows = []
+    for sub in records:
+        profile = profiles.get(sub.pk)
+        rows.append({"subscription": sub, "profile": profile, "compliance": _social_compliance(sub, profile)})
+    return render(request, "marketing/social_subscriptions.html", {"rows": rows, "current_page_label": "Social Media · Suscripciones"})
+
+
+def _save_social_subscription_v15(request, form, profile=None):
+    sub = form.save_client_plan()
+    project = form.cleaned_data["project"]
+    profile = profile or SocialMediaSubscriptionProfile(client_plan=sub)
+    profile.project = project
+    profile.assigned_to = form.cleaned_data.get("assigned_to")
+    profile.needs_photos = form.cleaned_data.get("needs_photos") or "no"
+    profile.photo_request_status = form.cleaned_data.get("photo_request_status") or "incomplete"
+    profile.photo_request_notes = form.cleaned_data.get("photo_request_notes") or ""
+    profile.extra_platforms = form.cleaned_data.get("extra_platforms") or (sub.plan.rules or {}).get("extra_platforms", "")
+    profile.save()
+
+    # Relación única compartida con Diseño: no se crea otro plan ni otra tarea.
+    # Se conecta la misma suscripción al producto contratado del proyecto.
+    ProjectPlanAssignment.objects.update_or_create(
+        project=project,
+        plan=sub.plan,
+        defaults={"subscription": sub, "agreed_price": sub.agreed_price, "is_active": sub.is_active},
+    )
+    log_activity(request.user, "marketing", "social_subscription_save", profile, description=f"{sub.client.business_name} · {sub.plan.name}")
+    return sub, profile
+
+
+@role_required("marketing")
+def social_subscription_create(request):
+    initial = {}
+    project_id = (request.GET.get("project") or "").strip()
+    plan_id = (request.GET.get("plan") or "").strip()
+    if project_id.isdigit():
+        project = _project_for_marketing(request, int(project_id))
+        initial.update({"project": project.pk, "client": project.client_id})
+    if plan_id.isdigit():
+        plan = ServicePlan.objects.filter(pk=int(plan_id), department=PlanDepartment.DESIGN, service_type=ServiceType.SOCIAL_MEDIA, is_active=True).first()
+        if plan:
+            initial["plan"] = plan.pk
+            initial["social_networks"] = list((plan.rules or {}).get("social_networks", []))
+            initial["extra_platforms"] = (plan.rules or {}).get("extra_platforms", "")
+    form = SocialMediaSubscriptionV15Form(request.POST or None, user=request.user, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        sub, profile = _save_social_subscription_v15(request, form)
+        messages.success(request, "Suscripción Social Media guardada y vinculada con el mismo proyecto que usa Diseño.")
+        return redirect("marketing:social_subscription_detail", pk=profile.pk)
+    return render(request, "marketing/form.html", {
+        "form": form,
+        "title": "Nueva suscripción Social Media",
+        "subtitle": "Asigna empresa, plan, fechas, redes y si hacen falta fotos del cliente.",
+    })
+
+
+@role_required("marketing")
+def social_subscription_edit(request, pk):
+    profile = get_object_or_404(SocialMediaSubscriptionProfile.objects.select_related("client_plan__client", "client_plan__plan", "project"), pk=pk)
+    if profile.project and not can_access_project(request.user, profile.project):
+        raise PermissionDenied("Esta suscripción no pertenece a un proyecto asignado a Marketing.")
+    form = SocialMediaSubscriptionV15Form(request.POST or None, instance=profile.client_plan, user=request.user, profile=profile)
+    if request.method == "POST" and form.is_valid():
+        _, profile = _save_social_subscription_v15(request, form, profile=profile)
+        messages.success(request, "Suscripción Social Media actualizada.")
+        return redirect("marketing:social_subscription_detail", pk=profile.pk)
+    return render(request, "marketing/form.html", {"form": form, "title": "Editar suscripción Social Media", "subtitle": profile.client.business_name})
+
+
+@role_required("marketing")
+def social_subscription_detail(request, pk):
+    profile = get_object_or_404(
+        SocialMediaSubscriptionProfile.objects.select_related("client_plan__client", "client_plan__plan", "project", "assigned_to"),
+        pk=pk,
+    )
+    if profile.project and not can_access_project(request.user, profile.project):
+        raise PermissionDenied("Esta suscripción no pertenece a un proyecto asignado a Marketing.")
+    sub = profile.client_plan
+    cycles = []
+    try:
+        cycles = list(sub.social_media_cycles.prefetch_related("items").all()[:8])
+    except Exception:
+        cycles = []
+    content = profile.content_records.select_related("created_by").all()[:100]
+    recent_topics = list(profile.content_records.values_list("topic", flat=True)[:20])
+    return render(request, "marketing/social_subscription_detail.html", {
+        "profile": profile,
+        "subscription": sub,
+        "cycles": cycles,
+        "content_records": content,
+        "recent_topics": recent_topics,
+        "compliance": _social_compliance(sub, profile),
+        "current_page_label": "Social Media · Suscripción",
+    })
+
+
+@role_required("marketing")
+def social_content_create(request, profile_pk):
+    profile = get_object_or_404(SocialMediaSubscriptionProfile.objects.select_related("project", "client_plan__client"), pk=profile_pk)
+    if profile.project and not can_access_project(request.user, profile.project):
+        raise PermissionDenied("Esta suscripción no pertenece a un proyecto asignado a Marketing.")
+    form = SocialMediaContentRecordForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        obj = form.save(commit=False)
+        obj.profile = profile
+        obj.created_by = request.user
+        obj.save()
+        log_activity(request.user, "marketing", "social_content_create", obj, description=obj.topic)
+        messages.success(request, "Contenido registrado en el historial mensual.")
+        return redirect("marketing:social_subscription_detail", pk=profile.pk)
+    return render(request, "marketing/social_content_form.html", {
+        "form": form,
+        "profile": profile,
+        "recent_topics": profile.content_records.values_list("topic", flat=True)[:15],
+    })
+
+
+# Compatibilidad histórica: las rutas antiguas siguen existiendo, pero el flujo
+# principal V15 usa Planes + Suscripciones.
+@role_required("marketing")
+def social_plan_create(request):
+    return social_catalog_create(request)
 
 
 @role_required("marketing")
 def social_plan_edit(request, pk):
-    obj = get_object_or_404(SocialMediaPlan, pk=pk)
-    if obj.project and not can_access_project(request.user, obj.project):
-        raise PermissionDenied("Este plan no pertenece a un proyecto asignado a Marketing.")
-    form = SocialMediaPlanForm(request.POST or None, instance=obj, user=request.user)
-    if request.method == "POST" and form.is_valid():
-        save_social_plan(form=form, user=request.user)
-        messages.success(request, "Plan Social Media actualizado.")
-        return redirect("marketing:social_plans")
-    return render(request, "marketing/form.html", {"form": form, "title": "Editar plan Social Media", "subtitle": obj.client.business_name})
+    return social_catalog_edit(request, pk)
 
 
 @role_required("marketing")
 def social_daily_add(request, plan_pk):
-    plan = get_object_or_404(SocialMediaPlan, pk=plan_pk)
+    legacy = get_object_or_404(SocialMediaPlan, pk=plan_pk)
     form = SocialMediaDailyLogForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         obj = form.save(commit=False)
-        obj.plan = plan
+        obj.plan = legacy
         obj.save()
         log_activity(request.user, "marketing", "social_daily_add", obj)
-        messages.success(request, "Seguimiento diario guardado.")
+        messages.success(request, "Seguimiento histórico guardado.")
         return redirect("marketing:social_plans")
-    return render(request, "marketing/form.html", {"form": form, "title": "Seguimiento diario", "subtitle": plan.client.business_name})
+    return render(request, "marketing/form.html", {"form": form, "title": "Seguimiento histórico", "subtitle": legacy.client.business_name})
 
 
 @role_required("marketing")

@@ -27,7 +27,7 @@ from .google_calendar import (
     sync_meeting_to_google,
     sync_reminder_to_google,
 )
-from .models import GoogleSyncStatus, Meeting, Reminder, ReminderArea
+from .models import GoogleSyncStatus, Meeting, Reminder, ReminderArea, ReminderCategory
 from .services import ensure_meeting_reminder
 
 
@@ -180,6 +180,43 @@ def reminder_create(request):
     requested_area = request.GET.get("area", "")
     if requested_area in ReminderArea.values:
         initial["area"] = requested_area
+
+    requested_client = (request.GET.get("client") or "").strip()
+    requested_project = (request.GET.get("project") or "").strip()
+    requested_category = (request.GET.get("category") or "").strip()
+    requested_title = (request.GET.get("title") or "").strip()
+    requested_notes = (request.GET.get("notes") or "").strip()
+    source_context = (request.GET.get("source") or "").strip()
+
+    if requested_client.isdigit():
+        initial["client"] = int(requested_client)
+    if requested_project.isdigit():
+        initial["project"] = int(requested_project)
+    if requested_category in ReminderCategory.values:
+        initial["category"] = requested_category
+    if requested_title:
+        initial["title"] = requested_title[:220]
+    if requested_notes:
+        initial["notes"] = requested_notes
+
+    # Atajos contextuales desde Marketing: se precargan datos, pero la fecha y
+    # el responsable quedan bajo control del usuario antes de guardar.
+    if source_context == "marketing":
+        initial.setdefault("area", ReminderArea.MARKETING)
+        initial.setdefault("category", ReminderCategory.CUSTOM)
+        initial.setdefault("title", "Seguimiento Marketing")
+        initial.setdefault("notes", "Recordatorio creado desde la ficha de Marketing.")
+    elif source_context == "social_media":
+        initial.setdefault("area", ReminderArea.MARKETING)
+        initial.setdefault("category", ReminderCategory.SOCIAL_DAILY)
+        initial.setdefault("title", "Seguimiento Social Media")
+        initial.setdefault("notes", "Seguimiento contextual de la suscripción Social Media.")
+    elif source_context == "social_photos":
+        initial.setdefault("area", ReminderArea.MARKETING)
+        initial.setdefault("category", ReminderCategory.FOLLOWUP_15)
+        initial.setdefault("title", "Pedir fotos para Social Media")
+        initial.setdefault("notes", "Solicitar al cliente el material fotográfico pendiente para Social Media.")
+
     form = ReminderForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         obj = form.save(commit=False)
@@ -199,6 +236,7 @@ def reminder_create(request):
             "title": "Nuevo recordatorio",
             "subtitle": "Se sincroniza con la cuenta central de Google Calendar si está conectada.",
             "return_to": request.GET.get("return_to", ""),
+            "source_context": source_context,
             **_connection_context(),
         },
     )

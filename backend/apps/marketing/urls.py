@@ -1,5 +1,4 @@
 from django.urls import path
-from django.views.generic import RedirectView
 from . import views
 
 app_name = "marketing"
@@ -32,8 +31,16 @@ urlpatterns = [
     path("social-tracking/<int:pk>/audit/", views.social_tracking_audit, name="social_tracking_audit"),
     path("social-tracking/new/", views.social_tracking_create, name="social_tracking_create"),
     path("social-tracking/<int:pk>/edit/", views.social_tracking_edit, name="social_tracking_edit"),
-    path("social-plans/", RedirectView.as_view(pattern_name="socialmedia:dashboard", permanent=False), name="social_plans"),
-    path("social-plans/new/", RedirectView.as_view(pattern_name="socialmedia:create", permanent=False), name="social_plan_create"),
-    path("social-plans/<int:pk>/edit/", RedirectView.as_view(pattern_name="socialmedia:edit", permanent=False), name="social_plan_edit"),
+    path("social-plans/", views.social_plan_list, name="social_plans"),
+    path("social-plans/catalog/", views.social_catalog_list, name="social_catalog"),
+    path("social-plans/catalog/new/", views.social_catalog_create, name="social_catalog_create"),
+    path("social-plans/catalog/<int:pk>/edit/", views.social_catalog_edit, name="social_catalog_edit"),
+    path("social-plans/subscriptions/", views.social_subscription_list, name="social_subscriptions"),
+    path("social-plans/subscriptions/new/", views.social_subscription_create, name="social_subscription_create"),
+    path("social-plans/subscriptions/<int:pk>/", views.social_subscription_detail, name="social_subscription_detail"),
+    path("social-plans/subscriptions/<int:pk>/edit/", views.social_subscription_edit, name="social_subscription_edit"),
+    path("social-plans/subscriptions/<int:profile_pk>/content/new/", views.social_content_create, name="social_content_create"),
+    path("social-plans/new/", views.social_plan_create, name="social_plan_create"),
+    path("social-plans/<int:pk>/edit/", views.social_plan_edit, name="social_plan_edit"),
     path("social-plans/<int:plan_pk>/daily/new/", views.social_daily_add, name="social_daily_add"),
 ]

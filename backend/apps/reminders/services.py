@@ -46,24 +46,60 @@ def _infer_reminder_area(*, source_key, category, area=None):
 
 
 def ensure_reminder(*, source_key, title, category, due_at, client=None, project=None, assigned_to=None, notes="", user=None, sync_to_google=True, area=None):
+    """Crea o actualiza un recordatorio automático sin reabrir ruido histórico.
+
+    Un ``source_key`` representa la misma ocurrencia automática. Si esa ocurrencia
+    ya fue completada o cancelada, futuras sincronizaciones pueden refrescar sus
+    datos descriptivos, pero nunca la vuelven a Pendiente. También se cancelan
+    duplicados pendientes con el mismo ``source_key`` si existieran de versiones
+    anteriores.
+    """
     if category == ReminderCategory.MEETING:
         sync_to_google = False  # Meeting crea su propio evento y evita duplicados.
     area = _infer_reminder_area(source_key=source_key, category=category, area=area)
-    obj, _ = Reminder.objects.update_or_create(
+
+    existing = Reminder.objects.filter(source_key=source_key).order_by("id")
+    obj = existing.first()
+    if obj:
+        existing.exclude(pk=obj.pk).filter(status=ReminderStatus.PENDING).update(
+            status=ReminderStatus.CANCELLED
+        )
+        terminal = (
+            category != ReminderCategory.MEETING
+            and obj.status in {ReminderStatus.DONE, ReminderStatus.CANCELLED}
+        )
+        obj.title = title
+        obj.category = category
+        obj.area = area
+        obj.due_at = due_at
+        obj.client = client
+        obj.project = project
+        obj.assigned_to = assigned_to
+        obj.notes = notes
+        obj.sync_to_google = sync_to_google
+        if user and not obj.created_by_id:
+            obj.created_by = user
+        if not terminal:
+            obj.status = ReminderStatus.PENDING
+            obj.completed_at = None
+        obj.save()
+        if not terminal:
+            _try_sync_reminder(obj)
+        return obj
+
+    obj = Reminder.objects.create(
         source_key=source_key,
-        defaults={
-            "title": title,
-            "category": category,
-            "area": area,
-            "due_at": due_at,
-            "client": client,
-            "project": project,
-            "assigned_to": assigned_to,
-            "notes": notes,
-            "status": ReminderStatus.PENDING,
-            "created_by": user,
-            "sync_to_google": sync_to_google,
-        },
+        title=title,
+        category=category,
+        area=area,
+        due_at=due_at,
+        client=client,
+        project=project,
+        assigned_to=assigned_to,
+        notes=notes,
+        status=ReminderStatus.PENDING,
+        created_by=user,
+        sync_to_google=sync_to_google,
     )
     _try_sync_reminder(obj)
     return obj

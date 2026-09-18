@@ -3,6 +3,11 @@
 {% block content %}
 {% with marketing_section='business' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
 
+<style>
+.semantic-pill.is-verification{background:#eaf2ff;color:#245fc6;border:1px solid #bfd4ff;}
+.google-business-notes-help{display:block;margin-top:6px;font-size:11px;opacity:.66;}
+</style>
+
 <div class="page-intro marketing-page-intro">
   <div>
     <span class="eyebrow">Google Business</span>
@@ -27,7 +32,7 @@
         <h3>Google Business Profile</h3>
         <p>Link, ID, redes sociales, notas y validación del perfil.</p>
       </div>
-      <span class="semantic-pill {% if workspace.business_profile_status == 'approved' %}is-success{% elif workspace.business_profile_status == 'denied' %}is-danger{% else %}is-wait{% endif %}">
+      <span class="semantic-pill {% if workspace.business_profile_status == 'approved' %}is-success{% elif workspace.business_profile_status == 'denied' %}is-danger{% elif workspace.business_profile_status == 'verification' %}is-verification{% else %}is-wait{% endif %}">
         {{ workspace.get_business_profile_status_display }}
       </span>
     </div>
@@ -68,6 +73,7 @@
         <div class="field form-wide">
           <label>{{ form.business_profile_notes.label }}</label>
           {{ form.business_profile_notes }}
+          <small class="google-business-notes-help">Opcional. Las notas ya no forman parte de los requisitos del checklist.</small>
           {{ form.business_profile_notes.errors }}
         </div>
       </div>

@@ -26,7 +26,7 @@
       {% if form.non_field_errors %}<div class="semantic-banner is-danger compact">{{ form.non_field_errors }}</div>{% endif %}
       <div class="rem-form-grid">
         <div><label for="{{ form.client.id_for_label }}">{{ form.client.label }}</label>{{ form.client }}<div class="field-errors">{{ form.client.errors }}</div></div>
-        <div><label for="{{ form.project.id_for_label }}">{{ form.project.label }}</label>{{ form.project }}<div class="field-errors">{{ form.project.errors }}</div></div>
+        <div><label for="{{ form.project.id_for_label }}">{{ form.project.label }}</label>{{ form.project }}<div class="help">Solo se muestran los proyectos del cliente seleccionado.</div><div class="field-errors">{{ form.project.errors }}</div></div>
         <div><label for="{{ form.area.id_for_label }}">{{ form.area.label }}</label>{{ form.area }}<div class="help">Marketing permite que esta reunión aparezca también en el Calendario Marketing.</div><div class="field-errors">{{ form.area.errors }}</div></div>
         <div><label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>{{ form.status }}<div class="field-errors">{{ form.status.errors }}</div></div>
         <div class="wide"><label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>{{ form.title }}<div class="field-errors">{{ form.title.errors }}</div></div>
@@ -57,4 +57,56 @@
     </aside>
   </div>
 </div>
+<script>
+(function () {
+  var clientSelect = document.getElementById('id_client');
+  var projectSelect = document.getElementById('id_project');
+  if (!clientSelect || !projectSelect) return;
+
+  var originalOptions = Array.prototype.slice.call(projectSelect.options).map(function (option) {
+    return {
+      value: option.value,
+      label: option.textContent,
+      clientId: option.dataset.clientId || ''
+    };
+  });
+  var initialProject = projectSelect.value;
+
+  function refreshProjects() {
+    var clientId = clientSelect.value || '';
+    var previousValue = projectSelect.value || initialProject || '';
+    projectSelect.innerHTML = '';
+
+    var placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = clientId ? 'Seleccionar proyecto...' : 'Selecciona un cliente primero';
+    projectSelect.appendChild(placeholder);
+
+    var matching = [];
+    if (clientId) {
+      originalOptions.forEach(function (item) {
+        if (!item.value || item.clientId !== clientId) return;
+        matching.push(item.value);
+        var option = document.createElement('option');
+        option.value = item.value;
+        option.textContent = item.label;
+        option.dataset.clientId = item.clientId;
+        projectSelect.appendChild(option);
+      });
+    }
+
+    if (matching.indexOf(previousValue) !== -1) {
+      projectSelect.value = previousValue;
+    } else {
+      projectSelect.value = '';
+    }
+
+    projectSelect.disabled = !clientId;
+    initialProject = '';
+  }
+
+  clientSelect.addEventListener('change', refreshProjects);
+  refreshProjects();
+})();
+</script>
 {% endblock %}

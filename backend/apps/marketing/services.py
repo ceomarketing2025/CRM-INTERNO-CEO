@@ -23,8 +23,7 @@ CHECKLIST_TEMPLATE = [
     ("google_profile", "v4_gbp_link", "Link del perfil registrado", 10),
     ("google_profile", "v4_gbp_id", "ID del perfil registrado", 20),
     ("google_profile", "v4_gbp_social", "Links de redes sociales registrados", 30),
-    ("google_profile", "v6_gbp_notes", "Notas registradas", 40),
-    ("google_profile", "v4_gbp_reviews", "QR y mensaje de reviews preparados", 50),
+    ("google_profile", "v4_gbp_reviews", "QR y mensaje de reviews preparados", 40),
     ("google_lsa", "v4_lsa_drive", "Drive de documentos registrado", 10),
     ("google_lsa", "v4_lsa_license", "Licencia de conducir validada", 20),
     ("google_lsa", "v4_lsa_founding", "Año de fundación registrado", 30),
@@ -132,13 +131,29 @@ def sync_workspace_checks(workspace):
         workspace.email_account_mode in {"existing", "create"} and bool(workspace.gmail_email or workspace.contact_email),
         workspace.get_email_account_mode_display() if workspace.email_account_mode else "",
     )
-    _set_check(workspace, "v4_business_presence", bool(workspace.business_profile_mode))
-    _set_check(workspace, "v4_lsa_documents", bool(workspace.lsa_documents_available))
+    business_presence_ready = workspace.business_profile_mode in {"existing", "create", "no"}
+    lsa_documents_ready = workspace.lsa_documents_available in {"yes", "no"}
+    _set_check(workspace, "v4_business_presence", business_presence_ready)
+    _set_check(workspace, "v4_lsa_documents", lsa_documents_ready)
+
+    # Información inicial es 100% automática. No depende de un selector manual:
+    # usa exactamente los cinco checks visibles en la pantalla.
+    intake_complete = (
+        bool(workspace.meeting_summary.strip())
+        and docs.exists()
+        and workspace.email_account_mode in {"existing", "create"}
+        and bool(workspace.gmail_email or workspace.contact_email)
+        and business_presence_ready
+        and lsa_documents_ready
+    )
+    automatic_status = "complete" if intake_complete else "incomplete"
+    if workspace.intake_status != automatic_status:
+        workspace.intake_status = automatic_status
+        workspace.save(update_fields=["intake_status", "updated_at"])
 
     _set_check(workspace, "v4_gbp_link", bool(workspace.business_profile_link))
     _set_check(workspace, "v4_gbp_id", bool(workspace.business_profile_id.strip()))
     _set_check(workspace, "v4_gbp_social", bool(workspace.business_profile_social_links.strip()))
-    _set_check(workspace, "v6_gbp_notes", bool(workspace.business_profile_notes.strip()))
     _set_check(
         workspace,
         "v4_gbp_reviews",
@@ -158,7 +173,7 @@ def sync_workspace_checks(workspace):
         _set_check(workspace, "v4_lsa_metrics", lsa.weekly_cost is not None and lsa.leads_last_7_days is not None)
         followup_ready = (
             (lsa.has_social_media == "yes" and lsa.followup_mode == "weekly" and bool(lsa.followup_start_date))
-            or (lsa.has_social_media == "no" and lsa.followup_mode == "custom" and bool(lsa.custom_followup_date))
+            or (lsa.has_social_media == "no" and lsa.followup_mode == "none")
         )
         _set_check(workspace, "v4_lsa_followup", followup_ready)
         photo_ready = (
@@ -335,26 +350,53 @@ def build_google_review_message(review_link, company_name):
     )
 
 
+def _ensure_marketing_reminder_once(*, source_key, **kwargs):
+    """Crea una ocurrencia una sola vez y nunca reactiva historial atendido.
+
+    ensure_reminder() es genérico y actualiza el estado a PENDING cuando recibe
+    el mismo source_key. Para recordatorios recurrentes de Marketing queremos
+    otra semántica: una fecha/usuario es una ocurrencia única. Si ya existe, no
+    la reabrimos ni volvemos a sincronizarla por guardar el formulario otra vez.
+    """
+    existing = Reminder.objects.filter(source_key=source_key).first()
+    if existing:
+        return existing
+    return ensure_reminder(source_key=source_key, **kwargs)
+
+
+def _cancel_stale_pending_reminders(prefix, desired_keys):
+    """Cancela solo pendientes que ya no pertenecen a la configuración actual.
+
+    Los completados/cancelados se conservan como historial y nunca se reactivan.
+    """
+    qs = Reminder.objects.filter(source_key__startswith=prefix, status=ReminderStatus.PENDING)
+    if desired_keys:
+        qs = qs.exclude(source_key__in=desired_keys)
+    qs.update(status=ReminderStatus.CANCELLED)
+
+
 def ensure_lsa_followup_reminders(lsa, *, user=None, horizon_weeks=12):
     project = lsa.workspace.project
-    _cancel_source_prefix(f"marketing-lsa:{lsa.pk}:review:")
-    if lsa.followup_mode == "none":
-        return
+    prefix = f"marketing-lsa:{lsa.pk}:review:"
+    desired_keys = set()
 
     dates = []
-    if lsa.followup_mode == "custom" and lsa.custom_followup_date:
-        dates = [lsa.custom_followup_date]
-    elif lsa.followup_mode == "weekly" and lsa.followup_start_date:
+    if lsa.followup_mode == "weekly" and lsa.followup_start_date:
         current = lsa.followup_start_date
         today = timezone.localdate()
         while current < today:
             current += timedelta(days=7)
         dates = [current + timedelta(days=7 * i) for i in range(horizon_weeks)]
+    elif lsa.followup_mode == "custom" and lsa.custom_followup_date:
+        # Compatibilidad con datos históricos. La UI nueva ya no exige este modo.
+        dates = [lsa.custom_followup_date]
 
     for due_date in dates:
         for assignee in _dual_assignees(project, lsa.workspace.assigned_to):
-            ensure_reminder(
-                source_key=f"marketing-lsa:{lsa.pk}:review:{due_date.isoformat()}:user:{assignee.pk}",
+            source_key = f"marketing-lsa:{lsa.pk}:review:{due_date.isoformat()}:user:{assignee.pk}"
+            desired_keys.add(source_key)
+            _ensure_marketing_reminder_once(
+                source_key=source_key,
                 title=f"Revisión Google LSA · {project.client.business_name}",
                 category=ReminderCategory.CAMPAIGN_WEEKLY,
                 due_at=_aware_on_date(due_date),
@@ -365,36 +407,43 @@ def ensure_lsa_followup_reminders(lsa, *, user=None, horizon_weeks=12):
                 user=user,
             )
 
+    _cancel_stale_pending_reminders(prefix, desired_keys)
+
 
 def ensure_lsa_photo_reminders(lsa, *, user=None, occurrences=12):
     project = lsa.workspace.project
-    _cancel_source_prefix(f"marketing-lsa:{lsa.pk}:photos:")
-    if lsa.photo_reminder_enabled != "yes" or not lsa.photo_reminder_start_date:
-        return
-    current = lsa.photo_reminder_start_date
-    today = timezone.localdate()
-    while current < today:
-        current += timedelta(days=15)
-    for i in range(occurrences):
-        due_date = current + timedelta(days=15 * i)
-        for assignee in _dual_assignees(project, lsa.workspace.assigned_to):
-            ensure_reminder(
-                source_key=f"marketing-lsa:{lsa.pk}:photos:{due_date.isoformat()}:user:{assignee.pk}",
-                title=f"Subir fotos Google LSA · {project.client.business_name}",
-                category=ReminderCategory.FOLLOWUP_15,
-                due_at=_aware_on_date(due_date),
-                client=project.client,
-                project=project,
-                assigned_to=assignee,
-                notes="Recordatorio de Marketing: subir/actualizar fotos de Google LSA. Se repite cada 15 días para Marketing y Administración/Gerencia.",
-                user=user,
-            )
+    prefix = f"marketing-lsa:{lsa.pk}:photos:"
+    desired_keys = set()
+
+    if lsa.photo_reminder_enabled == "yes" and lsa.photo_reminder_start_date:
+        current = lsa.photo_reminder_start_date
+        today = timezone.localdate()
+        while current < today:
+            current += timedelta(days=15)
+
+        for i in range(occurrences):
+            due_date = current + timedelta(days=15 * i)
+            for assignee in _dual_assignees(project, lsa.workspace.assigned_to):
+                source_key = f"marketing-lsa:{lsa.pk}:photos:{due_date.isoformat()}:user:{assignee.pk}"
+                desired_keys.add(source_key)
+                _ensure_marketing_reminder_once(
+                    source_key=source_key,
+                    title=f"Subir fotos Google LSA · {project.client.business_name}",
+                    category=ReminderCategory.FOLLOWUP_15,
+                    due_at=_aware_on_date(due_date),
+                    client=project.client,
+                    project=project,
+                    assigned_to=assignee,
+                    notes="Recordatorio de Marketing: subir/actualizar fotos de Google LSA. Se repite cada 15 días para Marketing y Administración/Gerencia.",
+                    user=user,
+                )
+
+    _cancel_stale_pending_reminders(prefix, desired_keys)
 
 
 @transaction.atomic
 def save_lsa(*, form, user):
     lsa = form.save()
-    _cancel_source_prefix(f"marketing-lsa:{lsa.pk}:")
     ensure_lsa_followup_reminders(lsa, user=user)
     ensure_lsa_photo_reminders(lsa, user=user)
     sync_workspace_checks(lsa.workspace)
@@ -549,11 +598,9 @@ def review_campaign(*, campaign, decision, notes, user):
 
 def refresh_lsa_followups(*, user=None):
     for lsa in GoogleLSAWorkspace.objects.select_related("workspace__project", "workspace__assigned_to").all():
-        _cancel_source_prefix(f"marketing-lsa:{lsa.pk}:")
-        if lsa.followup_mode in {"weekly", "custom"}:
-            ensure_lsa_followup_reminders(lsa, user=user)
-        if lsa.photo_reminder_enabled == "yes":
-            ensure_lsa_photo_reminders(lsa, user=user)
+        # Cada sincronización conserva el historial y solo crea ocurrencias nuevas.
+        ensure_lsa_followup_reminders(lsa, user=user)
+        ensure_lsa_photo_reminders(lsa, user=user)
 
 
 def save_social_plan(*, form, user):

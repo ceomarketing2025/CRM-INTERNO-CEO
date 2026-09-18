@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block page_heading %}Social Media{% endblock %}
+{% block content %}
+<style>
+.sm15-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-end;flex-wrap:wrap;margin-bottom:18px}.sm15-head h2{margin:5px 0}.sm15-head p{margin:0;max-width:900px}.sm15-modules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:18px}.sm15-module{padding:22px;display:flex;flex-direction:column;gap:14px;min-height:210px}.sm15-module h3{font-size:22px;margin:0}.sm15-module p{margin:0;opacity:.72;line-height:1.65}.sm15-kpi{font-size:34px;font-weight:900}.sm15-actions{margin-top:auto;display:flex;gap:8px;flex-wrap:wrap}.sm15-recent{padding:18px}.sm15-table{display:grid;gap:10px}.sm15-row{display:grid;grid-template-columns:minmax(180px,1.2fr) minmax(160px,1fr) 130px minmax(150px,.8fr) 120px auto;gap:12px;align-items:center;padding:12px;border:1px solid rgba(127,127,127,.12);border-radius:14px}.sm15-row small{display:block;opacity:.62;margin-top:3px}.sm15-photo{font-size:11px;font-weight:800}.sm15-photo.pending{color:#b84b24}.sm15-photo.done{color:#19733a}.sm15-progress{font-size:11px}.sm15-progress strong{display:flex;justify-content:space-between;gap:8px}.sm15-mini-track{height:6px;border-radius:999px;background:rgba(127,127,127,.14);overflow:hidden;margin-top:6px}.sm15-mini-track i{display:block;height:100%;width:var(--progress);background:currentColor}.sm15-progress.success{color:#19733a}.sm15-progress.wait{color:#b86a22}.sm15-progress.danger{color:#b43838}.sm15-progress.neutral{color:#5f6878}@media(max-width:900px){.sm15-modules{grid-template-columns:1fr}.sm15-row{grid-template-columns:1fr 1fr}.sm15-row .actions{grid-column:1/-1}}@media(max-width:620px){.sm15-row{grid-template-columns:1fr}}
+</style>
+
+<div class="sm15-head">
+  <div>
+    <span class="eyebrow">Social Media · estructura operativa</span>
+    <h2>Planes y Suscripciones</h2>
+    <p>Primero se define qué incluye cada plan. Después se asigna ese plan a una empresa y desde la suscripción se controla fechas, redes, fotos, publicaciones y el historial mensual para evitar repetir contenido.</p>
+  </div>
+</div>
+
+<div class="sm15-modules">
+  <section class="card sm15-module">
+    <div><span class="eyebrow">Módulo 01</span><h3>Planes</h3></div>
+    <div class="sm15-kpi">{{ plan_count }}</div>
+    <p>Define el producto: Google, Facebook, Instagram, YouTube, TikTok, plataformas extras, cantidad de posts/videos y duración del ciclo.</p>
+    <div class="sm15-actions"><a class="btn btn-primary" href="{% url 'marketing:social_catalog_create' %}">＋ Crear plan</a><a class="btn btn-secondary" href="{% url 'marketing:social_catalog' %}">Ver planes</a></div>
+  </section>
+  <section class="card sm15-module">
+    <div><span class="eyebrow">Módulo 02</span><h3>Suscripciones</h3></div>
+    <div class="sm15-kpi">{{ subscription_count }}</div>
+    <p>Asigna empresa + plan, desde/hasta cuándo se trabaja, redes, seguimiento, solicitud de fotos y contenido publicado por mes.</p>
+    <div class="sm15-actions"><a class="btn btn-primary" href="{% url 'marketing:social_subscription_create' %}">＋ Nueva suscripción</a><a class="btn btn-secondary" href="{% url 'marketing:social_subscriptions' %}">Ver suscripciones</a></div>
+  </section>
+</div>
+
+<section class="card sm15-recent">
+  <div class="card-head"><div><h3>Suscripciones recientes</h3><p>La misma suscripción se vincula al proyecto de Diseño; no duplicamos el plan.</p></div></div>
+  <div class="sm15-table">
+    {% for row in rows|slice:':8' %}
+    <div class="sm15-row">
+      <div><strong>{{ row.subscription.client.business_name }}</strong><small>{{ row.profile.project.project_code|default:'Proyecto sin vincular' }}</small></div>
+      <div><strong>{{ row.subscription.plan.name }}</strong><small>{{ row.subscription.social_networks_label }}</small></div>
+      <div><strong>{{ row.subscription.start_date|date:'d/m/Y'|default:'—' }}</strong><small>Inicio</small></div>
+      <div class="sm15-progress {{ row.compliance.state }}" style="--progress:{{ row.compliance.percent }}%;"><strong><span>{{ row.compliance.created }}/{{ row.compliance.target_total }} creados</span><span>{{ row.compliance.percent }}%</span></strong><div class="sm15-mini-track"><i></i></div><small>{{ row.compliance.published }} publicados · {{ row.compliance.pending }} pendientes</small></div>
+      <div>{% if row.profile.needs_photos == 'yes' %}<span class="sm15-photo {% if row.profile.photo_request_status == 'complete' %}done{% else %}pending{% endif %}">Fotos: {{ row.profile.get_photo_request_status_display }}</span>{% else %}<span class="sm15-photo done">Fotos: no requiere</span>{% endif %}</div>
+      <div class="actions">{% if row.profile %}<a class="btn btn-secondary btn-small" href="{% url 'marketing:social_subscription_detail' row.profile.pk %}">Abrir</a>{% else %}<a class="btn btn-secondary btn-small" href="{% url 'marketing:social_subscription_create' %}">Vincular</a>{% endif %}</div>
+    </div>
+    {% empty %}<div class="empty">Todavía no hay suscripciones Social Media.</div>{% endfor %}
+  </div>
+</section>
+{% endblock %}

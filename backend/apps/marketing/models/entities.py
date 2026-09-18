@@ -66,7 +66,7 @@ class MarketingWorkspace(TimestampedModel):
     meeting_summary = models.TextField(blank=True, verbose_name="Datos recolectados de la reunión")
     owner_name = models.CharField(max_length=180, blank=True, verbose_name="Nombre del dueño")
     legal_business_name = models.CharField(max_length=220, blank=True, verbose_name="Nombre legal de la empresa")
-    founding_date = models.DateField(null=True, blank=True, verbose_name="Fecha de fundación")
+    founding_date = models.CharField(max_length=120, null=True, blank=True, verbose_name="Fecha de fundación")
     social_links = models.TextField(blank=True, verbose_name="Redes sociales")
     company_description = models.TextField(blank=True, verbose_name="Descripción de la empresa")
     business_hours = models.TextField(blank=True, verbose_name="Horario")
@@ -366,3 +366,96 @@ class SocialMediaDailyLog(TimestampedModel):
 
     def __str__(self):
         return f"{self.plan.client.business_name} · {self.date}"
+
+
+class SocialMediaSubscriptionProfile(TimestampedModel):
+    """Capa Marketing para una suscripción Social Media real de ``plans.ClientPlan``.
+
+    El plan y la suscripción siguen viviendo en el módulo común de Planes para
+    que Diseño pueda consumir el mismo registro. Marketing solo guarda aquí
+    información operativa propia: proyecto, responsable, solicitud de fotos y
+    plataformas extra.
+    """
+
+    client_plan = models.OneToOneField(
+        "plans.ClientPlan",
+        on_delete=models.CASCADE,
+        related_name="marketing_social_profile",
+        verbose_name="Suscripción Social Media",
+    )
+    project = models.ForeignKey(
+        "projects.Project",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="marketing_social_subscriptions",
+        verbose_name="Proyecto",
+    )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="marketing_social_subscriptions",
+        verbose_name="Responsable de Marketing",
+    )
+    needs_photos = models.CharField(
+        max_length=10,
+        choices=YesNo.choices,
+        default=YesNo.NO,
+        verbose_name="¿Hace falta pedir fotos al cliente?",
+    )
+    photo_request_status = models.CharField(
+        max_length=20,
+        choices=BinaryStatus.choices,
+        default=BinaryStatus.INCOMPLETE,
+        verbose_name="Estado de solicitud de fotos",
+    )
+    photo_request_notes = models.TextField(blank=True, verbose_name="Detalle de fotos solicitadas")
+    extra_platforms = models.CharField(max_length=255, blank=True, verbose_name="Plataformas extras")
+
+    class Meta:
+        ordering = ["client_plan__client__business_name", "-updated_at"]
+
+    @property
+    def client(self):
+        return self.client_plan.client
+
+    @property
+    def plan(self):
+        return self.client_plan.plan
+
+    def __str__(self):
+        return f"Suscripción Social Media · {self.client.business_name} · {self.plan.name}"
+
+
+class SocialMediaContentRecord(TimestampedModel):
+    """Historial editorial mensual para evitar repetir temas y objetivos."""
+
+    profile = models.ForeignKey(
+        SocialMediaSubscriptionProfile,
+        on_delete=models.CASCADE,
+        related_name="content_records",
+        verbose_name="Suscripción",
+    )
+    planning_month = models.DateField(verbose_name="Mes de planificación")
+    service_used = models.CharField(max_length=180, verbose_name="Servicio utilizado")
+    topic = models.CharField(max_length=220, verbose_name="Tema")
+    objective = models.TextField(blank=True, verbose_name="Objetivo")
+    summary = models.TextField(verbose_name="Resumen del contenido")
+    adjustment_notes = models.TextField(blank=True, verbose_name="Cambios respecto a la planificación")
+    published_on = models.DateField(null=True, blank=True, verbose_name="Fecha de publicación")
+    post_url = models.URLField(blank=True, verbose_name="Link de publicación")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="marketing_social_content_records",
+    )
+
+    class Meta:
+        ordering = ["-planning_month", "-published_on", "-id"]
+
+    def __str__(self):
+        return f"{self.profile.client.business_name} · {self.planning_month:%Y-%m} · {self.topic}"

@@ -138,6 +138,10 @@ class FollowUp(TimestampedModel):
     contact_type = models.CharField(max_length=20, choices=ContactType.choices, default=ContactType.PHONE)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
     notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="created_sales_follow_ups", verbose_name="Creado por",
+    )
 
     class Meta:
         ordering = ["due_at"]
@@ -158,6 +162,10 @@ class SalesMeeting(TimestampedModel):
     meeting_type = models.CharField(max_length=80, blank=True, verbose_name="Tipo de reunión")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.SCHEDULED, db_index=True)
     result = models.TextField(blank=True, verbose_name="Resultado")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="created_sales_meetings", verbose_name="Agendado por",
+    )
 
     class Meta:
         ordering = ["scheduled_at"]

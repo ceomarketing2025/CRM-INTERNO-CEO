@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.decorators import role_required
-from .forms import ContactAttemptForm, FollowUpForm, LeadForm, SalesMeetingForm
+from .forms import AgendaFollowUpForm, AgendaMeetingForm, ContactAttemptForm, FollowUpForm, LeadForm, SalesMeetingForm
 from .models import ContactAttempt, FollowUp, Lead, SalesMeeting
 
 
@@ -119,7 +119,7 @@ def add_contact(request, pk):
     else: lead.status = Lead.Status.CONTACTED
     lead.save(update_fields=["last_contact_at", "status", "updated_at"])
     if form.cleaned_data.get("create_follow_up"):
-        FollowUp.objects.create(lead=lead, assigned_to=lead.assigned_to or request.user, due_at=form.cleaned_data["follow_up_at"], contact_type=form.cleaned_data.get("follow_up_type") or FollowUp.ContactType.PHONE, notes="Creado desde el registro de contacto.")
+        FollowUp.objects.create(lead=lead, assigned_to=lead.assigned_to or request.user, created_by=request.user, due_at=form.cleaned_data["follow_up_at"], contact_type=form.cleaned_data.get("follow_up_type") or FollowUp.ContactType.PHONE, notes="Creado desde el registro de contacto.")
         _sync_next_follow_up(lead)
     messages.success(request, "Contacto registrado en el historial.")
     return redirect("sales:lead_detail", pk=pk)
@@ -130,7 +130,7 @@ def add_contact(request, pk):
 def add_followup(request, pk):
     lead = _lead_for_user(request.user, pk); form = FollowUpForm(request.POST)
     if form.is_valid():
-        item = form.save(commit=False); item.lead = lead; item.assigned_to = lead.assigned_to or request.user; item.save()
+        item = form.save(commit=False); item.lead = lead; item.assigned_to = lead.assigned_to or request.user; item.created_by = request.user; item.save()
         if lead.status not in {Lead.Status.WON, Lead.Status.LOST, Lead.Status.UNQUALIFIED}: lead.status = Lead.Status.FOLLOW_UP; lead.save(update_fields=["status", "updated_at"])
         _sync_next_follow_up(lead); messages.success(request, "Seguimiento programado.")
     else: messages.error(request, "No pudimos programar el seguimiento. Revisa fecha y hora.")
@@ -142,7 +142,7 @@ def add_followup(request, pk):
 def add_meeting(request, pk):
     lead = _lead_for_user(request.user, pk); form = SalesMeetingForm(request.POST)
     if form.is_valid():
-        item = form.save(commit=False); item.lead = lead; item.seller = lead.assigned_to or request.user; item.status = SalesMeeting.Status.SCHEDULED; item.save()
+        item = form.save(commit=False); item.lead = lead; item.seller = lead.assigned_to or request.user; item.created_by = request.user; item.status = SalesMeeting.Status.SCHEDULED; item.save()
         lead.status = Lead.Status.MEETING_PROPOSED; lead.save(update_fields=["status", "updated_at"]); messages.success(request, "Meet agregado a la agenda.")
     else: messages.error(request, "Revisa los datos del meet.")
     return redirect("sales:lead_detail", pk=pk)
@@ -172,13 +172,13 @@ def complete_followup(request, pk):
 @role_required("sales")
 def followup_list(request):
     now = timezone.now(); items = _visible_followups(request.user).filter(status=FollowUp.Status.PENDING).order_by("due_at")
-    return render(request, "sales/followup_list.html", {"items": items, "now": now})
+    return render(request, "sales/followup_list.html", {"items": items, "now": now, "agenda_form": AgendaFollowUpForm(user=request.user)})
 
 
 @role_required("sales")
 def meeting_list(request):
     items = _visible_meetings(request.user).order_by("scheduled_at")
-    return render(request, "sales/meeting_list.html", {"items": items, "now": timezone.now(), "meeting_status_choices": SalesMeeting.Status.choices})
+    return render(request, "sales/meeting_list.html", {"items": items, "now": timezone.now(), "meeting_status_choices": SalesMeeting.Status.choices, "agenda_form": AgendaMeetingForm(user=request.user)})
 
 
 @require_POST
@@ -189,3 +189,52 @@ def update_meeting(request, pk):
     item.status = status; item.result = request.POST.get("result", item.result); item.save(update_fields=["status", "result", "updated_at"])
     if status == SalesMeeting.Status.COMPLETED: item.lead.status = Lead.Status.MEETING_DONE; item.lead.save(update_fields=["status", "updated_at"])
     messages.success(request, "Meet actualizado."); return redirect(request.POST.get("next") or "sales:meeting_list")
+
+
+@require_POST
+@role_required("sales")
+@transaction.atomic
+def create_followup_from_agenda(request):
+    form = AgendaFollowUpForm(request.POST, user=request.user)
+    if not form.is_valid():
+        messages.error(request, "Revisa los datos antes de programar el seguimiento.")
+        return redirect("sales:followup_list")
+    lead = form.cleaned_data["lead"]
+    if not _visible_leads(request.user).filter(pk=lead.pk).exists():
+        messages.error(request, "No tienes acceso a ese lead.")
+        return redirect("sales:followup_list")
+    item = form.save(commit=False)
+    item.lead = lead
+    item.assigned_to = form.cleaned_data["assigned_to"]
+    item.created_by = request.user
+    item.save()
+    if lead.status not in {Lead.Status.WON, Lead.Status.LOST, Lead.Status.UNQUALIFIED}:
+        lead.status = Lead.Status.FOLLOW_UP
+        lead.save(update_fields=["status", "updated_at"])
+    _sync_next_follow_up(lead)
+    messages.success(request, "Seguimiento agregado a la agenda.")
+    return redirect("sales:followup_list")
+
+
+@require_POST
+@role_required("sales")
+@transaction.atomic
+def create_meeting_from_agenda(request):
+    form = AgendaMeetingForm(request.POST, user=request.user)
+    if not form.is_valid():
+        messages.error(request, "Revisa los datos antes de agendar el meet.")
+        return redirect("sales:meeting_list")
+    lead = form.cleaned_data["lead"]
+    if not _visible_leads(request.user).filter(pk=lead.pk).exists():
+        messages.error(request, "No tienes acceso a ese lead.")
+        return redirect("sales:meeting_list")
+    item = form.save(commit=False)
+    item.lead = lead
+    item.seller = form.cleaned_data["seller"]
+    item.created_by = request.user
+    item.status = SalesMeeting.Status.SCHEDULED
+    item.save()
+    lead.status = Lead.Status.MEETING_PROPOSED
+    lead.save(update_fields=["status", "updated_at"])
+    messages.success(request, "Meet agregado a la agenda.")
+    return redirect("sales:meeting_list")

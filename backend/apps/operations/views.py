@@ -917,6 +917,12 @@ def web_production_sheet(
                     return quick_error("Complejidad inválida.")
                 obj.complexity = value
                 obj.points = {"S": 1, "M": 2, "C": 3}[value]
+            elif field == "name" and hasattr(obj, "name"):
+                if not value:
+                    return quick_error("El nombre no puede quedar vacío.")
+                obj.name = value
+                if isinstance(obj, WebProductionCountyService) and hasattr(obj, "service_name"):
+                    obj.service_name = value
             elif field == "slug" and hasattr(obj, "slug"):
                 obj.slug = slugify(value)
             elif field == "keyword" and hasattr(obj, "keyword"):

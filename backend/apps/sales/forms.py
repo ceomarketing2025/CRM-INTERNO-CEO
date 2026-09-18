@@ -78,3 +78,37 @@ class SalesMeetingForm(forms.ModelForm):
             "meeting_type": forms.TextInput(attrs={"placeholder": "Google Meet, Zoom, llamada..."}),
             "result": forms.Textarea(attrs={"rows": 3, "placeholder": "Notas opcionales para preparar el meet..."}),
         }
+
+
+class AgendaFollowUpForm(FollowUpForm):
+    lead = forms.ModelChoiceField(queryset=Lead.objects.none(), label="Lead")
+    assigned_to = forms.ModelChoiceField(queryset=UserAccount.objects.none(), label="Responsable")
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        leads = Lead.objects.select_related("assigned_to")
+        if user and not (user.is_manager or user.is_superuser):
+            leads = leads.filter(assigned_to=user)
+        self.fields["lead"].queryset = leads.order_by("first_name", "last_name")
+        sellers = UserAccount.objects.filter(Q(role="sales") | Q(role="manager"), is_active=True).order_by("first_name", "last_name", "email")
+        self.fields["assigned_to"].queryset = sellers
+        if user and getattr(user, "role", None) == "sales":
+            self.fields["assigned_to"].initial = user
+            self.fields["assigned_to"].disabled = True
+
+
+class AgendaMeetingForm(SalesMeetingForm):
+    lead = forms.ModelChoiceField(queryset=Lead.objects.none(), label="Lead")
+    seller = forms.ModelChoiceField(queryset=UserAccount.objects.none(), label="Responsable")
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        leads = Lead.objects.select_related("assigned_to")
+        if user and not (user.is_manager or user.is_superuser):
+            leads = leads.filter(assigned_to=user)
+        self.fields["lead"].queryset = leads.order_by("first_name", "last_name")
+        sellers = UserAccount.objects.filter(Q(role="sales") | Q(role="manager"), is_active=True).order_by("first_name", "last_name", "email")
+        self.fields["seller"].queryset = sellers
+        if user and getattr(user, "role", None) == "sales":
+            self.fields["seller"].initial = user
+            self.fields["seller"].disabled = True

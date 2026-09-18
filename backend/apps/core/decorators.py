@@ -7,6 +7,7 @@ ROLE_ADMINISTRATION = "administration"
 ROLE_MARKETING = "marketing"
 ROLE_DESIGN = "design"
 ROLE_DEVELOPER = "developer"
+ROLE_SALES = "sales"
 
 
 def role_required(*roles):

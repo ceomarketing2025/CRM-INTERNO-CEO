@@ -80,11 +80,12 @@
         </div>
       </details>
 
-      {% if current_role == 'administration' or current_role == 'manager' or request.user.is_superuser %}
-      <details class="nav-section nav-section-placeholder">
-        <summary><span class="nav-section-icon">♙</span><b>Vendedores</b><i>⌄</i></summary>
+      {% if current_role == 'sales' or current_role == 'manager' or request.user.is_superuser %}
+      <details class="nav-section" {% if active_nav_group == 'sales' %}open{% endif %}>
+        <summary><span class="nav-section-icon">♙</span><b>Ventas</b><i>⌄</i></summary>
         <div class="nav-section-links">
-          <span class="nav-empty-state"><b>Módulo reservado</b><small>Próximamente</small></span>
+          <a href="{% url 'sales:dashboard' %}" class="nav-link {% if current_namespace == 'sales' and current_url_name == 'dashboard' %}active{% endif %}"><span>⌂</span><b>Inicio</b></a>
+          <a href="{% url 'sales:lead_list' %}" class="nav-link {% if current_namespace == 'sales' and current_url_name != 'dashboard' %}active{% endif %}"><span>◎</span><b>Leads</b></a>
         </div>
       </details>
       {% endif %}

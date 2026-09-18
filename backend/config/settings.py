@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "apps.finance.apps.FinanceConfig",
     "apps.audit.apps.AuditConfig",
     "apps.dashboard.apps.DashboardConfig",
+    "apps.sales.apps.SalesConfig",
 ]
 
 MIDDLEWARE = [

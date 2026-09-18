@@ -23,6 +23,7 @@ urlpatterns = [
     path("reminders/", include("apps.reminders.urls")),
     path("finance/", include("apps.finance.urls")),
     path("audit/", include("apps.audit.urls")),
+    path("sales/", include("apps.sales.urls")),
 ]
 
 if settings.DEBUG:

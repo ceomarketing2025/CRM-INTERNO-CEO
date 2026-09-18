@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Ventas · {{ PROJECT_NAME }}{% endblock %}
+{% block page_heading %}Ventas{% endblock %}
+{% block content %}
+<div class="sales-welcome">
+  <div>
+    <span class="sales-kicker">CENTRO COMERCIAL</span>
+    <h2>Tu día de ventas, en orden.</h2>
+    <p>Prioriza contactos, seguimientos y meets sin perder el historial de cada oportunidad.</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-secondary" href="{% url 'sales:lead_list' %}">Ver leads</a>
+    <a class="btn btn-primary" href="{% url 'sales:lead_create' %}">＋ Nuevo lead</a>
+  </div>
+</div>
+
+<div class="sales-priority-grid">
+  <a href="{% url 'sales:lead_list' %}?status=new" class="sales-priority-card blue"><span class="sales-card-icon">＋</span><div><small>POR CONTACTAR</small><strong>{{ new_count }}</strong><p>Leads nuevos</p></div><b>→</b></a>
+  <div class="sales-priority-card danger"><span class="sales-card-icon">!</span><div><small>REQUIEREN ACCIÓN</small><strong>{{ overdue_count }}</strong><p>Seguimientos vencidos</p></div><b>→</b></div>
+  <div class="sales-priority-card amber"><span class="sales-card-icon">◷</span><div><small>AGENDA DE HOY</small><strong>{{ today_meetings_count }}</strong><p>Meets programados</p></div><b>→</b></div>
+  <a href="{% url 'sales:lead_list' %}?status=potential" class="sales-priority-card green"><span class="sales-card-icon">◇</span><div><small>OPORTUNIDADES</small><strong>{{ potential_count }}</strong><p>Clientes potenciales</p></div><b>→</b></a>
+</div>
+
+<div class="sales-layout">
+  <section class="card sales-day-card">
+    <div class="sales-section-head"><div><span class="sales-kicker">PRIORIDAD</span><h3>Mi día</h3><p>Lo que necesita atención primero.</p></div><span class="sales-date">{% now "l · d M" %}</span></div>
+    <div class="sales-agenda">
+      {% for follow in day_items %}
+      <article class="sales-agenda-item {% if follow.due_at < now %}is-overdue{% endif %}">
+        <div class="sales-time"><strong>{{ follow.due_at|date:"H:i" }}</strong><small>{% if follow.due_at|date:"Y-m-d" < today|date:"Y-m-d" %}Vencido{% else %}Hoy{% endif %}</small></div>
+        <div class="sales-agenda-main"><div class="sales-avatar">{{ follow.lead.first_name|first|upper }}</div><div><a href="{% url 'sales:lead_detail' follow.lead.pk %}">{{ follow.lead.full_name }}</a><p>{{ follow.get_contact_type_display }}{% if follow.lead.interested_service %} · {{ follow.lead.interested_service }}{% endif %}</p></div></div>
+        <div class="sales-agenda-action"><span>{{ follow.get_status_display }}</span><a href="{% url 'sales:lead_detail' follow.lead.pk %}">Abrir →</a></div>
+      </article>
+      {% empty %}
+      <div class="sales-empty"><span>✓</span><strong>Tu agenda está al día</strong><p>Cuando programes seguimientos aparecerán aquí en orden de prioridad.</p></div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <aside class="sales-side-stack">
+    <section class="card sales-pipeline-card">
+      <div class="sales-section-head compact"><div><span class="sales-kicker">PIPELINE</span><h3>Movimiento comercial</h3></div><a href="{% url 'sales:lead_list' %}">Ver todos</a></div>
+      <div class="sales-pipeline">
+        {% for label, value in pipeline %}<div><span><i></i>{{ label }}</span><strong>{{ value }}</strong></div>{% endfor %}
+      </div>
+    </section>
+    <section class="sales-month-card">
+      <span class="sales-kicker light">RESULTADO DEL MES</span>
+      <strong>{{ won_month_count }}</strong>
+      <h3>Ventas cerradas</h3>
+      <p>Las oportunidades ganadas del mes aparecerán aquí automáticamente.</p>
+    </section>
+  </aside>
+</div>
+{% endblock %}

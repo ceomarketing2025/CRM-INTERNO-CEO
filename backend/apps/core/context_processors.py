@@ -22,6 +22,9 @@ def _navigation_context(request):
         group, module, page = "development", "Desarrollo", "Resumen de tareas"
     elif namespace == "dashboard":
         group, module, page = "dashboard", "Dashboard", "Inicio"
+    elif namespace == "sales":
+        group, module = "sales", "Ventas"
+        page = "Inicio" if url_name == "dashboard" else "Leads"
     elif namespace == "design":
         group, module = "design", "Diseño"
         page = "Tareas de Diseño" if url_name in {

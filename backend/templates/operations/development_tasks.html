@@ -128,10 +128,10 @@
    e.preventDefault(); const article=this.closest('.devTask'); const status=article.querySelector('.devTaskStatus').value; const issue=article.querySelector('.devTask__issue textarea').value.trim();
    if(status==='issue'&&!issue){toast('Debes registrar el motivo del inconveniente.');article.querySelector('.devTask__issue').classList.add('is-visible');return;}
    const data=new FormData(this); data.set('status',status); data.set('issue_reason',issue);
-   const r=await fetch(this.action,{method:'POST',body:data,headers:{'X-Requested-With':'XMLHttpRequest'}}); const j=await r.json().catch(()=>({ok:false,message:'No se pudo guardar.'}));
+   const r=await fetch(this.getAttribute('action'),{method:'POST',body:data,headers:{'X-Requested-With':'XMLHttpRequest'}}); const j=await r.json().catch(()=>({ok:false,message:'No se pudo guardar.'}));
    if(!r.ok||!j.ok){toast(j.message||'No se pudo guardar.');return;} toast('Cambios guardados.'); setTimeout(()=>location.reload(),350);
  }));
- const cf=document.getElementById('createTaskForm'); if(cf)cf.addEventListener('submit',async function(e){e.preventDefault();const r=await fetch(this.action,{method:'POST',body:new FormData(this),headers:{'X-Requested-With':'XMLHttpRequest'}});const j=await r.json().catch(()=>({ok:false,message:'No se pudo crear la tarea.'}));if(!r.ok||!j.ok){toast(j.message||'No se pudo crear la tarea.');return;}close();toast('Tarea asignada.');setTimeout(()=>location.reload(),350)});
+ const cf=document.getElementById('createTaskForm'); if(cf)cf.addEventListener('submit',async function(e){e.preventDefault();const r=await fetch(this.getAttribute('action'),{method:'POST',body:new FormData(this),headers:{'X-Requested-With':'XMLHttpRequest'}});const j=await r.json().catch(()=>({ok:false,message:'No se pudo crear la tarea.'}));if(!r.ok||!j.ok){toast(j.message||'No se pudo crear la tarea.');return;}close();toast('Tarea asignada.');setTimeout(()=>location.reload(),350)});
 })();
 </script>
 {% endblock %}

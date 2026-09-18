@@ -67,6 +67,20 @@ class Lead(TimestampedModel):
     last_contact_at = models.DateTimeField(null=True, blank=True, verbose_name="Último contacto")
     next_follow_up_at = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name="Próximo seguimiento")
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_sales_leads")
+    client = models.ForeignKey(
+        "clients.Client", null=True, blank=True, on_delete=models.SET_NULL, related_name="sales_leads",
+        verbose_name="Cliente vinculado",
+    )
+    converted_project = models.ForeignKey(
+        "projects.Project", null=True, blank=True, on_delete=models.SET_NULL, related_name="origin_sales_leads",
+        verbose_name="Proyecto creado",
+    )
+    sale_value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Valor vendido")
+    converted_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de conversión")
+    converted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="converted_sales_leads", verbose_name="Convertido por",
+    )
 
     class Meta:
         ordering = ["-created_at"]

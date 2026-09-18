@@ -22,16 +22,6 @@ def _navigation_context(request):
         group, module, page = "development", "Desarrollo", "Resumen de tareas"
     elif namespace == "dashboard":
         group, module, page = "dashboard", "Dashboard", "Inicio"
-    elif namespace == "sales":
-        group, module = "sales", "Ventas"
-        if url_name == "dashboard":
-            page = "Inicio"
-        elif url_name == "followup_list" or url_name == "complete_followup":
-            page = "Seguimientos"
-        elif url_name == "meeting_list" or url_name == "update_meeting":
-            page = "Meets"
-        else:
-            page = "Leads"
     elif namespace == "design":
         group, module = "design", "Diseño"
         page = "Tareas de Diseño" if url_name in {
@@ -52,11 +42,11 @@ def _navigation_context(request):
     elif namespace == "questionnaires":
         group, module = "development", "Desarrollo"
         if url_name in {"seo_status", "seo_status_import"}:
-            page = "Estado SEO"
+            page = "Matriz SEO"
         elif url_name == "development_dashboard":
-            page = "Resumen de tareas"
+            page = "Tareas"
         else:
-            page = "Información Desarrollo"
+            page = "Información"
     elif namespace in {"clients", "finance"}:
         group, module = "administration", "Administración"
         page = {

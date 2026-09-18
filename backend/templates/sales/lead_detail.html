@@ -15,11 +15,12 @@
   <button type="button" data-sales-open="followup"><span>◷</span><b>Programar seguimiento</b><small>{% if lead.next_follow_up_at %}{{ lead.next_follow_up_at|date:"d M · H:i" }}{% else %}Sin programar{% endif %}</small></button>
   <button type="button" data-sales-open="meeting"><span>▣</span><b>Agendar meet</b><small>Crear reunión comercial</small></button>
   <button type="button" data-sales-open="status"><span>◇</span><b>Cambiar estado</b><small>{{ lead.get_status_display }}</small></button>
-  <a href="{% url 'sales:lead_list' %}"><span>←</span><b>Volver a leads</b><small>Lista comercial</small></a>
+  {% if lead.status == 'won' and not lead.client_id %}<button type="button" data-sales-open="conversion"><span>✓</span><b>Convertir en cliente</b><small>Crear cliente y proyecto</small></button>{% endif %}
+  {% if lead.client_id %}<a href="{% url 'clients:detail' lead.client_id %}"><span>✓</span><b>Ver cliente</b><small>{{ lead.client.client_code }}</small></a>{% else %}<a href="{% url 'sales:lead_list' %}"><span>←</span><b>Volver a leads</b><small>Lista comercial</small></a>{% endif %}
 </div>
 
 <div class="sales-detail-grid">
-<section class="card"><div class="sales-section-head"><div><span class="sales-kicker">INFORMACIÓN</span><h3>Ficha comercial</h3></div></div><div class="sales-info-grid"><div><span>Teléfono</span><strong>{{ lead.phone|default:'—' }}</strong></div><div><span>Email</span><strong>{{ lead.email|default:'—' }}</strong></div><div><span>Empresa</span><strong>{{ lead.company|default:'—' }}</strong></div><div><span>Ubicación</span><strong>{{ lead.city|default:'—' }}{% if lead.state_region %}, {{ lead.state_region }}{% endif %}</strong></div><div><span>Responsable</span><strong>{{ lead.assigned_to.display_name|default:'Sin asignar' }}</strong></div><div><span>Próximo seguimiento</span><strong>{% if lead.next_follow_up_at %}{{ lead.next_follow_up_at|date:"d M Y · H:i" }}{% else %}Sin programar{% endif %}</strong></div><div><span>Último contacto</span><strong>{% if lead.last_contact_at %}{{ lead.last_contact_at|date:"d M Y · H:i" }}{% else %}Sin contacto{% endif %}</strong></div><div><span>Campaña</span><strong>{{ lead.campaign|default:'—' }}</strong></div></div>{% if lead.comments %}<div class="sales-note"><span>COMENTARIOS</span><p>{{ lead.comments }}</p></div>{% endif %}</section>
+<section class="card"><div class="sales-section-head"><div><span class="sales-kicker">INFORMACIÓN</span><h3>Ficha comercial</h3></div>{% if lead.client_id %}<span class="sales-status status-won">CLIENTE</span>{% endif %}</div><div class="sales-info-grid"><div><span>Teléfono</span><strong>{{ lead.phone|default:'—' }}</strong></div><div><span>Email</span><strong>{{ lead.email|default:'—' }}</strong></div><div><span>Empresa</span><strong>{{ lead.company|default:'—' }}</strong></div><div><span>Ubicación</span><strong>{{ lead.city|default:'—' }}{% if lead.state_region %}, {{ lead.state_region }}{% endif %}</strong></div><div><span>Responsable</span><strong>{{ lead.assigned_to.display_name|default:'Sin asignar' }}</strong></div><div><span>Próximo seguimiento</span><strong>{% if lead.next_follow_up_at %}{{ lead.next_follow_up_at|date:"d M Y · H:i" }}{% else %}Sin programar{% endif %}</strong></div><div><span>Último contacto</span><strong>{% if lead.last_contact_at %}{{ lead.last_contact_at|date:"d M Y · H:i" }}{% else %}Sin contacto{% endif %}</strong></div><div><span>Campaña</span><strong>{{ lead.campaign|default:'—' }}</strong></div>{% if lead.client_id %}<div><span>Cliente</span><strong>{{ lead.client.client_code }} · {{ lead.client.business_name }}</strong></div><div><span>Proyecto</span><strong>{% if lead.converted_project %}{{ lead.converted_project.project_code }} · {{ lead.converted_project.name }}{% else %}—{% endif %}</strong></div><div><span>Valor vendido</span><strong>{% if lead.sale_value != None %}${{ lead.sale_value }}{% else %}—{% endif %}</strong></div><div><span>Convertido</span><strong>{% if lead.converted_at %}{{ lead.converted_at|date:"d M Y · H:i" }}{% endif %}{% if lead.converted_by %} · {{ lead.converted_by.display_name }}{% endif %}</strong></div>{% endif %}</div>{% if lead.comments %}<div class="sales-note"><span>COMENTARIOS</span><p>{{ lead.comments }}</p></div>{% endif %}</section>
 <section class="card"><div class="sales-section-head"><div><span class="sales-kicker">HISTORIAL</span><h3>Actividad</h3><p>Contactos, seguimientos y meets en una sola línea de tiempo.</p></div><span class="sales-date">{{ timeline|length }} eventos</span></div><div class="sales-timeline">{% for date,kind,item in timeline %}<div class="sales-timeline-item"><i></i><div><small>{{ date|date:"d M Y · H:i" }}</small>{% if kind == 'contact' %}<strong>{{ item.get_result_display }}</strong><p>{{ item.get_channel_display }}{% if item.notes %} · {{ item.notes }}{% endif %}</p>{% elif kind == 'followup' %}<strong>Seguimiento {{ item.get_status_display|lower }}</strong><p>{{ item.get_contact_type_display }} · {{ item.due_at|date:"d M · H:i" }}{% if item.assigned_to %} · Responsable: {{ item.assigned_to.display_name }}{% endif %}{% if item.created_by %} · Creado por: {{ item.created_by.display_name }}{% endif %}{% if item.notes %} · {{ item.notes }}{% endif %}</p>{% else %}<strong>Meet {{ item.get_status_display|lower }}</strong><p>{{ item.scheduled_at|date:"d M · H:i" }}{% if item.seller %} · Responsable: {{ item.seller.display_name }}{% endif %}{% if item.created_by %} · Agendado por: {{ item.created_by.display_name }}{% endif %}{% if item.result %} · {{ item.result }}{% endif %}</p>{% endif %}</div></div>{% empty %}<div class="sales-empty small"><strong>Aún no hay actividad</strong><p>Registra el primer contacto para comenzar el historial comercial.</p></div>{% endfor %}</div></section>
 </div>
 
@@ -28,6 +29,85 @@
 <div class="sales-modal" data-sales-modal="followup" aria-hidden="true"><div class="sales-modal-backdrop" data-sales-close></div><div class="sales-modal-panel"><button class="sales-modal-x" type="button" data-sales-close>×</button><span class="sales-kicker">PRÓXIMA ACCIÓN</span><h3>Programar seguimiento</h3><p>Haz que este lead vuelva a aparecer en el momento correcto.</p><form method="post" action="{% url 'sales:add_followup' lead.pk %}" class="sales-quick-form">{% csrf_token %}<div class="sales-form-row"><label>Fecha y hora{{ followup_form.due_at }}</label><label>Tipo{{ followup_form.contact_type }}</label></div><label>Nota{{ followup_form.notes }}</label><div class="sales-modal-actions"><button type="button" class="btn btn-secondary" data-sales-close>Cancelar</button><button class="btn btn-primary" type="submit">Programar</button></div></form></div></div>
 
 <div class="sales-modal" data-sales-modal="meeting" aria-hidden="true"><div class="sales-modal-backdrop" data-sales-close></div><div class="sales-modal-panel"><button class="sales-modal-x" type="button" data-sales-close>×</button><span class="sales-kicker">MEET</span><h3>Agendar reunión</h3><p>La reunión quedará vinculada al lead y a su responsable.</p><form method="post" action="{% url 'sales:add_meeting' lead.pk %}" class="sales-quick-form">{% csrf_token %}<label>Fecha y hora{{ meeting_form.scheduled_at }}</label><label>Tipo de reunión{{ meeting_form.meeting_type }}</label><label>Notas{{ meeting_form.result }}</label><div class="sales-modal-actions"><button type="button" class="btn btn-secondary" data-sales-close>Cancelar</button><button class="btn btn-primary" type="submit">Agendar meet</button></div></form></div></div>
+
+<div class="sales-modal" data-sales-modal="conversion" aria-hidden="true">
+  <div class="sales-modal-backdrop" data-sales-close></div>
+  <div class="sales-modal-panel sales-conversion-panel">
+    <button class="sales-modal-x" type="button" data-sales-close>×</button>
+    <span class="sales-kicker">VENTA CERRADA</span>
+    <h3>Convertir en cliente</h3>
+    <p>Confirma el cliente, el proyecto y los servicios vendidos. El sistema conservará el historial comercial del lead.</p>
+    <form method="post" action="{% url 'sales:convert_lead_to_client' lead.pk %}" class="sales-quick-form sales-conversion-form" data-conversion-form>
+      {% csrf_token %}
+
+      {% if conversion_form.existing_client.field.queryset.exists %}
+      <section class="sales-conversion-block sales-client-match">
+        <div class="sales-conversion-heading">
+          <div><span class="sales-kicker">CLIENTE</span><strong>Encontramos una coincidencia</strong></div>
+          <span class="sales-match-badge">Email / teléfono</span>
+        </div>
+        <p>Reutiliza un cliente existente para evitar registros duplicados, o crea uno nuevo si realmente corresponde.</p>
+        <div class="sales-client-mode" data-client-mode>
+          <label><input type="radio" name="client_mode" value="existing" checked><span><b>Usar existente</b><small>Vincular este lead a un cliente ya registrado</small></span></label>
+          <label><input type="radio" name="client_mode" value="new"><span><b>Crear nuevo</b><small>Crear un registro de cliente independiente</small></span></label>
+        </div>
+        <div data-existing-client-wrap>
+          <label>Cliente existente{{ conversion_form.existing_client }}</label>
+        </div>
+      </section>
+      {% else %}
+      <input type="hidden" name="client_mode" value="new">
+      <section class="sales-conversion-block">
+        <div class="sales-conversion-heading"><div><span class="sales-kicker">CLIENTE</span><strong>Crear nuevo cliente</strong></div><span class="sales-match-badge neutral">Sin coincidencias</span></div>
+        <p>No encontramos otro cliente con el mismo email o teléfono.</p>
+      </section>
+      {% endif %}
+
+      <div class="sales-form-row sales-conversion-core">
+        <label data-new-client-wrap>Empresa / cliente{{ conversion_form.business_name }}</label>
+        <label>Nombre del proyecto{{ conversion_form.project_name }}</label>
+      </div>
+      <label>Valor total vendido <small class="sales-field-help">Ingresa el valor confirmado de la venta; no se usa el presupuesto estimado del lead.</small>{{ conversion_form.sale_value }}</label>
+
+      <section class="sales-conversion-block sales-services-block">
+        <div class="sales-conversion-heading"><div><span class="sales-kicker">SERVICIOS VENDIDOS</span><strong>Selecciona lo que compró el cliente</strong></div><span class="sales-service-count" data-service-count>0 seleccionados</span></div>
+        <div class="sales-service-search"><span>⌕</span><input type="search" placeholder="Buscar servicio..." data-service-search></div>
+        <div class="sales-service-groups" data-service-groups>
+          {% for group in conversion_form.service_groups %}
+          <div class="sales-service-group" data-service-group="{{ group.label|lower }}">
+            <div class="sales-service-group-title"><span>{{ group.label }}</span><small>{{ group.plans|length }} servicios</small></div>
+            <div class="sales-service-options">
+              {% for plan in group.plans %}
+              <label class="sales-service-option" data-service-option data-service-name="{{ plan.name|lower }}" data-service-department="{{ group.label }}">
+                <input type="checkbox" name="service_plans" value="{{ plan.pk }}">
+                <span><b>{{ plan.name }}</b><small>{{ plan.get_service_type_display }}</small></span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="sales-service-empty" data-service-empty hidden>No encontramos servicios con esa búsqueda.</div>
+      </section>
+
+      <section class="sales-conversion-summary">
+        <div class="sales-conversion-heading"><div><span class="sales-kicker">RESUMEN</span><strong>Antes de convertir</strong></div></div>
+        <div class="sales-summary-grid">
+          <div><span>Cliente</span><strong data-summary-client>{{ lead.company|default:lead.full_name }}</strong></div>
+          <div><span>Proyecto</span><strong data-summary-project>{{ conversion_form.project_name.value|default:'—' }}</strong></div>
+          <div><span>Servicios</span><strong data-summary-services>0 seleccionados</strong></div>
+          <div><span>Áreas activadas</span><strong data-summary-areas>—</strong></div>
+          <div><span>Valor vendido</span><strong data-summary-value>Sin definir</strong></div>
+        </div>
+      </section>
+
+      <div class="sales-modal-actions sales-conversion-actions">
+        <button type="button" class="btn btn-secondary" data-sales-close>Cancelar</button>
+        <button class="btn btn-primary" type="submit" data-convert-submit disabled>✓ Convertir en cliente</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <div class="sales-modal" data-sales-modal="status" aria-hidden="true"><div class="sales-modal-backdrop" data-sales-close></div><div class="sales-modal-panel"><button class="sales-modal-x" type="button" data-sales-close>×</button><span class="sales-kicker">ETAPA COMERCIAL</span><h3>Cambiar estado</h3><p>Actualiza la etapa sin perder el historial del lead.</p><form method="post" action="{% url 'sales:update_status' lead.pk %}" class="sales-quick-form" data-status-form>{% csrf_token %}<label>Estado<select name="status" data-status-select>{% for value,label in status_choices %}<option value="{{ value }}" {% if lead.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><label data-loss-wrap style="display:none">Motivo<select name="loss_reason"><option value="">Selecciona un motivo</option>{% for value,label in loss_reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label><div class="sales-modal-actions"><button type="button" class="btn btn-secondary" data-sales-close>Cancelar</button><button class="btn btn-primary" type="submit">Actualizar estado</button></div></form></div></div>
 
@@ -42,6 +122,58 @@
   function syncFollow(){if(check&&extra)extra.classList.toggle('is-visible',check.checked)} if(check){check.addEventListener('change',syncFollow);syncFollow()}
   const status=document.querySelector('[data-status-select]'), loss=document.querySelector('[data-loss-wrap]');
   function syncLoss(){if(status&&loss)loss.style.display=['lost','unqualified'].includes(status.value)?'grid':'none'} if(status){status.addEventListener('change',syncLoss);syncLoss()}
+
+  const conversion=document.querySelector('[data-conversion-form]');
+  if(conversion){
+    const modes=[...conversion.querySelectorAll('input[name="client_mode"]')];
+    const existingWrap=conversion.querySelector('[data-existing-client-wrap]');
+    const newWrap=conversion.querySelector('[data-new-client-wrap]');
+    const existingSelect=conversion.querySelector('#id_existing_client');
+    const businessInput=conversion.querySelector('#id_business_name');
+    const projectInput=conversion.querySelector('#id_project_name');
+    const valueInput=conversion.querySelector('#id_sale_value');
+    const serviceBoxes=[...conversion.querySelectorAll('input[name="service_plans"]')];
+    const search=conversion.querySelector('[data-service-search]');
+    const submit=conversion.querySelector('[data-convert-submit]');
+    const count=conversion.querySelector('[data-service-count]');
+    const summaryClient=conversion.querySelector('[data-summary-client]');
+    const summaryProject=conversion.querySelector('[data-summary-project]');
+    const summaryServices=conversion.querySelector('[data-summary-services]');
+    const summaryAreas=conversion.querySelector('[data-summary-areas]');
+    const summaryValue=conversion.querySelector('[data-summary-value]');
+    const empty=conversion.querySelector('[data-service-empty]');
+
+    function activeMode(){const item=modes.find(i=>i.checked);return item?item.value:'new'}
+    function selectedAreas(){return [...new Set(serviceBoxes.filter(i=>i.checked).map(i=>i.closest('[data-service-option]').dataset.serviceDepartment))]}
+    function syncConversion(){
+      const mode=activeMode();
+      if(existingWrap) existingWrap.hidden=mode!=='existing';
+      if(newWrap) newWrap.hidden=mode==='existing';
+      let clientName=(businessInput&&businessInput.value.trim())||'—';
+      if(mode==='existing'&&existingSelect&&existingSelect.selectedOptions.length) clientName=existingSelect.selectedOptions[0].textContent.trim()||'—';
+      const selected=serviceBoxes.filter(i=>i.checked);
+      const areas=selectedAreas();
+      if(count) count.textContent=selected.length+' seleccionado'+(selected.length===1?'':'s');
+      if(summaryClient) summaryClient.textContent=clientName;
+      if(summaryProject) summaryProject.textContent=(projectInput&&projectInput.value.trim())||'—';
+      if(summaryServices) summaryServices.textContent=selected.length+' seleccionado'+(selected.length===1?'':'s');
+      if(summaryAreas) summaryAreas.textContent=areas.length?areas.join(', '):'—';
+      if(summaryValue){const value=valueInput&&valueInput.value.trim();summaryValue.textContent=value?'$'+value:'Sin definir'}
+      const clientOk=mode==='existing' ? !!(existingSelect&&existingSelect.value) : !!(businessInput&&businessInput.value.trim());
+      const projectOk=!!(projectInput&&projectInput.value.trim());
+      if(submit) submit.disabled=!(clientOk&&projectOk&&selected.length);
+    }
+    modes.forEach(i=>i.addEventListener('change',syncConversion));
+    [existingSelect,businessInput,projectInput,valueInput].filter(Boolean).forEach(i=>i.addEventListener('input',syncConversion));
+    serviceBoxes.forEach(i=>i.addEventListener('change',syncConversion));
+    if(search){search.addEventListener('input',()=>{
+      const q=search.value.trim().toLowerCase();let visible=0;
+      conversion.querySelectorAll('[data-service-option]').forEach(option=>{const show=!q||option.dataset.serviceName.includes(q)||option.dataset.serviceDepartment.toLowerCase().includes(q);option.hidden=!show;if(show)visible++});
+      conversion.querySelectorAll('.sales-service-group').forEach(group=>{group.hidden=![...group.querySelectorAll('[data-service-option]')].some(o=>!o.hidden)});
+      if(empty) empty.hidden=visible!==0;
+    })}
+    syncConversion();
+  }
 })();
 </script>
 {% endblock %}

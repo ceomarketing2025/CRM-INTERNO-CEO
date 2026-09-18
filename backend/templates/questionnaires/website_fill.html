@@ -1,5 +1,5 @@
 {% extends 'base.html' %}{% load questionnaire_tags %}
-{% block page_heading %}Ficha técnica · Desarrollo{% endblock %}
+{% block page_heading %}Ficha técnica{% endblock %}
 {% block content %}
 <div class="page-intro technical-intro">  <div>
     <span class="eyebrow">
@@ -14,27 +14,10 @@
     </h2>
 
     <p>
-      Formulario guiado. Cada bloque se marca automáticamente cuando tiene la información necesaria.
+      Completa y administra la información general del proyecto.
     </p>
   </div>
   <div class="actions"><a class="btn btn-secondary" href="{% url 'questionnaires:development_dashboard' %}">Desarrollo</a><a class="btn btn-secondary" href="{% url 'projects:detail' questionnaire.project.pk %}">Proyecto</a><a class="btn btn-primary" href="{% url 'handoff:summary' questionnaire.project.pk %}">Resumen</a></div>
-</div>
-
-<div class="technical-progress-card card">
-  <div>
-    <span class="eyebrow">Avance de ficha</span>
-    <strong id="technical-percent">{{ progress.percent }}%</strong>
-    <small id="technical-count">
-      {{ progress.complete }} de {{ progress.total }} secciones completas
-    </small>
-  </div>
-
-  <div class="progress technical-progress">
-    <i
-      id="technical-progress-bar"
-      style="width:{{ progress.percent }}%"
-    ></i>
-  </div>
 </div>
 
 <form method="post" id="technical-form" class="technical-form">
@@ -57,17 +40,6 @@
           <small>
             Datos del cliente, empresa, contacto, dirección y dominio.
           </small>
-        </span>
-
-        <span class="requirement-progress-wrap">
-          <span class="requirement-progress">
-            <i style="width:0%"></i>
-          </span>
-          <span class="requirement-percent">0%</span>
-        </span>
-
-        <span class="requirement-status">
-          Sin iniciar
         </span>
 
         <span class="requirement-toggle-text">
@@ -143,17 +115,6 @@
           <small>
             Actividad, tipo de cliente y objetivo comercial.
           </small>
-        </span>
-
-        <span class="requirement-progress-wrap">
-          <span class="requirement-progress">
-            <i style="width:0%"></i>
-          </span>
-          <span class="requirement-percent">0%</span>
-        </span>
-
-        <span class="requirement-status">
-          Sin iniciar
         </span>
 
         <span class="requirement-toggle-text">
@@ -322,17 +283,6 @@
           <small>
             Servicio principal, categorías, complementarios y excluidos.
           </small>
-        </span>
-
-        <span class="requirement-progress-wrap">
-          <span class="requirement-progress">
-            <i style="width:0%"></i>
-          </span>
-          <span class="requirement-percent">0%</span>
-        </span>
-
-        <span class="requirement-status">
-          Sin iniciar
         </span>
 
         <span class="requirement-toggle-text">
@@ -634,13 +584,6 @@
             Dirección, radio, estados, counties y ciudades.
           </small>
         </span>
-
-        <span class="requirement-progress-wrap">
-          <span class="requirement-progress"><i style="width:0%"></i></span>
-          <span class="requirement-percent">0%</span>
-        </span>
-
-        <span class="requirement-status">Sin iniciar</span>
         <span class="requirement-toggle-text">Ver más</span>
 
       </button>
@@ -765,13 +708,6 @@
             Horarios, teléfonos y disponibilidad.
           </small>
         </span>
-
-        <span class="requirement-progress-wrap">
-          <span class="requirement-progress"><i style="width:0%"></i></span>
-          <span class="requirement-percent">0%</span>
-        </span>
-
-        <span class="requirement-status">Sin iniciar</span>
         <span class="requirement-toggle-text">Ver más</span>
 
       </button>
@@ -974,13 +910,6 @@
             Estimados gratuitos, canales y proceso.
           </small>
         </span>
-
-        <span class="requirement-progress-wrap">
-          <span class="requirement-progress"><i style="width:0%"></i></span>
-          <span class="requirement-percent">0%</span>
-        </span>
-
-        <span class="requirement-status">Sin iniciar</span>
         <span class="requirement-toggle-text">Ver más</span>
 
       </button>
@@ -1062,13 +991,6 @@
             Misión, visión, slogan e información de marca.
           </small>
         </span>
-
-        <span class="requirement-progress-wrap">
-          <span class="requirement-progress"><i style="width:0%"></i></span>
-          <span class="requirement-percent">0%</span>
-        </span>
-
-        <span class="requirement-status">Sin iniciar</span>
         <span class="requirement-toggle-text">Ver más</span>
 
       </button>
@@ -1163,13 +1085,6 @@
             Experiencia, certificaciones y garantías.
           </small>
         </span>
-
-        <span class="requirement-progress-wrap">
-          <span class="requirement-progress"><i style="width:0%"></i></span>
-          <span class="requirement-percent">0%</span>
-        </span>
-
-        <span class="requirement-status">Sin iniciar</span>
         <span class="requirement-toggle-text">Ver más</span>
 
       </button>
@@ -1250,20 +1165,6 @@
       <small>
         Define si se mostrará al dueño, al equipo o contenido relacionado.
       </small>
-    </span>
-
-    <span class="requirement-progress-wrap">
-      <span class="requirement-progress">
-        <i style="width:0%"></i>
-      </span>
-
-      <span class="requirement-percent">
-        0%
-      </span>
-    </span>
-
-    <span class="requirement-status">
-      Sin iniciar
     </span>
 
     <span class="requirement-toggle-text">
@@ -1474,13 +1375,6 @@
         <strong>Redes sociales</strong>
       
         </span>
-
-        <span class="requirement-progress-wrap">
-          <span class="requirement-progress"><i style="width:0%"></i></span>
-          <span class="requirement-percent">0%</span>
-        </span>
-
-        <span class="requirement-status">Sin iniciar</span>
         <span class="requirement-toggle-text">Ver más</span>
 
       </button>
@@ -1567,13 +1461,6 @@
             Campos y configuración del formulario web.
           </small>
         </span>
-
-        <span class="requirement-progress-wrap">
-          <span class="requirement-progress"><i style="width:0%"></i></span>
-          <span class="requirement-percent">0%</span>
-        </span>
-
-        <span class="requirement-status">Sin iniciar</span>
         <span class="requirement-toggle-text">Ver más</span>
 
       </button>
@@ -1652,15 +1539,10 @@
   <div class="technical-savebar card">
 
     <div>
-      <strong>
-        Ficha técnica ·
-        <span id="technical-percent-bottom">
-          {{ progress.percent }}%
-        </span>
-      </strong>
+      <strong>Ficha técnica</strong>
 
       <span>
-        La información se reutiliza en SEO, Diseño y Desarrollo.
+        La información guardada se utilizará en las siguientes etapas del proyecto.
       </span>
     </div>
 

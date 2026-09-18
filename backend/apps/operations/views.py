@@ -1930,24 +1930,42 @@ def web_production_sheet(
         developer.pk: {
             "id": developer.pk,
             "name": developer.display_name,
-            "points": 0,
-            "items": 0,
+            "production_points": 0,
+            "internal_points": 0,
+            "total_points": 0,
         }
         for developer in project_developers
     }
 
-    unassigned_points = 0
-    unassigned_items = 0
+    unassigned_production_points = 0
+    unassigned_internal_points = 0
 
-    for row in production_rows:
+    for row in all_rows:
+        points = row.points or 0
         if row.responsible_id in balance:
-            balance[row.responsible_id]["points"] += row.points or 0
-            balance[row.responsible_id]["items"] += 1
+            balance[row.responsible_id]["production_points"] += points
         else:
-            unassigned_points += row.points or 0
-            unassigned_items += 1
+            unassigned_production_points += points
+
+    for row in internal_sections:
+        points = row.points or 0
+        if row.responsible_id in balance:
+            balance[row.responsible_id]["internal_points"] += points
+        else:
+            unassigned_internal_points += points
+
+    for item in balance.values():
+        item["total_points"] = (
+            item["production_points"]
+            + item["internal_points"]
+        )
 
     balance_rows = list(balance.values())
+    unassigned_points = (
+        unassigned_production_points
+        + unassigned_internal_points
+    )
+    unassigned_items = 0
 
     strategy_label = {
         "study":
@@ -2042,6 +2060,12 @@ def web_production_sheet(
 
             "unassigned_points":
                 unassigned_points,
+
+            "unassigned_production_points":
+                unassigned_production_points,
+
+            "unassigned_internal_points":
+                unassigned_internal_points,
 
             "unassigned_items":
                 unassigned_items,

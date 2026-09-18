@@ -11,6 +11,7 @@ urlpatterns = [
     path("leads/<int:pk>/follow-up/", views.add_followup, name="add_followup"),
     path("leads/<int:pk>/meeting/", views.add_meeting, name="add_meeting"),
     path("leads/<int:pk>/status/", views.update_status, name="update_status"),
+    path("leads/<int:pk>/convert/", views.convert_lead_to_client, name="convert_lead_to_client"),
     path("follow-ups/", views.followup_list, name="followup_list"),
     path("follow-ups/new/", views.create_followup_from_agenda, name="create_followup_from_agenda"),
     path("follow-ups/<int:pk>/complete/", views.complete_followup, name="complete_followup"),

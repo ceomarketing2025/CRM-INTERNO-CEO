@@ -8,7 +8,11 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.decorators import role_required
-from .forms import AgendaFollowUpForm, AgendaMeetingForm, ContactAttemptForm, FollowUpForm, LeadForm, SalesMeetingForm
+from apps.clients.models import Client
+from apps.clients.models.choices import ClientType
+from apps.projects.models import Project, ProjectPlanAssignment
+from apps.projects.models.choices import ProjectStatus
+from .forms import AgendaFollowUpForm, AgendaMeetingForm, ContactAttemptForm, FollowUpForm, LeadConversionForm, LeadForm, SalesMeetingForm
 from .models import ContactAttempt, FollowUp, Lead, SalesMeeting
 
 
@@ -100,7 +104,7 @@ def lead_detail(request, pk):
     return render(request, "sales/lead_detail.html", {
         "lead": lead, "timeline": timeline, "contact_form": ContactAttemptForm(),
         "followup_form": FollowUpForm(), "meeting_form": SalesMeetingForm(), "status_choices": Lead.Status.choices,
-        "loss_reasons": Lead.LossReason.choices,
+        "loss_reasons": Lead.LossReason.choices, "conversion_form": LeadConversionForm(lead=lead),
     })
 
 
@@ -238,3 +242,73 @@ def create_meeting_from_agenda(request):
     lead.save(update_fields=["status", "updated_at"])
     messages.success(request, "Meet agregado a la agenda.")
     return redirect("sales:meeting_list")
+
+
+@require_POST
+@role_required("sales")
+@transaction.atomic
+def convert_lead_to_client(request, pk):
+    lead = _lead_for_user(request.user, pk)
+    if lead.status != Lead.Status.WON:
+        messages.error(request, "Primero marca el lead como Venta cerrada antes de convertirlo en cliente.")
+        return redirect("sales:lead_detail", pk=pk)
+    if lead.client_id:
+        messages.info(request, "Este lead ya está vinculado a un cliente.")
+        return redirect("sales:lead_detail", pk=pk)
+
+    form = LeadConversionForm(request.POST, lead=lead)
+    if not form.is_valid():
+        messages.error(request, "Revisa los datos de conversión, el cliente y los servicios vendidos.")
+        return redirect("sales:lead_detail", pk=pk)
+
+    client = form.cleaned_data.get("existing_client")
+    if not client:
+        client = Client.objects.create(
+            client_type=ClientType.COMPANY if lead.company else ClientType.PERSON,
+            first_name=lead.first_name,
+            last_name=lead.last_name,
+            business_name=form.cleaned_data["business_name"],
+            contact_name=lead.full_name,
+            email=lead.email,
+            phone=lead.phone,
+            country=lead.country,
+            state_region=lead.state_region,
+            city=lead.city,
+            source=lead.source,
+            notes=lead.comments,
+            created_by=request.user,
+        )
+
+    project = Project.objects.create(
+        client=client,
+        name=form.cleaned_data["project_name"],
+        status=ProjectStatus.IN_DEVELOPMENT,
+        start_date=timezone.localdate(),
+        summary=f"Creado desde Ventas al convertir el lead #{lead.pk}.",
+        internal_notes=lead.comments,
+        created_by=request.user,
+    )
+
+    plans = list(form.cleaned_data["service_plans"])
+    sale_value = form.cleaned_data.get("sale_value")
+    for index, plan in enumerate(plans):
+        agreed_price = plan.base_price
+        if sale_value is not None and len(plans) == 1:
+            agreed_price = sale_value
+        ProjectPlanAssignment.objects.create(
+            project=project,
+            plan=plan,
+            agreed_price=agreed_price,
+            is_active=True,
+            created_by=request.user,
+        )
+
+    lead.client = client
+    lead.converted_project = project
+    lead.sale_value = sale_value
+    lead.converted_at = timezone.now()
+    lead.converted_by = request.user
+    lead.save(update_fields=["client", "converted_project", "sale_value", "converted_at", "converted_by", "updated_at"])
+
+    messages.success(request, f"{lead.full_name} ya es cliente y su proyecto fue creado con los servicios vendidos.")
+    return redirect("sales:lead_detail", pk=pk)

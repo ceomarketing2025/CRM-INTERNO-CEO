@@ -2,6 +2,8 @@ from django import forms
 from django.db.models import Q
 
 from apps.accounts.models import UserAccount
+from apps.clients.models import Client
+from apps.plans.models import ServicePlan
 from .models import ContactAttempt, FollowUp, Lead, SalesMeeting
 
 
@@ -112,3 +114,93 @@ class AgendaMeetingForm(SalesMeetingForm):
         if user and getattr(user, "role", None) == "sales":
             self.fields["seller"].initial = user
             self.fields["seller"].disabled = True
+
+
+class LeadConversionForm(forms.Form):
+    CLIENT_MODE_NEW = "new"
+    CLIENT_MODE_EXISTING = "existing"
+    CLIENT_MODE_CHOICES = (
+        (CLIENT_MODE_EXISTING, "Usar cliente existente"),
+        (CLIENT_MODE_NEW, "Crear cliente nuevo"),
+    )
+
+    client_mode = forms.ChoiceField(
+        choices=CLIENT_MODE_CHOICES,
+        widget=forms.RadioSelect,
+        label="Cliente",
+        initial=CLIENT_MODE_NEW,
+    )
+    existing_client = forms.ModelChoiceField(
+        queryset=Client.objects.none(), required=False, label="Cliente existente", empty_label="Selecciona un cliente"
+    )
+    business_name = forms.CharField(max_length=180, label="Nombre de la empresa / cliente")
+    project_name = forms.CharField(max_length=180, label="Nombre del proyecto")
+    service_plans = forms.ModelMultipleChoiceField(
+        queryset=ServicePlan.objects.none(), required=True, label="Servicios vendidos",
+        widget=forms.CheckboxSelectMultiple(),
+    )
+    sale_value = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        min_value=0,
+        label="Valor total vendido",
+        widget=forms.NumberInput(attrs={"step": "0.01", "placeholder": "0.00"}),
+    )
+
+    def __init__(self, *args, lead=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.lead = lead
+        matches = Client.objects.none()
+        if lead:
+            query = Q()
+            if lead.email:
+                query |= Q(email__iexact=lead.email)
+            if lead.phone:
+                query |= Q(phone__iexact=lead.phone)
+            if query:
+                matches = Client.objects.filter(query).distinct().order_by("business_name")
+            base_name = lead.company or lead.full_name or f"Lead {lead.pk}"
+            self.fields["business_name"].initial = base_name
+            self.fields["project_name"].initial = f"{base_name} · Venta"
+        self.fields["existing_client"].queryset = matches
+        self.fields["service_plans"].queryset = ServicePlan.objects.filter(is_active=True).order_by("department", "service_type", "name")
+        if matches.exists():
+            self.fields["client_mode"].initial = self.CLIENT_MODE_EXISTING
+            self.fields["existing_client"].initial = matches.first()
+        else:
+            self.fields["client_mode"].choices = ((self.CLIENT_MODE_NEW, "Crear cliente nuevo"),)
+            self.fields["client_mode"].initial = self.CLIENT_MODE_NEW
+
+    @property
+    def service_groups(self):
+        groups = []
+        current_key = None
+        current = None
+        for plan in self.fields["service_plans"].queryset:
+            if plan.department != current_key:
+                current_key = plan.department
+                current = {"key": plan.department, "label": plan.get_department_display(), "plans": []}
+                groups.append(current)
+            current["plans"].append(plan)
+        return groups
+
+    def clean(self):
+        cleaned = super().clean()
+        mode = cleaned.get("client_mode") or self.CLIENT_MODE_NEW
+        existing = cleaned.get("existing_client")
+        business_name = (cleaned.get("business_name") or "").strip()
+
+        if mode == self.CLIENT_MODE_EXISTING:
+            if not existing:
+                self.add_error("existing_client", "Selecciona el cliente existente que deseas reutilizar.")
+            else:
+                cleaned["business_name"] = existing.business_name
+        else:
+            cleaned["existing_client"] = None
+            if not business_name:
+                self.add_error("business_name", "Ingresa el nombre de la empresa o cliente.")
+
+        if not cleaned.get("service_plans"):
+            self.add_error("service_plans", "Selecciona al menos un servicio vendido.")
+        return cleaned

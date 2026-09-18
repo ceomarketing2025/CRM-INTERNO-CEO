@@ -47,9 +47,11 @@
       <details class="nav-section" {% if active_nav_group == 'development' %}open{% endif %}>
         <summary><span class="nav-section-icon">⌘</span><b>Desarrollo</b><i>⌄</i></summary>
         <div class="nav-section-links">
-          <a href="{% url 'questionnaires:development_information' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Información Desarrollo' %}active{% endif %}"><span>◫</span><b>Información Desarrollo</b></a>
-          <a href="{% url 'questionnaires:seo_status' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Estado SEO' %}active{% endif %}"><span>↗</span><b>Estado SEO</b></a>
-          <a href="{% url 'questionnaires:development_dashboard' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Resumen de tareas' %}active{% endif %}"><span>✓</span><b>Resumen de tareas</b></a>
+          <a href="{% url 'questionnaires:development_information' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Información' and not request.GET.view %}active{% endif %}"><span>◫</span><b>Información</b></a>
+          <a href="{% url 'questionnaires:development_dashboard' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Tareas' %}active{% endif %}"><span>✓</span><b>Tareas</b></a>
+          <a href="{% url 'questionnaires:development_information' %}?view=production" class="nav-link {% if active_nav_group == 'development' and request.GET.view == 'production' %}active{% endif %}"><span>▣</span><b>Ficha de producción</b></a>
+          <a href="{% url 'questionnaires:development_information' %}?view=styles" class="nav-link {% if active_nav_group == 'development' and request.GET.view == 'styles' %}active{% endif %}"><span>✦</span><b>Estilos</b></a>
+          <a href="{% url 'questionnaires:seo_status' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Matriz SEO' %}active{% endif %}"><span>↗</span><b>Matriz SEO</b></a>
         </div>
       </details>
       {% endif %}
@@ -80,14 +82,11 @@
         </div>
       </details>
 
-      {% if current_role == 'sales' or current_role == 'manager' or request.user.is_superuser %}
-      <details class="nav-section" {% if active_nav_group == 'sales' %}open{% endif %}>
-        <summary><span class="nav-section-icon">♙</span><b>Ventas</b><i>⌄</i></summary>
+      {% if current_role == 'administration' or current_role == 'manager' or request.user.is_superuser %}
+      <details class="nav-section nav-section-placeholder">
+        <summary><span class="nav-section-icon">♙</span><b>Vendedores</b><i>⌄</i></summary>
         <div class="nav-section-links">
-          <a href="{% url 'sales:dashboard' %}" class="nav-link {% if current_namespace == 'sales' and current_url_name == 'dashboard' %}active{% endif %}"><span>⌂</span><b>Inicio</b></a>
-          <a href="{% url 'sales:lead_list' %}" class="nav-link {% if current_namespace == 'sales' and current_url_name == 'lead_list' or current_url_name == 'lead_create' or current_url_name == 'lead_detail' %}active{% endif %}"><span>◎</span><b>Leads</b></a>
-          <a href="{% url 'sales:followup_list' %}" class="nav-link {% if current_namespace == 'sales' and current_url_name == 'followup_list' %}active{% endif %}"><span>◷</span><b>Seguimientos</b></a>
-          <a href="{% url 'sales:meeting_list' %}" class="nav-link {% if current_namespace == 'sales' and current_url_name == 'meeting_list' %}active{% endif %}"><span>▣</span><b>Meets</b></a>
+          <span class="nav-empty-state"><b>Módulo reservado</b><small>Próximamente</small></span>
         </div>
       </details>
       {% endif %}

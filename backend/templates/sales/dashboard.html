@@ -16,8 +16,8 @@
 
 <div class="sales-priority-grid">
   <a href="{% url 'sales:lead_list' %}?status=new" class="sales-priority-card blue"><span class="sales-card-icon">＋</span><div><small>POR CONTACTAR</small><strong>{{ new_count }}</strong><p>Leads nuevos</p></div><b>→</b></a>
-  <div class="sales-priority-card danger"><span class="sales-card-icon">!</span><div><small>REQUIEREN ACCIÓN</small><strong>{{ overdue_count }}</strong><p>Seguimientos vencidos</p></div><b>→</b></div>
-  <div class="sales-priority-card amber"><span class="sales-card-icon">◷</span><div><small>AGENDA DE HOY</small><strong>{{ today_meetings_count }}</strong><p>Meets programados</p></div><b>→</b></div>
+  <a href="{% url 'sales:followup_list' %}" class="sales-priority-card danger"><span class="sales-card-icon">!</span><div><small>REQUIEREN ACCIÓN</small><strong>{{ overdue_count }}</strong><p>Seguimientos vencidos</p></div><b>→</b></a>
+  <a href="{% url 'sales:meeting_list' %}" class="sales-priority-card amber"><span class="sales-card-icon">◷</span><div><small>AGENDA DE HOY</small><strong>{{ today_meetings_count }}</strong><p>Meets programados</p></div><b>→</b></a>
   <a href="{% url 'sales:lead_list' %}?status=potential" class="sales-priority-card green"><span class="sales-card-icon">◇</span><div><small>OPORTUNIDADES</small><strong>{{ potential_count }}</strong><p>Clientes potenciales</p></div><b>→</b></a>
 </div>
 
@@ -29,7 +29,7 @@
       <article class="sales-agenda-item {% if follow.due_at < now %}is-overdue{% endif %}">
         <div class="sales-time"><strong>{{ follow.due_at|date:"H:i" }}</strong><small>{% if follow.due_at|date:"Y-m-d" < today|date:"Y-m-d" %}Vencido{% else %}Hoy{% endif %}</small></div>
         <div class="sales-agenda-main"><div class="sales-avatar">{{ follow.lead.first_name|first|upper }}</div><div><a href="{% url 'sales:lead_detail' follow.lead.pk %}">{{ follow.lead.full_name }}</a><p>{{ follow.get_contact_type_display }}{% if follow.lead.interested_service %} · {{ follow.lead.interested_service }}{% endif %}</p></div></div>
-        <div class="sales-agenda-action"><span>{{ follow.get_status_display }}</span><a href="{% url 'sales:lead_detail' follow.lead.pk %}">Abrir →</a></div>
+        <div class="sales-agenda-action"><a href="{% url 'sales:lead_detail' follow.lead.pk %}">Abrir →</a><form method="post" action="{% url 'sales:complete_followup' follow.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'sales:dashboard' %}"><button type="submit">✓ Completar</button></form></div>
       </article>
       {% empty %}
       <div class="sales-empty"><span>✓</span><strong>Tu agenda está al día</strong><p>Cuando programes seguimientos aparecerán aquí en orden de prioridad.</p></div>

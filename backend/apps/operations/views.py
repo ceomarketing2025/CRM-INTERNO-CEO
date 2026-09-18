@@ -5,6 +5,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import JsonResponse
 from django.urls import reverse
+from django.utils.text import slugify
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from apps.accounts.models import UserAccount
@@ -884,6 +885,13 @@ def web_production_sheet(
             row_id = request.POST.get("row_id", "").strip()
             field = request.POST.get("field", "").strip()
             value = request.POST.get("value", "").strip()
+            wants_json = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+            def quick_error(message):
+                if wants_json:
+                    return JsonResponse({"ok": False, "error": message}, status=400)
+                messages.error(request, message)
+                return redirect("operations:web_production_sheet", project_pk=project.pk)
 
             model_map = {
                 "page": (WebProductionPage, {"sheet": sheet}),
@@ -893,25 +901,30 @@ def web_production_sheet(
                 "internal_section": (WebProductionInternalSection, {"sheet": sheet}),
             }
             if row_type not in model_map or not row_id.isdigit():
-                messages.error(request, "Edición rápida inválida.")
-                return redirect("operations:web_production_sheet", project_pk=project.pk)
+                return quick_error("Edición rápida inválida.")
 
             model, scope = model_map[row_type]
-            obj = get_object_or_404(model, pk=int(row_id), **scope)
+            obj = model.objects.filter(pk=int(row_id), **scope).first()
+            if obj is None:
+                return quick_error("No se encontró el registro dentro de esta ficha de producción.")
 
             if field == "responsible":
+                if value and (not value.isdigit() or int(value) not in users):
+                    return quick_error("El responsable no pertenece al equipo de Desarrollo de este proyecto.")
                 obj.responsible = users.get(int(value)) if value.isdigit() else None
             elif field == "complexity":
                 if value not in {"S", "M", "C"}:
-                    messages.error(request, "Complejidad inválida.")
-                    return redirect("operations:web_production_sheet", project_pk=project.pk)
+                    return quick_error("Complejidad inválida.")
                 obj.complexity = value
                 obj.points = {"S": 1, "M": 2, "C": 3}[value]
             elif field == "slug" and hasattr(obj, "slug"):
-                obj.slug = value
+                obj.slug = slugify(value)
             elif field == "keyword" and hasattr(obj, "keyword"):
                 obj.keyword = value
+                obj.slug = slugify(value)
             elif field == "created" and isinstance(obj, WebProductionInternalSection):
+                if value not in {"yes", "no"}:
+                    return quick_error("Valor de creada inválido.")
                 obj.created = value == "yes"
             elif field == "workflow_status" and hasattr(obj, "workflow_status"):
                 allowed = {
@@ -920,17 +933,33 @@ def web_production_sheet(
                     "complete": ProductionWorkStatus.COMPLETE,
                 }
                 if value not in allowed:
-                    messages.error(request, "Estado inválido.")
-                    return redirect("operations:web_production_sheet", project_pk=project.pk)
+                    return quick_error("Estado inválido.")
                 obj.workflow_status = allowed[value]
+            elif field == "state" and hasattr(obj, "state"):
+                if value not in {CompleteStatus.COMPLETE, CompleteStatus.INCOMPLETE}:
+                    return quick_error("Valor de Lista inválido.")
+                obj.state = value
+            elif field == "review_status" and hasattr(obj, "review_status"):
+                if value not in {CompleteStatus.COMPLETE, CompleteStatus.INCOMPLETE}:
+                    return quick_error("Valor de Revisión inválido.")
+                obj.review_status = value
             else:
-                messages.error(request, "Campo de edición rápida inválido.")
-                return redirect("operations:web_production_sheet", project_pk=project.pk)
+                return quick_error("Campo de edición rápida inválido.")
 
             obj.updated_by = request.user
             obj.save()
             sheet.updated_by = request.user
             sheet.save(update_fields=["updated_by", "updated_at"])
+
+            if wants_json:
+                return JsonResponse({
+                    "ok": True,
+                    "field": field,
+                    "value": value,
+                    "slug": getattr(obj, "slug", ""),
+                    "points": getattr(obj, "points", None),
+                })
+
             messages.success(request, "Cambio guardado.")
             return redirect("operations:web_production_sheet", project_pk=project.pk)
 
@@ -2234,6 +2263,7 @@ def web_production_quick_toggle(
                 project_pk=project.pk,
             )
 
+        obj.state = value
         obj.workflow_status = (
             ProductionWorkStatus.COMPLETE
             if (
@@ -2317,6 +2347,13 @@ def web_production_quick_toggle(
             f"{field}: {value}"
         ),
     )
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({
+            "ok": True,
+            "field": field,
+            "value": value,
+        })
 
     return redirect(
         "operations:web_production_sheet",

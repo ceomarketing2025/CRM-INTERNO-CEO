@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Tareas · Desarrollo{% endblock %}
+
+{% block content %}
+<style>
+.devTasks{padding:34px 38px 60px;max-width:1500px;margin:0 auto;color:#0f1d35}
+.devTasks *{box-sizing:border-box}.devTasks__head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:24px}.devTasks__kicker{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#71809a;margin:0 0 7px}.devTasks h1{font-size:34px;line-height:1.08;margin:0 0 8px}.devTasks__lead{margin:0;color:#6f7d95;font-size:15px}.devTasks__btn{border:0;border-radius:13px;min-height:46px;padding:0 20px;font-weight:800;cursor:pointer;background:#2860e8;color:#fff}.devTasks__btn--light{background:#fff;color:#18243c;border:1px solid #dbe3ef}.devTasks__stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-bottom:24px}.devTasks__stat{background:#fff;border:1px solid #e0e6ef;border-radius:18px;padding:18px 20px}.devTasks__stat span{display:block;font-size:12px;color:#78869d;margin-bottom:8px}.devTasks__stat strong{font-size:29px}.devTasks__panel{background:#fff;border:1px solid #e0e6ef;border-radius:20px;overflow:hidden}.devTasks__toolbar{padding:18px 20px;border-bottom:1px solid #e7ebf2;display:flex;gap:10px;align-items:center;justify-content:space-between}.devTasks__toolbar h2{margin:0;font-size:20px}.devTasks__filters{display:flex;gap:8px;flex-wrap:wrap}.devTasks__filters a{text-decoration:none;padding:9px 12px;border-radius:10px;border:1px solid #dce3ee;color:#52627b;font-weight:700;font-size:12px}.devTasks__filters a.is-active{background:#edf3ff;color:#2459d7;border-color:#cbdcff}.devTasks__list{display:grid}.devTask{padding:20px;border-bottom:1px solid #edf0f5;display:grid;grid-template-columns:minmax(220px,1.4fr) minmax(160px,.8fr) minmax(190px,.8fr) minmax(230px,1fr);gap:18px;align-items:start}.devTask:last-child{border-bottom:0}.devTask__title{font-size:16px;font-weight:800;margin:0 0 6px}.devTask__meta{color:#78869a;font-size:12px;line-height:1.6}.devTask__note{margin-top:9px;background:#f7f9fc;border-radius:10px;padding:10px;font-size:12px;color:#4d5d76}.devTask label{display:block;font-size:11px;font-weight:800;color:#718099;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}.devTask select,.devTask textarea,.devTask input,.devTasks__modal input,.devTasks__modal select,.devTasks__modal textarea{width:100%;border:1px solid #d8e0eb;border-radius:11px;padding:10px 12px;background:#fff;color:#17223a;font:inherit}.devTask textarea{min-height:72px;resize:vertical}.devTask__issue{display:none;margin-top:10px}.devTask__issue.is-visible{display:block}.devTask__save{margin-top:10px;width:100%;border:0;border-radius:10px;min-height:40px;background:#17233b;color:#fff;font-weight:800;cursor:pointer}.devTask__badge{display:inline-flex;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800;background:#f0f3f8;color:#51627b}.devTask__badge--pending{background:#fff4d9;color:#936800}.devTask__badge--in_progress{background:#e8f1ff;color:#2459d7}.devTask__badge--issue{background:#ffe7e7;color:#b22d2d}.devTask__badge--completed{background:#e4f7ed;color:#157548}.devTasks__empty{padding:46px 20px;text-align:center;color:#7b889b}.devTasks__modalWrap{position:fixed;inset:0;background:rgba(13,24,45,.48);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}.devTasks__modalWrap.is-open{display:flex}.devTasks__modal{width:min(760px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:20px;padding:24px;box-shadow:0 22px 70px rgba(0,0,0,.22)}.devTasks__modalHead{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:18px}.devTasks__modalHead h2{margin:0}.devTasks__close{border:0;background:#f2f5f9;border-radius:10px;width:40px;height:40px;font-size:20px;cursor:pointer}.devTasks__grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.devTasks__field--full{grid-column:1/-1}.devTasks__field label{display:block;font-size:12px;font-weight:800;color:#66758d;margin-bottom:6px}.devTasks__actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.devTasks__toast{position:fixed;right:24px;bottom:24px;padding:12px 16px;border-radius:12px;background:#17233b;color:#fff;font-weight:700;display:none;z-index:10000}.devTasks__toast.is-show{display:block}
+@media(max-width:1050px){.devTasks__stats{grid-template-columns:repeat(3,1fr)}.devTask{grid-template-columns:1fr 1fr}}@media(max-width:700px){.devTasks{padding:24px 16px 50px}.devTasks__head{align-items:stretch;flex-direction:column}.devTasks__stats{grid-template-columns:1fr 1fr}.devTask{grid-template-columns:1fr}.devTasks__grid{grid-template-columns:1fr}.devTasks__field--full{grid-column:auto}}
+</style>
+
+<div class="devTasks">
+  <div class="devTasks__head">
+    <div>
+      <p class="devTasks__kicker">Desarrollo · Tareas</p>
+      <h1>Tareas</h1>
+      <p class="devTasks__lead">Gestiona las actividades asignadas y registra el avance de cada tarea.</p>
+    </div>
+    {% if can_assign %}<button class="devTasks__btn" type="button" id="openTaskModal">+ Asignar tarea</button>{% endif %}
+  </div>
+
+  <div class="devTasks__stats">
+    <div class="devTasks__stat"><span>Asignadas hoy</span><strong>{{ stats.today }}</strong></div>
+    <div class="devTasks__stat"><span>Pendientes</span><strong>{{ stats.pending }}</strong></div>
+    <div class="devTasks__stat"><span>En proceso</span><strong>{{ stats.in_progress }}</strong></div>
+    <div class="devTasks__stat"><span>Con inconveniente</span><strong>{{ stats.issue }}</strong></div>
+    <div class="devTasks__stat"><span>Completadas</span><strong>{{ stats.completed }}</strong></div>
+  </div>
+
+  <section class="devTasks__panel">
+    <div class="devTasks__toolbar">
+      <h2>{% if can_assign %}Tareas de desarrollo{% else %}Mis tareas{% endif %}</h2>
+      <div class="devTasks__filters">
+        <a href="?status=all" class="{% if status_filter == 'all' %}is-active{% endif %}">Todas</a>
+        <a href="?status=pending" class="{% if status_filter == 'pending' %}is-active{% endif %}">Pendientes</a>
+        <a href="?status=in_progress" class="{% if status_filter == 'in_progress' %}is-active{% endif %}">En proceso</a>
+        <a href="?status=issue" class="{% if status_filter == 'issue' %}is-active{% endif %}">Con inconveniente</a>
+        <a href="?status=completed" class="{% if status_filter == 'completed' %}is-active{% endif %}">Completadas</a>
+      </div>
+    </div>
+
+    <div class="devTasks__list">
+      {% for task in tasks %}
+      <article class="devTask" data-task-id="{{ task.id }}">
+        <div>
+          <div class="devTask__title">{{ task.title }}</div>
+          <div class="devTask__meta">
+            {% if task.project %}<strong>{{ task.project.project_code }}</strong> · {{ task.project.name }}<br>{% else %}<strong>Actividad general</strong><br>{% endif %}
+            Asignado a: {{ task.assigned_to.display_name }}<br>
+            Asignado por: {% if task.assigned_by %}{{ task.assigned_by.display_name }}{% else %}—{% endif %}<br>
+            Fecha: {{ task.assigned_date|date:"d/m/Y" }}{% if task.due_date %} · Objetivo: {{ task.due_date|date:"d/m/Y" }}{% endif %}
+          </div>
+          {% if task.description %}<div class="devTask__note"><strong>Descripción:</strong><br>{{ task.description|linebreaksbr }}</div>{% endif %}
+          {% if task.assignment_note %}<div class="devTask__note"><strong>Nota de asignación:</strong><br>{{ task.assignment_note|linebreaksbr }}</div>{% endif %}
+        </div>
+        <div>
+          <label>Prioridad</label>
+          <span class="devTask__badge">{{ task.get_priority_display }}</span>
+          <div style="margin-top:14px"><label>Estado actual</label><span class="devTask__badge devTask__badge--{{ task.status }}">{{ task.get_status_display }}</span></div>
+          {% if task.completed_at %}<div class="devTask__meta" style="margin-top:10px">Finalizada: {{ task.completed_at|date:"d/m/Y H:i" }}</div>{% endif %}
+        </div>
+        <form class="devTaskUpdate" method="post" action="{% url 'operations:development_tasks' %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="update">
+          <input type="hidden" name="task_id" value="{{ task.id }}">
+          <label>Estado</label>
+          <select name="status" class="devTaskStatus">
+            {% for value,label in status_choices %}<option value="{{ value }}" {% if task.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+          <div class="devTask__issue {% if task.status == 'issue' %}is-visible{% endif %}">
+            <label>Motivo del inconveniente</label>
+            <textarea name="issue_reason" placeholder="Describe qué impide continuar o qué problema se presentó.">{{ task.issue_reason }}</textarea>
+          </div>
+        </form>
+        <form class="devTaskUpdate" method="post" action="{% url 'operations:development_tasks' %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="update">
+          <input type="hidden" name="task_id" value="{{ task.id }}">
+          <input type="hidden" name="status" value="{{ task.status }}" class="mirrorStatus">
+          <input type="hidden" name="issue_reason" value="{{ task.issue_reason }}" class="mirrorIssue">
+          <label>Nota del desarrollador</label>
+          <textarea name="developer_note" placeholder="Registra avances, cambios o información relevante.">{{ task.developer_note }}</textarea>
+          <button class="devTask__save" type="submit">Guardar cambios</button>
+        </form>
+      </article>
+      {% empty %}<div class="devTasks__empty">No hay tareas para mostrar.</div>{% endfor %}
+    </div>
+  </section>
+</div>
+
+{% if can_assign %}
+<div class="devTasks__modalWrap" id="taskModal" aria-hidden="true">
+  <div class="devTasks__modal">
+    <div class="devTasks__modalHead"><h2>Asignar tarea</h2><button type="button" class="devTasks__close" id="closeTaskModal">×</button></div>
+    <form method="post" action="{% url 'operations:development_tasks' %}" id="createTaskForm">
+      {% csrf_token %}<input type="hidden" name="action" value="create">
+      <div class="devTasks__grid">
+        <div class="devTasks__field devTasks__field--full"><label>Tarea</label><input name="title" required maxlength="180"></div>
+        <div class="devTasks__field devTasks__field--full"><label>Descripción</label><textarea name="description" rows="3"></textarea></div>
+        <div class="devTasks__field"><label>Proyecto</label><select name="project_id"><option value="">Actividad general</option>{% for p in projects %}<option value="{{ p.id }}">{{ p.project_code }} · {{ p.name }}</option>{% endfor %}</select></div>
+        <div class="devTasks__field"><label>Asignar a</label><select name="assigned_to" required><option value="">Seleccionar</option>{% for u in developers %}<option value="{{ u.id }}">{{ u.display_name }}</option>{% endfor %}</select></div>
+        <div class="devTasks__field"><label>Fecha de asignación</label><input type="date" name="assigned_date" value="{{ today|date:'Y-m-d' }}" required></div>
+        <div class="devTasks__field"><label>Fecha objetivo</label><input type="date" name="due_date"></div>
+        <div class="devTasks__field"><label>Prioridad</label><select name="priority"><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option></select></div>
+        <div class="devTasks__field devTasks__field--full"><label>Nota de quien asigna</label><textarea name="assignment_note" rows="3"></textarea></div>
+      </div>
+      <div class="devTasks__actions"><button type="button" class="devTasks__btn devTasks__btn--light" id="cancelTaskModal">Cancelar</button><button class="devTasks__btn" type="submit">Asignar tarea</button></div>
+    </form>
+  </div>
+</div>
+{% endif %}
+<div class="devTasks__toast" id="taskToast"></div>
+<script>
+(function(){
+ const modal=document.getElementById('taskModal'), open=document.getElementById('openTaskModal');
+ const close=()=>{if(modal){modal.classList.remove('is-open');modal.setAttribute('aria-hidden','true')}};
+ if(open&&modal)open.addEventListener('click',()=>{modal.classList.add('is-open');modal.setAttribute('aria-hidden','false')});
+ ['closeTaskModal','cancelTaskModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',close)});
+ if(modal)modal.addEventListener('click',e=>{if(e.target===modal)close()});
+ const toast=(msg)=>{const t=document.getElementById('taskToast');t.textContent=msg;t.classList.add('is-show');setTimeout(()=>t.classList.remove('is-show'),2200)};
+ document.querySelectorAll('.devTaskStatus').forEach(sel=>sel.addEventListener('change',function(){
+   const article=this.closest('.devTask'), issue=article.querySelector('.devTask__issue'), reason=issue.querySelector('[name="issue_reason"]');
+   issue.classList.toggle('is-visible',this.value==='issue'); if(this.value==='issue') reason.setAttribute('required','required'); else reason.removeAttribute('required');
+   article.querySelector('.mirrorStatus').value=this.value;
+ }));
+ document.querySelectorAll('.devTask__issue textarea').forEach(el=>el.addEventListener('input',function(){this.closest('.devTask').querySelector('.mirrorIssue').value=this.value}));
+ document.querySelectorAll('.devTaskUpdate').forEach(form=>form.addEventListener('submit',async function(e){
+   e.preventDefault(); const article=this.closest('.devTask'); const status=article.querySelector('.devTaskStatus').value; const issue=article.querySelector('.devTask__issue textarea').value.trim();
+   if(status==='issue'&&!issue){toast('Debes registrar el motivo del inconveniente.');article.querySelector('.devTask__issue').classList.add('is-visible');return;}
+   const data=new FormData(this); data.set('status',status); data.set('issue_reason',issue);
+   const r=await fetch(this.getAttribute('action'),{method:'POST',body:data,headers:{'X-Requested-With':'XMLHttpRequest'}}); const j=await r.json().catch(()=>({ok:false,message:'No se pudo guardar.'}));
+   if(!r.ok||!j.ok){toast(j.message||'No se pudo guardar.');return;} toast('Cambios guardados.'); setTimeout(()=>location.reload(),350);
+ }));
+ const cf=document.getElementById('createTaskForm'); if(cf)cf.addEventListener('submit',async function(e){e.preventDefault();const r=await fetch(this.getAttribute('action'),{method:'POST',body:new FormData(this),headers:{'X-Requested-With':'XMLHttpRequest'}});const j=await r.json().catch(()=>({ok:false,message:'No se pudo crear la tarea.'}));if(!r.ok||!j.ok){toast(j.message||'No se pudo crear la tarea.');return;}close();toast('Tarea asignada.');setTimeout(()=>location.reload(),350)});
+})();
+</script>
+{% endblock %}

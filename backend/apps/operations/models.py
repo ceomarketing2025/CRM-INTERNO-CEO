@@ -37,6 +37,142 @@ class GeneralPaymentStatus(models.TextChoices):
     PAID_OTHER = "paid_other", "Pagado por tercero"
 
 
+class DevelopmentTask(models.Model):
+    PRIORITY_CHOICES = [
+        ("low", "Baja"),
+        ("medium", "Media"),
+        ("high", "Alta"),
+    ]
+
+    STATUS_CHOICES = [
+        ("pending", "Pendiente"),
+        ("in_progress", "En proceso"),
+        ("issue", "Con inconveniente"),
+        ("completed", "Completada"),
+    ]
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    title = models.CharField(
+        max_length=180,
+        verbose_name="Tarea",
+    )
+
+    description = models.TextField(
+        blank=True,
+        verbose_name="Descripción",
+    )
+
+    assigned_date = models.DateField(
+        verbose_name="Fecha de asignación",
+    )
+
+    due_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name="Fecha objetivo",
+    )
+
+    priority = models.CharField(
+        max_length=16,
+        choices=PRIORITY_CHOICES,
+        default="medium",
+        verbose_name="Prioridad",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
+        verbose_name="Estado",
+    )
+
+    assignment_note = models.TextField(
+        blank=True,
+        verbose_name="Nota de asignación",
+    )
+
+    developer_note = models.TextField(
+        blank=True,
+        verbose_name="Nota del desarrollador",
+    )
+
+    issue_reason = models.TextField(
+        blank=True,
+        verbose_name="Motivo del inconveniente",
+    )
+
+    completed_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name="Fecha de finalización",
+    )
+
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="development_tasks_created",
+        verbose_name="Asignado por",
+    )
+
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="development_tasks_assigned",
+        verbose_name="Asignado a",
+    )
+
+    project = models.ForeignKey(
+        "projects.Project",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="development_tasks",
+        verbose_name="Proyecto",
+    )
+
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_development_tasks",
+    )
+
+    class Meta:
+        ordering = [
+            "-assigned_date",
+            "-created_at",
+        ]
+
+        indexes = [
+            models.Index(
+                fields=[
+                    "assigned_to",
+                    "status",
+                ],
+                name="devtask_user_status_idx",
+            ),
+            models.Index(
+                fields=[
+                    "assigned_date",
+                ],
+                name="devtask_date_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return self.title
+
+
 class GeneralManagementRecord(TimestampedModel):
     code = models.CharField(
         max_length=20,
@@ -134,9 +270,15 @@ class GeneralManagementRecord(TimestampedModel):
         ]
 
         indexes = [
-            models.Index(fields=["date"]),
-            models.Index(fields=["service_type"]),
-            models.Index(fields=["provider"]),
+            models.Index(
+                fields=["date"],
+            ),
+            models.Index(
+                fields=["service_type"],
+            ),
+            models.Index(
+                fields=["provider"],
+            ),
         ]
 
     def save(self, *args, **kwargs):
@@ -1131,6 +1273,11 @@ class WebProductionSheet(TimestampedModel):
         verbose_name="Estructura de header",
     )
 
+    button_style_code = models.TextField(
+        blank=True,
+        verbose_name="Código de estilo de botones",
+    )
+
     notes = models.TextField(
         blank=True,
         verbose_name="Notas generales de producción",
@@ -1269,8 +1416,6 @@ class ProductionSeoBase(TimestampedModel):
         ]
 
     def save(self, *args, **kwargs):
-        # Si no hay slug manual, se genera automáticamente.
-        # Si ya existe uno, se conserva y solamente se normaliza.
         if self.slug:
             self.slug = slugify(
                 self.slug[:220]
@@ -1289,8 +1434,6 @@ class ProductionSeoBase(TimestampedModel):
         else:
             self.slug = ""
 
-        # El estado legacy queda sincronizado con
-        # el nuevo flujo de producción.
         self.state = (
             CompleteStatus.COMPLETE
             if (
@@ -1494,6 +1637,38 @@ class WebProductionInternalSection(
         blank=True,
         verbose_name="Notas",
     )
+
+    smtp_email = models.EmailField(
+        blank=True,
+        verbose_name="SMTP email",
+    )
+
+    smtp_password_encrypted = models.TextField(
+        blank=True,
+        editable=False,
+        verbose_name="SMTP password cifrado",
+    )
+
+    def set_smtp_password(self, raw_password):
+        from .crypto import encrypt_secret
+
+        raw_password = (
+            raw_password
+            or ""
+        ).strip()
+
+        if raw_password:
+            self.smtp_password_encrypted = (
+                encrypt_secret(
+                    raw_password
+                )
+            )
+
+    @property
+    def has_smtp_password(self):
+        return bool(
+            self.smtp_password_encrypted
+        )
 
     order = models.PositiveIntegerField(
         default=0,

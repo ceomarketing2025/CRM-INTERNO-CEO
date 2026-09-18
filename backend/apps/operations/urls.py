@@ -1,4 +1,4 @@
-from django.urls import path
+﻿from django.urls import path
 from . import views
 
 app_name = "operations"
@@ -21,4 +21,6 @@ urlpatterns = [
     path("production/<int:pk>/edit/", views.production_edit, name="production_edit"),
     path("development/project/<int:project_pk>/production/", views.web_production_sheet, name="web_production_sheet"),
     path("development/project/<int:project_pk>/production/quick-toggle/", views.web_production_quick_toggle, name="web_production_quick_toggle"),
+    path("development/tasks/", views.development_tasks, name="development_tasks"),
 ]
+

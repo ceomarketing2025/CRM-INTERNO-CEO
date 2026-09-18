@@ -5,6 +5,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import JsonResponse
 from django.urls import reverse
+from django.utils.text import slugify
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from apps.accounts.models import UserAccount
@@ -34,6 +35,7 @@ from .models import (
 )
 from .services import (
     apply_seo_automation,
+    auto_workload,
     create_custom_project_credential,
     ensure_web_production_structure,
     save_domain_hosting_record,
@@ -766,6 +768,26 @@ def _update_internal_section(
         "",
     ).strip()
 
+    complexity = request.POST.get(f"{prefix}_complexity", "").strip()
+    if complexity in {"S", "M", "C"}:
+        obj.complexity = complexity
+        obj.points = {"S": 1, "M": 2, "C": 3}[complexity]
+
+    obj.smtp_email = request.POST.get(
+        f"{prefix}_smtp_email",
+        obj.smtp_email,
+    ).strip()
+
+    smtp_password = request.POST.get(
+        f"{prefix}_smtp_password",
+        "",
+    )
+    if smtp_password.strip():
+        obj.set_smtp_password(smtp_password)
+
+    if request.POST.get(f"{prefix}_clear_smtp_password") == "1":
+        obj.smtp_password_encrypted = ""
+
     obj.updated_by = request.user
     obj.save()
 
@@ -840,17 +862,114 @@ def web_production_sheet(
         )
     )
 
-    users = {
-        user.pk: user
-        for user
-        in _developer_users()
-    }
+    project_developers = list(
+        UserAccount.objects.filter(
+            assigned_projects_v2__project=project,
+            assigned_projects_v2__area="development",
+            assigned_projects_v2__status__in=["assigned", "active"],
+            role=UserAccount.Role.DEVELOPER,
+            is_active=True,
+        )
+        .distinct()
+        .order_by("first_name", "last_name", "email")
+    )
+
+    users = {user.pk: user for user in project_developers}
 
     if request.method == "POST":
         action = request.POST.get(
             "action",
             "",
         )
+
+        if action == "quick_update_row":
+            row_type = request.POST.get("row_type", "").strip()
+            row_id = request.POST.get("row_id", "").strip()
+            field = request.POST.get("field", "").strip()
+            value = request.POST.get("value", "").strip()
+            wants_json = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+            def quick_error(message):
+                if wants_json:
+                    return JsonResponse({"ok": False, "error": message}, status=400)
+                messages.error(request, message)
+                return redirect("operations:web_production_sheet", project_pk=project.pk)
+
+            model_map = {
+                "page": (WebProductionPage, {"sheet": sheet}),
+                "county": (WebProductionCounty, {"sheet": sheet}),
+                "service": (WebProductionCountyService, {"county__sheet": sheet}),
+                "city": (WebProductionCity, {"sheet": sheet}),
+                "internal_section": (WebProductionInternalSection, {"sheet": sheet}),
+            }
+            if row_type not in model_map or not row_id.isdigit():
+                return quick_error("Edición rápida inválida.")
+
+            model, scope = model_map[row_type]
+            obj = model.objects.filter(pk=int(row_id), **scope).first()
+            if obj is None:
+                return quick_error("No se encontró el registro dentro de esta ficha de producción.")
+
+            if field == "responsible":
+                if value and (not value.isdigit() or int(value) not in users):
+                    return quick_error("El responsable no pertenece al equipo de Desarrollo de este proyecto.")
+                obj.responsible = users.get(int(value)) if value.isdigit() else None
+            elif field == "complexity":
+                if value not in {"S", "M", "C"}:
+                    return quick_error("Complejidad inválida.")
+                obj.complexity = value
+                obj.points = {"S": 1, "M": 2, "C": 3}[value]
+            elif field == "name" and hasattr(obj, "name"):
+                if not value:
+                    return quick_error("El nombre no puede quedar vacío.")
+                obj.name = value
+                if isinstance(obj, WebProductionCountyService) and hasattr(obj, "service_name"):
+                    obj.service_name = value
+            elif field == "slug" and hasattr(obj, "slug"):
+                obj.slug = slugify(value)
+            elif field == "keyword" and hasattr(obj, "keyword"):
+                obj.keyword = value
+                obj.slug = slugify(value)
+            elif field == "created" and isinstance(obj, WebProductionInternalSection):
+                if value not in {"yes", "no"}:
+                    return quick_error("Valor de creada inválido.")
+                obj.created = value == "yes"
+            elif field == "workflow_status" and hasattr(obj, "workflow_status"):
+                allowed = {
+                    "not_started": ProductionWorkStatus.NOT_STARTED,
+                    "in_progress": ProductionWorkStatus.IN_PROGRESS,
+                    "complete": ProductionWorkStatus.COMPLETE,
+                }
+                if value not in allowed:
+                    return quick_error("Estado inválido.")
+                obj.workflow_status = allowed[value]
+            elif field == "state" and hasattr(obj, "state"):
+                if value not in {CompleteStatus.COMPLETE, CompleteStatus.INCOMPLETE}:
+                    return quick_error("Valor de Lista inválido.")
+                obj.state = value
+            elif field == "review_status" and hasattr(obj, "review_status"):
+                if value not in {CompleteStatus.COMPLETE, CompleteStatus.INCOMPLETE}:
+                    return quick_error("Valor de Revisión inválido.")
+                obj.review_status = value
+            else:
+                return quick_error("Campo de edición rápida inválido.")
+
+            obj.updated_by = request.user
+            obj.save()
+            sheet.updated_by = request.user
+            sheet.save(update_fields=["updated_by", "updated_at"])
+
+            if wants_json:
+                return JsonResponse({
+                    "ok": True,
+                    "field": field,
+                    "value": value,
+                    "slug": getattr(obj, "slug", ""),
+                    "points": getattr(obj, "points", None),
+                })
+
+            messages.success(request, "Cambio guardado.")
+            return redirect("operations:web_production_sheet", project_pk=project.pk)
 
         if action == "save_page":
             row_id = request.POST.get(
@@ -1098,6 +1217,46 @@ def web_production_sheet(
                 "operations:web_production_sheet",
                 project_pk=project.pk,
             )
+
+        elif action == "add_internal_section":
+            order = (sheet.internal_sections.order_by("-order").values_list("order", flat=True).first() or 0) + 1
+            section = WebProductionInternalSection.objects.create(
+                sheet=sheet,
+                name=(request.POST.get("section_name", "").strip() or f"Sección interna {order}"),
+                complexity="S",
+                points=1,
+                order=order,
+                updated_by=request.user,
+            )
+            log_activity(request.user, "development", "production_internal_section_add", section, description=section.name)
+            messages.success(request, "Sección interna agregada.")
+            return redirect("operations:web_production_sheet", project_pk=project.pk)
+
+        elif action == "delete_internal_section":
+            section = get_object_or_404(
+                WebProductionInternalSection,
+                pk=request.POST.get("row_id"),
+                sheet=sheet,
+            )
+            label = section.name
+            section.delete()
+            log_activity(request.user, "development", "production_internal_section_delete", sheet, description=label)
+            messages.success(request, "Sección interna eliminada.")
+            return redirect("operations:web_production_sheet", project_pk=project.pk)
+
+        elif action == "save_button_style":
+            sheet.button_style_code = request.POST.get("button_style_code", "")
+            sheet.updated_by = request.user
+            sheet.save(update_fields=["button_style_code", "updated_by", "updated_at"])
+            messages.success(request, "Estilo de botones guardado.")
+            return redirect("operations:web_production_sheet", project_pk=project.pk)
+
+        elif action == "delete_button_style":
+            sheet.button_style_code = ""
+            sheet.updated_by = request.user
+            sheet.save(update_fields=["button_style_code", "updated_by", "updated_at"])
+            messages.success(request, "Estilo de botones eliminado.")
+            return redirect("operations:web_production_sheet", project_pk=project.pk)
 
         elif action == "generate_structure":
             structure_form = (
@@ -1643,9 +1802,7 @@ def web_production_sheet(
         if not city.county_id
     ]
 
-    developers = list(
-        _developer_users()
-    )
+    developers = project_developers
 
     all_rows = (
         pages
@@ -1663,6 +1820,15 @@ def web_production_sheet(
         all_rows
         + internal_sections
     )
+
+    # Mantener puntos siempre sincronizados con la complejidad, incluso
+    # para registros creados antes de la regla S=1, M=2, C=3.
+    complexity_points = {"S": 1, "M": 2, "C": 3}
+    for row in production_rows:
+        expected_points = complexity_points.get(row.complexity)
+        if expected_points is not None and row.points != expected_points:
+            type(row).objects.filter(pk=row.pk).update(points=expected_points)
+            row.points = expected_points
 
     total_rows = len(
         all_rows
@@ -1762,45 +1928,46 @@ def web_production_sheet(
         else 0
     )
 
-    balance = defaultdict(
-        lambda: {
-            "points": 0,
-            "items": 0,
+    balance = {
+        developer.pk: {
+            "id": developer.pk,
+            "name": developer.display_name,
+            "production_points": 0,
+            "internal_points": 0,
+            "total_points": 0,
         }
-    )
+        for developer in project_developers
+    }
 
-    unassigned_points = 0
+    unassigned_production_points = 0
+    unassigned_internal_points = 0
 
-    for row in production_rows:
-        if row.responsible:
-            key = (
-                row.responsible
-                .display_name
-            )
-
-            balance[key]["points"] += (
-                row.points
-                or 0
-            )
-
-            balance[key]["items"] += 1
-
+    for row in all_rows:
+        points = row.points or 0
+        if row.responsible_id in balance:
+            balance[row.responsible_id]["production_points"] += points
         else:
-            unassigned_points += (
-                row.points
-                or 0
-            )
+            unassigned_production_points += points
 
-    balance_rows = [
-        {
-            "name": name,
-            **data,
-        }
-        for name, data
-        in sorted(
-            balance.items()
+    for row in internal_sections:
+        points = row.points or 0
+        if row.responsible_id in balance:
+            balance[row.responsible_id]["internal_points"] += points
+        else:
+            unassigned_internal_points += points
+
+    for item in balance.values():
+        item["total_points"] = (
+            item["production_points"]
+            + item["internal_points"]
         )
-    ]
+
+    balance_rows = list(balance.values())
+    unassigned_points = (
+        unassigned_production_points
+        + unassigned_internal_points
+    )
+    unassigned_items = 0
 
     strategy_label = {
         "study":
@@ -1895,6 +2062,15 @@ def web_production_sheet(
 
             "unassigned_points":
                 unassigned_points,
+
+            "unassigned_production_points":
+                unassigned_production_points,
+
+            "unassigned_internal_points":
+                unassigned_internal_points,
+
+            "unassigned_items":
+                unassigned_items,
 
             "questionnaire":
                 questionnaire,
@@ -2114,6 +2290,7 @@ def web_production_quick_toggle(
                 project_pk=project.pk,
             )
 
+        obj.state = value
         obj.workflow_status = (
             ProductionWorkStatus.COMPLETE
             if (
@@ -2198,7 +2375,142 @@ def web_production_quick_toggle(
         ),
     )
 
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({
+            "ok": True,
+            "field": field,
+            "value": value,
+        })
+
     return redirect(
         "operations:web_production_sheet",
         project_pk=project.pk,
     )
+
+@role_required("developer")
+def development_tasks(request):
+    from django.utils import timezone
+    from .models import DevelopmentTask
+
+    can_assign = bool(
+        request.user.is_superuser
+        or getattr(request.user, "role", "") == "manager"
+    )
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+
+        if action == "create":
+            if not can_assign:
+                raise PermissionDenied("No tienes permiso para asignar tareas.")
+
+            title = (request.POST.get("title") or "").strip()
+            assigned_to_id = (request.POST.get("assigned_to") or "").strip()
+            assigned_date = (request.POST.get("assigned_date") or "").strip()
+
+            if not title or not assigned_to_id or not assigned_date:
+                payload = {"ok": False, "message": "Completa tarea, desarrollador y fecha de asignación."}
+                return JsonResponse(payload, status=400) if request.headers.get("x-requested-with") == "XMLHttpRequest" else redirect("operations:development_tasks")
+
+            assigned_to = get_object_or_404(
+                UserAccount,
+                pk=assigned_to_id,
+                role="developer",
+                is_active=True,
+            )
+
+            project = None
+            project_id = (request.POST.get("project_id") or "").strip()
+            if project_id:
+                project = get_object_or_404(Project, pk=project_id)
+
+            due_date = (request.POST.get("due_date") or "").strip() or None
+            priority = (request.POST.get("priority") or "medium").strip()
+            if priority not in {"low", "medium", "high"}:
+                priority = "medium"
+
+            task = DevelopmentTask.objects.create(
+                title=title,
+                description=(request.POST.get("description") or "").strip(),
+                project=project,
+                assigned_to=assigned_to,
+                assigned_by=request.user,
+                assigned_date=assigned_date,
+                due_date=due_date,
+                priority=priority,
+                status="pending",
+                assignment_note=(request.POST.get("assignment_note") or "").strip(),
+                updated_by=request.user,
+            )
+            log_activity(request.user, "operations", "development_task_create", task)
+
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"ok": True, "task_id": task.pk})
+            messages.success(request, "Tarea asignada.")
+            return redirect("operations:development_tasks")
+
+        if action == "update":
+            task = get_object_or_404(DevelopmentTask, pk=request.POST.get("task_id"))
+            if not can_assign and task.assigned_to_id != request.user.id:
+                raise PermissionDenied("No puedes modificar esta tarea.")
+
+            status = (request.POST.get("status") or task.status).strip()
+            valid_statuses = {"pending", "in_progress", "issue", "completed"}
+            if status not in valid_statuses:
+                status = task.status
+
+            issue_reason = (request.POST.get("issue_reason") or "").strip()
+            if status == "issue" and not issue_reason:
+                payload = {"ok": False, "message": "Debes registrar el motivo del inconveniente."}
+                return JsonResponse(payload, status=400) if request.headers.get("x-requested-with") == "XMLHttpRequest" else redirect("operations:development_tasks")
+
+            task.status = status
+            task.issue_reason = issue_reason if status == "issue" else ""
+            if "developer_note" in request.POST:
+                task.developer_note = (request.POST.get("developer_note") or "").strip()
+            task.completed_at = timezone.now() if status == "completed" else None
+            task.updated_by = request.user
+            task.save(update_fields=["status", "issue_reason", "developer_note", "completed_at", "updated_by", "updated_at"])
+            log_activity(request.user, "operations", "development_task_update", task)
+
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"ok": True, "status": task.status})
+            messages.success(request, "Tarea actualizada.")
+            return redirect("operations:development_tasks")
+
+    qs = DevelopmentTask.objects.select_related("project", "assigned_to", "assigned_by").all()
+    if not can_assign:
+        qs = qs.filter(assigned_to=request.user)
+
+    status_filter = (request.GET.get("status") or "all").strip()
+    if status_filter in {"pending", "in_progress", "issue", "completed"}:
+        qs = qs.filter(status=status_filter)
+    else:
+        status_filter = "all"
+
+    today = timezone.localdate()
+    base_stats = DevelopmentTask.objects.all() if can_assign else DevelopmentTask.objects.filter(assigned_to=request.user)
+    stats = {
+        "today": base_stats.filter(assigned_date=today).count(),
+        "pending": base_stats.filter(status="pending").count(),
+        "in_progress": base_stats.filter(status="in_progress").count(),
+        "issue": base_stats.filter(status="issue").count(),
+        "completed": base_stats.filter(status="completed").count(),
+    }
+
+    developers = UserAccount.objects.filter(role="developer", is_active=True).order_by("first_name", "last_name", "email") if can_assign else UserAccount.objects.none()
+    projects = Project.objects.order_by("-created_at")[:300] if can_assign else Project.objects.filter(assignments__user=request.user).distinct().order_by("-created_at")[:300]
+
+    return render(request, "operations/development_tasks.html", {
+        "tasks": qs[:300],
+        "stats": stats,
+        "status_filter": status_filter,
+        "status_choices": DevelopmentTask.STATUS_CHOICES,
+        "developers": developers,
+        "projects": projects,
+        "can_assign": can_assign,
+        "today": today,
+        "active_nav_group": "development",
+        "current_page_label": "Tareas",
+    })
+

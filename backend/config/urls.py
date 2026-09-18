@@ -25,6 +25,7 @@ urlpatterns = [
     path("reminders/", include("apps.reminders.urls")),
     path("finance/", include("apps.finance.urls")),
     path("audit/", include("apps.audit.urls")),
+
 ]
 
 if settings.DEBUG:

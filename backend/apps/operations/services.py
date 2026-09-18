@@ -269,25 +269,34 @@ def save_production_record(*, form, user):
 
 
 def auto_workload(obj):
-    """Assign complexity and points consistently; users never edit these values."""
-    if isinstance(obj, WebProductionCountyService):
-        return SeoComplexity.COMPLEX, 3
-    if isinstance(obj, (WebProductionCounty, WebProductionCity)):
+    """Puntaje operativo usado para equilibrar trabajo entre desarrolladores."""
+    if isinstance(obj, (WebProductionCountyService, WebProductionCounty, WebProductionCity)):
         return SeoComplexity.MEDIUM, 2
+
     if isinstance(obj, WebProductionPage):
-        name = (obj.name or "").lower()
-        if any(token in name for token in ["home", "services", "areas"]):
-            return SeoComplexity.MEDIUM, 2
-        if any(token in name for token in ["blog", "faq"]):
+        name = (obj.name or "").strip().lower()
+        complex_pages = {"home", "services", "areas we service", "areas we serve", "contact"}
+        medium_pages = {"about", "gallery", "blog", "faq", "blog/faq", "blog / faq"}
+        if name in complex_pages:
+            return SeoComplexity.COMPLEX, 3
+        if name in medium_pages:
             return SeoComplexity.MEDIUM, 2
         return SeoComplexity.SIMPLE, 1
+
     return SeoComplexity.SIMPLE, 1
 
 
 def apply_seo_automation(obj):
-    complexity, points = auto_workload(obj)
-    obj.complexity = complexity
-    obj.points = points
+    if obj.pk is None:
+        complexity, points = auto_workload(obj)
+        obj.complexity = complexity
+        obj.points = points
+    else:
+        obj.points = {
+            SeoComplexity.SIMPLE: 1,
+            SeoComplexity.MEDIUM: 2,
+            SeoComplexity.COMPLEX: 3,
+        }.get(obj.complexity, 1)
     # Slug starts automatically, but a developer can override it later.
     # If a custom slug is already present, never overwrite it server-side.
     if not (obj.slug or "").strip():

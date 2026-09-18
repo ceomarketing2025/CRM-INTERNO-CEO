@@ -1,140 +1,625 @@
+
 {% load static %}
+
 <!doctype html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ PROJECT_NAME }}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
-<body data-namespace="{{ current_namespace }}" data-nav-group="{{ active_nav_group }}" data-role="{{ current_role }}">
+
+<body
+  data-namespace="{{ current_namespace }}"
+  data-nav-group="{{ active_nav_group }}"
+  data-role="{{ current_role }}"
+>
+
 <div class="app-shell">
+
   <aside class="sidebar" id="sidebar">
+
     <div class="brand">
       <div class="brand-mark">C</div>
-      <div><strong>{{ PROJECT_NAME }}</strong><span>Gestión interna sincronizada</span></div>
+      <div>
+        <strong>{{ PROJECT_NAME }}</strong>
+        <span>Gestión interna sincronizada</span>
+      </div>
     </div>
 
     <nav class="nav nav-v16" aria-label="Navegación principal">
-      <a href="{% url 'dashboard:home' %}" class="nav-link nav-link-main {% if active_nav_group == 'dashboard' %}active{% endif %}">
-        <span class="nav-svg"><svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm10 7h6v-9h-6v9ZM4 20h6v-3H4v3Zm10-13h6V4h-6v3Z"/></svg></span><b>Dashboard</b>
+
+      <a
+        href="{% url 'dashboard:home' %}"
+        class="nav-link nav-link-main {% if active_nav_group == 'dashboard' %}active{% endif %}"
+      >
+        <span class="nav-svg">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 13h6V4H4v9Zm10 7h6v-9h-6v9ZM4 20h6v-3H4v3Zm10-13h6V4h-6v3Z"/>
+          </svg>
+        </span>
+        <b>Dashboard</b>
       </a>
 
       {% if current_role == 'design' or current_role == 'manager' or request.user.is_superuser %}
-      <details class="nav-section" data-nav-section {% if active_nav_group == 'design' %}open{% endif %}>
-        <summary><span class="nav-svg"><svg viewBox="0 0 24 24"><path d="m12 3 2.2 4.8L19 10l-4.8 2.2L12 17l-2.2-4.8L5 10l4.8-2.2L12 3Zm7 11 1.1 2.4L22.5 18l-2.4 1.1L19 21.5l-1.1-2.4L15.5 18l2.4-1.6L19 14Z"/></svg></span><b>Diseño</b><i>⌄</i></summary>
+
+      <details
+        class="nav-section"
+        data-nav-section
+        {% if active_nav_group == 'design' %}open{% endif %}
+      >
+
+        <summary>
+          <span class="nav-svg">
+            <svg viewBox="0 0 24 24">
+              <path d="m12 3 2.2 4.8L19 10l-4.8 2.2L12 17l-2.2-4.8L5 10l4.8-2.2L12 3Zm7 11 1.1 2.4L22.5 18l-2.4 1.1L19 21.5l-1.1-2.4L15.5 18l2.4-1.6L19 14Z"/>
+            </svg>
+          </span>
+          <b>Diseño</b>
+          <i>⌄</i>
+        </summary>
+
         <div class="nav-section-links">
-          <a href="{% url 'design:list' %}" class="nav-link {% if current_namespace == 'design' and current_page_label == 'Información Diseño' %}active{% endif %}"><span>01</span><b>Información Diseño</b></a>
-          <a href="{% url 'design:tasks' %}" class="nav-link {% if current_namespace == 'design' and current_page_label == 'Tareas de Diseño' %}active{% endif %}"><span>02</span><b>Tareas de Diseño</b></a>
+
+          <a
+            href="{% url 'design:list' %}"
+            class="nav-link {% if current_namespace == 'design' and current_page_label == 'Información Diseño' %}active{% endif %}"
+          >
+            <span>01</span>
+            <b>Información Diseño</b>
+          </a>
+
+          <a
+            href="{% url 'design:tasks' %}"
+            class="nav-link {% if current_namespace == 'design' and current_page_label == 'Tareas de Diseño' %}active{% endif %}"
+          >
+            <span>02</span>
+            <b>Tareas de Diseño</b>
+          </a>
+
         </div>
+
       </details>
+
       {% endif %}
+
 
       {% if current_role == 'marketing' or current_role == 'manager' or request.user.is_superuser %}
-      <details class="nav-section" data-nav-section {% if active_nav_group == 'marketing' %}open{% endif %}>
-        <summary><span class="nav-svg"><svg viewBox="0 0 24 24"><path d="M4 18V9m5 9V5m5 13v-7m5 7V3M3 21h18"/></svg></span><b>Marketing</b><i>⌄</i></summary>
+
+      <details
+        class="nav-section"
+        data-nav-section
+        {% if active_nav_group == 'marketing' %}open{% endif %}
+      >
+
+        <summary>
+          <span class="nav-svg">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 18V9m5 9V5m5 13v-7m5 7V3M3 21h18"/>
+            </svg>
+          </span>
+          <b>Marketing</b>
+          <i>⌄</i>
+        </summary>
+
         <div class="nav-section-links">
-          <a href="{% url 'marketing:list' %}" class="nav-link {% if current_url_name == 'list' or current_url_name == 'workspace' or current_url_name == 'brief_edit' or current_url_name == 'document_add' %}active{% endif %}"><span>01</span><b>Ficha Marketing</b></a>
-          <a href="{% url 'marketing:google_business_list' %}" class="nav-link {% if current_url_name == 'google_business_list' or current_url_name == 'google_business' or current_url_name == 'review_qr' %}active{% endif %}"><span>02</span><b>Google Business</b></a>
-          <a href="{% url 'marketing:google_lsa_list' %}" class="nav-link {% if current_url_name == 'google_lsa_list' or current_url_name == 'google_lsa' %}active{% endif %}"><span>03</span><b>Google LSA</b></a>
-          <a href="{% url 'marketing:digital_ads_list' %}" class="nav-link {% if current_url_name == 'digital_ads_list' or current_url_name == 'digital_ads' or current_url_name == 'campaign_list' or current_url_name == 'campaign_create' or current_url_name == 'campaign_edit' or current_url_name == 'campaign_manager_review' or current_url_name == 'campaign_weekly_report' %}active{% endif %}"><span>04</span><b>Publicidad Digital</b></a>
-          <a href="{% url 'marketing:tasks' %}" class="nav-link {% if current_url_name == 'tasks' or current_url_name == 'task_create' or current_url_name == 'task_edit' or current_url_name == 'task_toggle' %}active{% endif %}"><span>05</span><b>Tareas Marketing</b></a>
+
+          <a
+            href="{% url 'marketing:list' %}"
+            class="nav-link {% if current_url_name == 'list' or current_url_name == 'workspace' or current_url_name == 'brief_edit' or current_url_name == 'document_add' %}active{% endif %}"
+          >
+            <span>01</span>
+            <b>Ficha Marketing</b>
+          </a>
+
+          <a
+            href="{% url 'marketing:google_business_list' %}"
+            class="nav-link {% if current_url_name == 'google_business_list' or current_url_name == 'google_business' or current_url_name == 'review_qr' %}active{% endif %}"
+          >
+            <span>02</span>
+            <b>Google Business</b>
+          </a>
+
+          <a
+            href="{% url 'marketing:google_lsa_list' %}"
+            class="nav-link {% if current_url_name == 'google_lsa_list' or current_url_name == 'google_lsa' %}active{% endif %}"
+          >
+            <span>03</span>
+            <b>Google LSA</b>
+          </a>
+
+          <a
+            href="{% url 'marketing:digital_ads_list' %}"
+            class="nav-link {% if current_url_name == 'digital_ads_list' or current_url_name == 'digital_ads' or current_url_name == 'campaign_list' or current_url_name == 'campaign_create' or current_url_name == 'campaign_edit' or current_url_name == 'campaign_manager_review' or current_url_name == 'campaign_weekly_report' %}active{% endif %}"
+          >
+            <span>04</span>
+            <b>Publicidad Digital</b>
+          </a>
+
+          <a
+            href="{% url 'marketing:tasks' %}"
+            class="nav-link {% if current_url_name == 'tasks' or current_url_name == 'task_create' or current_url_name == 'task_edit' or current_url_name == 'task_toggle' %}active{% endif %}"
+          >
+            <span>05</span>
+            <b>Tareas Marketing</b>
+          </a>
+
         </div>
+
       </details>
+
       {% endif %}
+
 
       {% if current_role == 'developer' or current_role == 'manager' or request.user.is_superuser %}
-      <details class="nav-section" data-nav-section {% if active_nav_group == 'development' %}open{% endif %}>
-        <summary><span class="nav-svg"><svg viewBox="0 0 24 24"><path d="m8 9-4 3 4 3m8-6 4 3-4 3m-2-9-4 12"/></svg></span><b>Desarrollo</b><i>⌄</i></summary>
+
+      <details
+        class="nav-section"
+        data-nav-section
+        {% if active_nav_group == 'development' %}open{% endif %}
+      >
+
+        <summary>
+          <span class="nav-svg">
+            <svg viewBox="0 0 24 24">
+              <path d="m8 9-4 3 4 3m8-6 4 3-4 3m-2-9-4 12"/>
+            </svg>
+          </span>
+          <b>Desarrollo</b>
+          <i>⌄</i>
+        </summary>
+
         <div class="nav-section-links">
-          <a href="{% url 'questionnaires:development_information' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Información Desarrollo' %}active{% endif %}"><span>01</span><b>Información Desarrollo</b></a>
-          <a href="{% url 'questionnaires:seo_status' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Estado SEO' %}active{% endif %}"><span>02</span><b>Estado SEO</b></a>
-          <a href="{% url 'questionnaires:development_dashboard' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Resumen de tareas' %}active{% endif %}"><span>03</span><b>Resumen de tareas</b></a>
+
+          <a
+            href="{% url 'questionnaires:development_information' %}"
+            class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Información' and not request.GET.view %}active{% endif %}"
+          >
+            <span>01</span>
+            <b>Información</b>
+          </a>
+
+          <a
+            href="{% url 'operations:development_tasks' %}"
+            class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Tareas' %}active{% endif %}"
+          >
+            <span>02</span>
+            <b>Tareas</b>
+          </a>
+
+          <a
+            href="{% url 'questionnaires:development_information' %}?view=production"
+            class="nav-link {% if active_nav_group == 'development' and request.GET.view == 'production' %}active{% endif %}"
+          >
+            <span>03</span>
+            <b>Ficha de producción</b>
+          </a>
+
+          <a
+            href="{% url 'questionnaires:development_information' %}?view=styles"
+            class="nav-link {% if active_nav_group == 'development' and request.GET.view == 'styles' %}active{% endif %}"
+          >
+            <span>04</span>
+            <b>Estilos</b>
+          </a>
+
+          <a
+            href="{% url 'questionnaires:seo_status' %}"
+            class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Matriz SEO' %}active{% endif %}"
+          >
+            <span>05</span>
+            <b>Matriz SEO</b>
+          </a>
+
         </div>
+
       </details>
+
       {% endif %}
+
 
       {% if current_role == 'design' or current_role == 'marketing' or current_role == 'manager' or request.user.is_superuser %}
-      <a href="{% url 'socialmedia:dashboard' %}" class="nav-link nav-link-main social-media-nav {% if active_nav_group == 'social_media' %}active{% endif %}">
-        <span class="nav-svg"><svg viewBox="0 0 24 24"><path d="M7 4h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Zm5 4.2A3.8 3.8 0 1 0 12 15.8 3.8 3.8 0 0 0 12 8.2Zm5.1-1.4a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8Z"/></svg></span><b>Social Media</b><em>Diseño + Marketing</em>
+
+      <a
+        href="{% url 'socialmedia:dashboard' %}"
+        class="nav-link nav-link-main social-media-nav {% if active_nav_group == 'social_media' %}active{% endif %}"
+      >
+        <span class="nav-svg">
+          <svg viewBox="0 0 24 24">
+            <path d="M7 4h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Zm5 4.2A3.8 3.8 0 1 0 12 15.8 3.8 3.8 0 0 0 12 8.2Zm5.1-1.4a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8Z"/>
+          </svg>
+        </span>
+        <b>Social Media</b>
+        <em>Diseño + Marketing</em>
       </a>
+
       {% endif %}
+
 
       {% if current_role != 'sales' %}
-      <div class="nav-divider"><span>Gestión</span></div>
-      <a href="{% url 'projects:list' %}" class="nav-link nav-link-main {% if active_nav_group == 'projects' %}active{% endif %}"><span class="nav-svg"><svg viewBox="0 0 24 24"><path d="M4 7.5h6l2 2h8v10H4v-12Zm0 0V5h6l2 2h8v2.5"/></svg></span><b>Proyectos</b><em>Todos</em></a>
+
+      <div class="nav-divider">
+        <span>Gestión</span>
+      </div>
+
+      <a
+        href="{% url 'projects:list' %}"
+        class="nav-link nav-link-main {% if active_nav_group == 'projects' %}active{% endif %}"
+      >
+        <span class="nav-svg">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 7.5h6l2 2h8v10H4v-12Zm0 0V5h6l2 2h8v2.5"/>
+          </svg>
+        </span>
+        <b>Proyectos</b>
+        <em>Todos</em>
+      </a>
+
       {% endif %}
 
-      <details class="nav-section" data-nav-section {% if active_nav_group == 'agenda' %}open{% endif %}>
-        <summary><span class="nav-svg"><svg viewBox="0 0 24 24"><path d="M6 3v3m12-3v3M4 8h16v12H4zM8 12h3m2 0h3m-8 4h3"/></svg></span><b>Agenda</b><i>⌄</i></summary>
+
+      <details
+        class="nav-section"
+        data-nav-section
+        {% if active_nav_group == 'agenda' %}open{% endif %}
+      >
+
+        <summary>
+          <span class="nav-svg">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 3v3m12-3v3M4 8h16v12H4zM8 12h3m2 0h3m-8 4h3"/>
+            </svg>
+          </span>
+          <b>Agenda</b>
+          <i>⌄</i>
+        </summary>
+
         <div class="nav-section-links">
-          <a href="{% url 'reminders:list' %}" class="nav-link {% if current_namespace == 'reminders' and current_page_label == 'Recordatorios' %}active{% endif %}"><span>01</span><b>Recordatorios</b></a>
-          <a href="{% url 'reminders:meeting_list' %}" class="nav-link {% if current_namespace == 'reminders' and current_page_label == 'Reuniones' %}active{% endif %}"><span>02</span><b>Reuniones</b></a>
-          <a href="{% url 'reminders:calendar' %}" class="nav-link {% if current_namespace == 'reminders' and current_page_label == 'Calendario' %}active{% endif %}"><span>03</span><b>Calendario</b></a>
+
+          <a
+            href="{% url 'reminders:list' %}"
+            class="nav-link {% if current_namespace == 'reminders' and current_page_label == 'Recordatorios' %}active{% endif %}"
+          >
+            <span>01</span>
+            <b>Recordatorios</b>
+          </a>
+
+          <a
+            href="{% url 'reminders:meeting_list' %}"
+            class="nav-link {% if current_namespace == 'reminders' and current_page_label == 'Reuniones' %}active{% endif %}"
+          >
+            <span>02</span>
+            <b>Reuniones</b>
+          </a>
+
+          <a
+            href="{% url 'reminders:calendar' %}"
+            class="nav-link {% if current_namespace == 'reminders' and current_page_label == 'Calendario' %}active{% endif %}"
+          >
+            <span>03</span>
+            <b>Calendario</b>
+          </a>
+
         </div>
+
       </details>
+
 
       {% if current_role == 'sales' or current_role == 'manager' or request.user.is_superuser %}
-      <a href="{% url 'sales:dashboard' %}" class="nav-link nav-link-main {% if active_nav_group == 'sales' %}active{% endif %}"><span class="nav-svg"><svg viewBox="0 0 24 24"><path d="M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8-1a3 3 0 1 0 0-6m-8 9c-4 0-6 2-6 5v2h12v-2c0-3-2-5-6-5Zm8 0c3 0 5 2 5 5v2h-5"/></svg></span><b>Vendedores</b></a>
+
+      <a
+        href="{% url 'sales:dashboard' %}"
+        class="nav-link nav-link-main {% if active_nav_group == 'sales' %}active{% endif %}"
+      >
+        <span class="nav-svg">
+          <svg viewBox="0 0 24 24">
+            <path d="M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8-1a3 3 0 1 0 0-6m-8 9c-4 0-6 2-6 5v2h12v-2c0-3-2-5-6-5Zm8 0c3 0 5 2 5 5v2h-5"/>
+          </svg>
+        </span>
+        <b>Vendedores</b>
+      </a>
+
       {% endif %}
+
 
       {% if current_role == 'manager' or request.user.is_superuser %}
-      <div class="nav-divider"><span>Gerencia</span></div>
-      <a href="{% url 'plans:list' %}" class="nav-link nav-link-main {% if active_nav_group == 'plans' %}active{% endif %}"><span class="nav-svg"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></span><b>Planes</b><em>Gerencia</em></a>
-      <a href="{% url 'audit:management_tasks' %}" class="nav-link nav-link-main {% if active_nav_group == 'management_tasks' %}active{% endif %}"><span class="nav-svg"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5zM8 9h8M8 13h5M16 16l2 2 3-4"/></svg></span><b>Tareas del equipo</b><em>Gerencia</em></a>
-      <details class="nav-section" data-nav-section {% if active_nav_group == 'administration' %}open{% endif %}>
-        <summary><span class="nav-svg"><svg viewBox="0 0 24 24"><path d="M4 20h16M6 20V8h12v12M9 8V4h6v4m-6 5h2m2 0h2m-6 4h2m2 0h2"/></svg></span><b>Administración</b><i>⌄</i></summary>
+
+      <div class="nav-divider">
+        <span>Gerencia</span>
+      </div>
+
+      <a
+        href="{% url 'plans:list' %}"
+        class="nav-link nav-link-main {% if active_nav_group == 'plans' %}active{% endif %}"
+      >
+        <span class="nav-svg">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/>
+          </svg>
+        </span>
+        <b>Planes</b>
+        <em>Gerencia</em>
+      </a>
+
+
+      <a
+        href="{% url 'audit:management_tasks' %}"
+        class="nav-link nav-link-main {% if active_nav_group == 'management_tasks' %}active{% endif %}"
+      >
+        <span class="nav-svg">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 5h14v14H5zM8 9h8M8 13h5M16 16l2 2 3-4"/>
+          </svg>
+        </span>
+        <b>Tareas del equipo</b>
+        <em>Gerencia</em>
+      </a>
+
+
+      <details
+        class="nav-section"
+        data-nav-section
+        {% if active_nav_group == 'administration' %}open{% endif %}
+      >
+
+        <summary>
+          <span class="nav-svg">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 20h16M6 20V8h12v12M9 8V4h6v4m-6 5h2m2 0h2m-6 4h2m2 0h2"/>
+            </svg>
+          </span>
+          <b>Administración</b>
+          <i>⌄</i>
+        </summary>
+
         <div class="nav-section-links">
-          <a href="{% url 'clients:list' %}" class="nav-link {% if current_namespace == 'clients' %}active{% endif %}"><span>01</span><b>Clientes</b></a>
-          <a href="{% url 'operations:general_list' %}" class="nav-link {% if current_page_label == 'Dominios y Hosting' %}active{% endif %}"><span>02</span><b>Dominios y Hosting</b></a>
-          <a href="{% url 'operations:credential_list' %}" class="nav-link {% if current_page_label == 'Credenciales' %}active{% endif %}"><span>03</span><b>Credenciales</b></a>
-          <a href="{% url 'finance:operating_list' %}" class="nav-link {% if current_page_label == 'Gastos operativos' %}active{% endif %}"><span>04</span><b>Gastos operativos</b></a>
-          <a href="{% url 'finance:dashboard' %}" class="nav-link {% if current_page_label == 'Billetera / Finanzas' %}active{% endif %}"><span>05</span><b>Billetera / Finanzas</b></a>
+
+          <a
+            href="{% url 'clients:list' %}"
+            class="nav-link {% if current_namespace == 'clients' %}active{% endif %}"
+          >
+            <span>01</span>
+            <b>Clientes</b>
+          </a>
+
+          <a
+            href="{% url 'operations:general_list' %}"
+            class="nav-link {% if current_page_label == 'Dominios y Hosting' %}active{% endif %}"
+          >
+            <span>02</span>
+            <b>Dominios y Hosting</b>
+          </a>
+
+          <a
+            href="{% url 'operations:credential_list' %}"
+            class="nav-link {% if current_page_label == 'Credenciales' %}active{% endif %}"
+          >
+            <span>03</span>
+            <b>Credenciales</b>
+          </a>
+
+          <a
+            href="{% url 'finance:operating_list' %}"
+            class="nav-link {% if current_page_label == 'Gastos operativos' %}active{% endif %}"
+          >
+            <span>04</span>
+            <b>Gastos operativos</b>
+          </a>
+
+          <a
+            href="{% url 'finance:dashboard' %}"
+            class="nav-link {% if current_page_label == 'Billetera / Finanzas' %}active{% endif %}"
+          >
+            <span>05</span>
+            <b>Billetera / Finanzas</b>
+          </a>
+
         </div>
+
       </details>
 
-      <details class="nav-section" data-nav-section {% if active_nav_group == 'audit' %}open{% endif %}>
-        <summary><span class="nav-svg"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5m4 4 3 3m0-3-3 3"/></svg></span><b>Auditoría</b><i>⌄</i></summary>
+
+      <details
+        class="nav-section"
+        data-nav-section
+        {% if active_nav_group == 'audit' %}open{% endif %}
+      >
+
+        <summary>
+          <span class="nav-svg">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 5h16v14H4zM8 9h8M8 13h5m4 4 3 3m0-3-3 3"/>
+            </svg>
+          </span>
+          <b>Auditoría</b>
+          <i>⌄</i>
+        </summary>
+
         <div class="nav-section-links">
-          <a href="{% url 'audit:projects' %}" class="nav-link {% if current_page_label == 'Auditoría Proyectos' %}active{% endif %}"><span>01</span><b>Auditoría Proyectos</b></a>
-          <a href="{% url 'audit:subscriptions' %}" class="nav-link {% if current_page_label == 'Auditoría Suscripciones' %}active{% endif %}"><span>02</span><b>Auditoría Suscripciones</b></a>
-          <a href="{% url 'audit:logs' %}" class="nav-link {% if current_page_label == 'Logs del sistema' %}active{% endif %}"><span>03</span><b>Logs del sistema</b></a>
+
+          <a
+            href="{% url 'audit:projects' %}"
+            class="nav-link {% if current_page_label == 'Auditoría Proyectos' %}active{% endif %}"
+          >
+            <span>01</span>
+            <b>Auditoría Proyectos</b>
+          </a>
+
+          <a
+            href="{% url 'audit:subscriptions' %}"
+            class="nav-link {% if current_page_label == 'Auditoría Suscripciones' %}active{% endif %}"
+          >
+            <span>02</span>
+            <b>Auditoría Suscripciones</b>
+          </a>
+
+          <a
+            href="{% url 'audit:logs' %}"
+            class="nav-link {% if current_page_label == 'Logs del sistema' %}active{% endif %}"
+          >
+            <span>03</span>
+            <b>Logs del sistema</b>
+          </a>
+
         </div>
+
       </details>
 
-      <details class="nav-section" data-nav-section {% if active_nav_group == 'configuration' %}open{% endif %}>
-        <summary><span class="nav-svg"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8 4 2 1-2 3-2-.4a7 7 0 0 1-1.6 1.6L17 19h-4l-.6-1.8a7 7 0 0 1-2.4 0L9 19H5l.6-1.8A7 7 0 0 1 4 15.6L2 16l-2-3 2-1a7 7 0 0 1 0-2L0 9l2-3 2 .4A7 7 0 0 1 5.6 4.8L5 3h4l1 1.8a7 7 0 0 1 2.4 0L13 3h4l-.6 1.8A7 7 0 0 1 18 6.4L20 6l2 3-2 1a7 7 0 0 1 0 2Z"/></svg></span><b>Configuración</b><i>⌄</i></summary>
+
+      <details
+        class="nav-section"
+        data-nav-section
+        {% if active_nav_group == 'configuration' %}open{% endif %}
+      >
+
+        <summary>
+          <span class="nav-svg">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8 4 2 1-2 3-2-.4a7 7 0 0 1-1.6 1.6L17 19h-4l-.6-1.8a7 7 0 0 1-2.4 0L9 19H5l.6-1.8A7 7 0 0 1 4 15.6L2 16l-2-3 2-1a7 7 0 0 1 0-2L0 9l2-3 2 .4A7 7 0 0 1 5.6 4.8L5 3h4l1 1.8a7 7 0 0 1 2.4 0L13 3h4l-.6 1.8A7 7 0 0 1 18 6.4L20 6l2 3-2 1a7 7 0 0 1 0 2Z"/>
+            </svg>
+          </span>
+          <b>Configuración</b>
+          <i>⌄</i>
+        </summary>
+
         <div class="nav-section-links">
-          <a href="{% url 'accounts:user_list' %}" class="nav-link {% if current_page_label == 'Usuarios' %}active{% endif %}"><span>01</span><b>Usuarios</b></a>
-          {% if request.user.is_superuser %}<a href="/admin/" class="nav-link"><span>02</span><b>Panel técnico</b></a>{% endif %}
+
+          <a
+            href="{% url 'accounts:user_list' %}"
+            class="nav-link {% if current_page_label == 'Usuarios' %}active{% endif %}"
+          >
+            <span>01</span>
+            <b>Usuarios</b>
+          </a>
+
+          {% if request.user.is_superuser %}
+          <a href="/admin/" class="nav-link">
+            <span>02</span>
+            <b>Panel técnico</b>
+          </a>
+          {% endif %}
+
         </div>
+
       </details>
+
       {% endif %}
+
     </nav>
 
+
     <div class="sidebar-footer">
-      <div class="user-chip"><div class="avatar">{{ request.user.first_name|first|default:'U' }}</div><div><strong>{{ request.user.display_name }}</strong><span>{{ request.user.get_role_display }}</span></div></div>
-      <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn btn-ghost btn-full" type="submit">Cerrar sesión</button></form>
+
+      <div class="user-chip">
+
+        <div class="avatar">
+          {{ request.user.first_name|first|default:'U' }}
+        </div>
+
+        <div>
+          <strong>{{ request.user.display_name }}</strong>
+          <span>{{ request.user.get_role_display }}</span>
+        </div>
+
+      </div>
+
+      <form
+        method="post"
+        action="{% url 'accounts:logout' %}"
+      >
+        {% csrf_token %}
+
+        <button
+          class="btn btn-ghost btn-full"
+          type="submit"
+        >
+          Cerrar sesión
+        </button>
+
+      </form>
+
     </div>
+
   </aside>
 
+
   <main class="main">
+
     <header class="topbar">
-      <button class="menu-toggle" type="button" aria-label="Abrir menú" onclick="document.body.classList.toggle('sidebar-open')"><span></span><span></span><span></span></button>
+
+      <button
+        class="menu-toggle"
+        type="button"
+        aria-label="Abrir menú"
+        onclick="document.body.classList.toggle('sidebar-open')"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+
       <div class="topbar-context">
-        <div class="module-tracker"><span class="module-tracker-dot"></span><b>{{ current_module_label }}</b><i>›</i><span>{{ current_page_label }}</span></div>
-        <h1>{% block page_heading %}{{ PROJECT_NAME }}{% endblock %}</h1>
+
+        <div class="module-tracker">
+          <span class="module-tracker-dot"></span>
+          <b>{{ current_module_label }}</b>
+          <i>›</i>
+          <span>{{ current_page_label }}</span>
+        </div>
+
+        <h1>
+          {% block page_heading %}
+            {{ PROJECT_NAME }}
+          {% endblock %}
+        </h1>
+
       </div>
-      <div class="role-pill">{{ request.user.get_role_display }}</div>
+
+
+      <div class="role-pill">
+        {{ request.user.get_role_display }}
+      </div>
+
     </header>
 
-    {% if messages %}<div class="messages">{% for message in messages %}<div class="alert {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+
+    {% if messages %}
+
+    <div class="messages">
+
+      {% for message in messages %}
+
+      <div class="alert {{ message.tags }}">
+        {{ message }}
+      </div>
+
+      {% endfor %}
+
+    </div>
+
+    {% endif %}
+
+
     <section class="content">
-      {% if show_management_tasks_panel %}{% include 'audit/_assigned_tasks_panel.html' %}{% endif %}
-      {% block content %}{% endblock %}
+
+      {% if show_management_tasks_panel %}
+        {% include 'audit/_assigned_tasks_panel.html' %}
+      {% endif %}
+
+      {% block content %}
+      {% endblock %}
+
     </section>
+
   </main>
+
 </div>
+
+
 <script src="{% static 'js/app.js' %}"></script>
+
 </body>
 </html>

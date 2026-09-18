@@ -1,11 +1,19 @@
 {% extends 'base.html' %}
-{% block page_heading %}Información Desarrollo{% endblock %}
+{% block page_heading %}{% if request.GET.view == 'production' %}Ficha de producción{% elif request.GET.view == 'styles' %}Estilos{% else %}Información{% endif %}{% endblock %}
 {% block content %}
 <div class="page-intro">
   <div>
-    <span class="eyebrow">Desarrollo · información fuente</span>
-    <h2>Información Desarrollo</h2>
-    <p>Aquí se captura la información técnica de cada proyecto. Lo guardado se centraliza automáticamente en el proyecto y alimenta Producción, SEO y Auditoría.</p>
+    <span class="eyebrow">Desarrollo · {% if request.GET.view == 'production' %}Producción{% elif request.GET.view == 'styles' %}Estilos{% else %}Información{% endif %}</span>
+    {% if request.GET.view == 'production' %}
+      <h2>Ficha de producción</h2>
+      <p>Selecciona un proyecto para administrar su estructura, responsables, páginas, condados, servicios y ciudades.</p>
+    {% elif request.GET.view == 'styles' %}
+      <h2>Estilos</h2>
+      <p>Selecciona un proyecto para administrar la estructura del header y los estilos de botones.</p>
+    {% else %}
+      <h2>Información</h2>
+      <p>Selecciona un proyecto para consultar y completar su ficha técnica.</p>
+    {% endif %}
   </div>
 </div>
 
@@ -13,16 +21,32 @@
 {% for row in rows %}{% with p=row.project %}
   <article class="card area-information-card">
     <div class="area-info-title">
-      <div><span class="project-code">{{ p.project_code }}</span><h3>{{ p.client.business_name }}</h3><p>{{ p.name }} · {{ p.client.full_name|default:'Sin contacto' }}</p></div>
-      <span class="badge">{{ row.progress.percent }}%</span>
+      <div>
+        <span class="project-code">{{ p.project_code }}</span>
+        <h3>{{ p.client.business_name }}</h3>
+        <p>{{ p.name }} · {{ p.client.full_name|default:'Sin contacto' }}</p>
+      </div>
     </div>
+
     <div class="area-task-summary">
-      <div><span>Ficha técnica</span><strong>{{ row.progress.percent }}%</strong><small>{{ row.progress.complete }}/{{ row.progress.total }} bloques completos</small></div>
-      <div class="progress-mini"><i style="width:{{ row.progress.percent }}%"></i></div>
+      {% if request.GET.view == 'production' %}
+        <div><span>Producción</span><strong>Ficha del proyecto</strong><small>Páginas, condados, servicios, ciudades y secciones internas.</small></div>
+      {% elif request.GET.view == 'styles' %}
+        <div><span>Estilos</span><strong>Header y botones</strong><small>Configuración visual guardada para este proyecto.</small></div>
+      {% else %}
+        <div><span>Ficha técnica</span><strong>Información del proyecto</strong><small>Datos del cliente, negocio, servicios, cobertura y recursos.</small></div>
+      {% endif %}
     </div>
+
     <div class="area-info-actions">
-      {% if row.questionnaire %}<a href="{% url 'questionnaires:fill' row.questionnaire.pk %}">Abrir información</a>{% else %}<a href="{% url 'questionnaires:create_for_project' p.pk %}?auto=1">Crear información</a>{% endif %}
-      <a href="{% url 'handoff:summary' p.pk %}">Resumen proyecto</a>
+      {% if request.GET.view == 'production' %}
+        <a href="{% url 'operations:web_production_sheet' p.pk %}">Abrir ficha de producción</a>
+      {% elif request.GET.view == 'styles' %}
+        <a href="{% url 'operations:web_production_sheet' p.pk %}?section=styles#project-styles">Abrir estilos</a>
+      {% else %}
+        {% if row.questionnaire %}<a href="{% url 'questionnaires:fill' row.questionnaire.pk %}">Abrir información</a>{% else %}<a href="{% url 'questionnaires:create_for_project' p.pk %}?auto=1">Crear información</a>{% endif %}
+      {% endif %}
+      <a href="{% url 'handoff:summary' p.pk %}">Ver resumen</a>
     </div>
   </article>
 {% endwith %}{% empty %}

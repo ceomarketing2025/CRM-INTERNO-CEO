@@ -2193,10 +2193,8 @@ def fill(request, pk):
                 )
 
             return redirect(
-                "questionnaires:fill",
-                pk=pk,
+                "questionnaires:development_dashboard"
             )
-
         return render(
             request,
             "questionnaires/website_fill.html",

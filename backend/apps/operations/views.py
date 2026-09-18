@@ -34,6 +34,7 @@ from .models import (
 )
 from .services import (
     apply_seo_automation,
+    auto_workload,
     create_custom_project_credential,
     ensure_web_production_structure,
     save_domain_hosting_record,
@@ -764,6 +765,26 @@ def _update_internal_section(
         "",
     ).strip()
 
+    complexity = request.POST.get(f"{prefix}_complexity", "").strip()
+    if complexity in {"S", "M", "C"}:
+        obj.complexity = complexity
+        obj.points = {"S": 1, "M": 2, "C": 3}[complexity]
+
+    obj.smtp_email = request.POST.get(
+        f"{prefix}_smtp_email",
+        obj.smtp_email,
+    ).strip()
+
+    smtp_password = request.POST.get(
+        f"{prefix}_smtp_password",
+        "",
+    )
+    if smtp_password.strip():
+        obj.set_smtp_password(smtp_password)
+
+    if request.POST.get(f"{prefix}_clear_smtp_password") == "1":
+        obj.smtp_password_encrypted = ""
+
     obj.updated_by = request.user
     obj.save()
 
@@ -838,17 +859,80 @@ def web_production_sheet(
         )
     )
 
-    users = {
-        user.pk: user
-        for user
-        in _developer_users()
-    }
+    project_developers = list(
+        UserAccount.objects.filter(
+            assigned_projects_v2__project=project,
+            assigned_projects_v2__area="development",
+            assigned_projects_v2__status__in=["assigned", "active"],
+            role=UserAccount.Role.DEVELOPER,
+            is_active=True,
+        )
+        .distinct()
+        .order_by("first_name", "last_name", "email")
+    )
+
+    users = {user.pk: user for user in project_developers}
 
     if request.method == "POST":
         action = request.POST.get(
             "action",
             "",
         )
+
+        if action == "quick_update_row":
+            row_type = request.POST.get("row_type", "").strip()
+            row_id = request.POST.get("row_id", "").strip()
+            field = request.POST.get("field", "").strip()
+            value = request.POST.get("value", "").strip()
+
+            model_map = {
+                "page": (WebProductionPage, {"sheet": sheet}),
+                "county": (WebProductionCounty, {"sheet": sheet}),
+                "service": (WebProductionCountyService, {"county__sheet": sheet}),
+                "city": (WebProductionCity, {"sheet": sheet}),
+                "internal_section": (WebProductionInternalSection, {"sheet": sheet}),
+            }
+            if row_type not in model_map or not row_id.isdigit():
+                messages.error(request, "Edición rápida inválida.")
+                return redirect("operations:web_production_sheet", project_pk=project.pk)
+
+            model, scope = model_map[row_type]
+            obj = get_object_or_404(model, pk=int(row_id), **scope)
+
+            if field == "responsible":
+                obj.responsible = users.get(int(value)) if value.isdigit() else None
+            elif field == "complexity":
+                if value not in {"S", "M", "C"}:
+                    messages.error(request, "Complejidad inválida.")
+                    return redirect("operations:web_production_sheet", project_pk=project.pk)
+                obj.complexity = value
+                obj.points = {"S": 1, "M": 2, "C": 3}[value]
+            elif field == "slug" and hasattr(obj, "slug"):
+                obj.slug = value
+            elif field == "keyword" and hasattr(obj, "keyword"):
+                obj.keyword = value
+            elif field == "created" and isinstance(obj, WebProductionInternalSection):
+                obj.created = value == "yes"
+            elif field == "workflow_status" and hasattr(obj, "workflow_status"):
+                allowed = {
+                    "not_started": ProductionWorkStatus.NOT_STARTED,
+                    "in_progress": ProductionWorkStatus.IN_PROGRESS,
+                    "complete": ProductionWorkStatus.COMPLETE,
+                }
+                if value not in allowed:
+                    messages.error(request, "Estado inválido.")
+                    return redirect("operations:web_production_sheet", project_pk=project.pk)
+                obj.workflow_status = allowed[value]
+            else:
+                messages.error(request, "Campo de edición rápida inválido.")
+                return redirect("operations:web_production_sheet", project_pk=project.pk)
+
+            obj.updated_by = request.user
+            obj.save()
+            sheet.updated_by = request.user
+            sheet.save(update_fields=["updated_by", "updated_at"])
+            messages.success(request, "Cambio guardado.")
+            return redirect("operations:web_production_sheet", project_pk=project.pk)
 
         if action == "save_page":
             row_id = request.POST.get(
@@ -1096,6 +1180,46 @@ def web_production_sheet(
                 "operations:web_production_sheet",
                 project_pk=project.pk,
             )
+
+        elif action == "add_internal_section":
+            order = (sheet.internal_sections.order_by("-order").values_list("order", flat=True).first() or 0) + 1
+            section = WebProductionInternalSection.objects.create(
+                sheet=sheet,
+                name=(request.POST.get("section_name", "").strip() or f"Sección interna {order}"),
+                complexity="S",
+                points=1,
+                order=order,
+                updated_by=request.user,
+            )
+            log_activity(request.user, "development", "production_internal_section_add", section, description=section.name)
+            messages.success(request, "Sección interna agregada.")
+            return redirect("operations:web_production_sheet", project_pk=project.pk)
+
+        elif action == "delete_internal_section":
+            section = get_object_or_404(
+                WebProductionInternalSection,
+                pk=request.POST.get("row_id"),
+                sheet=sheet,
+            )
+            label = section.name
+            section.delete()
+            log_activity(request.user, "development", "production_internal_section_delete", sheet, description=label)
+            messages.success(request, "Sección interna eliminada.")
+            return redirect("operations:web_production_sheet", project_pk=project.pk)
+
+        elif action == "save_button_style":
+            sheet.button_style_code = request.POST.get("button_style_code", "")
+            sheet.updated_by = request.user
+            sheet.save(update_fields=["button_style_code", "updated_by", "updated_at"])
+            messages.success(request, "Estilo de botones guardado.")
+            return redirect("operations:web_production_sheet", project_pk=project.pk)
+
+        elif action == "delete_button_style":
+            sheet.button_style_code = ""
+            sheet.updated_by = request.user
+            sheet.save(update_fields=["button_style_code", "updated_by", "updated_at"])
+            messages.success(request, "Estilo de botones eliminado.")
+            return redirect("operations:web_production_sheet", project_pk=project.pk)
 
         elif action == "generate_structure":
             structure_form = (
@@ -1641,9 +1765,7 @@ def web_production_sheet(
         if not city.county_id
     ]
 
-    developers = list(
-        _developer_users()
-    )
+    developers = project_developers
 
     all_rows = (
         pages

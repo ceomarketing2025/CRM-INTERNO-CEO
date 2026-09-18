@@ -1131,6 +1131,11 @@ class WebProductionSheet(TimestampedModel):
         verbose_name="Estructura de header",
     )
 
+    button_style_code = models.TextField(
+        blank=True,
+        verbose_name="Código de estilo de botones",
+    )
+
     notes = models.TextField(
         blank=True,
         verbose_name="Notas generales de producción",
@@ -1494,6 +1499,27 @@ class WebProductionInternalSection(
         blank=True,
         verbose_name="Notas",
     )
+
+    smtp_email = models.EmailField(
+        blank=True,
+        verbose_name="SMTP email",
+    )
+
+    smtp_password_encrypted = models.TextField(
+        blank=True,
+        editable=False,
+        verbose_name="SMTP password cifrado",
+    )
+
+    def set_smtp_password(self, raw_password):
+        from .crypto import encrypt_secret
+        raw_password = (raw_password or "").strip()
+        if raw_password:
+            self.smtp_password_encrypted = encrypt_secret(raw_password)
+
+    @property
+    def has_smtp_password(self):
+        return bool(self.smtp_password_encrypted)
 
     order = models.PositiveIntegerField(
         default=0,

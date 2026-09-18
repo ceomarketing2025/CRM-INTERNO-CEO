@@ -4,488 +4,120 @@
 
 <div class="page-intro">
   <div>
-    <span class="eyebrow">
-      Desarrollo · {{ project.project_code }}
-      {% if project.purchased_plan and project.purchased_plan.plan %}
-        · {{ project.purchased_plan.plan.name|upper }}
-      {% endif %}
-    </span>
-
+    <span class="eyebrow">Desarrollo · {{ project.project_code }}{% if project.purchased_plan and project.purchased_plan.plan %} · {{ project.purchased_plan.plan.name|upper }}{% endif %}</span>
     <h2>{{ project.client.business_name }}</h2>
-
-    <p>
-      Hoja centralizada tipo Excel: páginas, condados, servicios, ciudades y secciones internas.
-      Nombre, keyword y slug son editables; complejidad y puntos se calculan internamente.
-    </p>
+    <p>Ficha operativa de Desarrollo: estructura, responsables, secciones internas, navegación, estilo de botones y equilibrio por puntos.</p>
   </div>
-
   <div class="actions">
     <a class="btn btn-secondary" href="{% url 'questionnaires:development_dashboard' %}">Desarrollo</a>
-    {% if questionnaire %}
-      <a class="btn btn-secondary" href="{% url 'questionnaires:fill' questionnaire.pk %}">Ficha técnica</a>
-    {% endif %}
+    {% if questionnaire %}<a class="btn btn-secondary" href="{% url 'questionnaires:fill' questionnaire.pk %}">Ficha técnica</a>{% endif %}
     <a class="btn btn-primary" href="{% url 'handoff:summary' project.pk %}">Resumen</a>
   </div>
 </div>
 
-<div class="production-kpis production-kpis-v5">
-  <div class="stat-card">
-    <span>Elementos SEO</span>
-    <strong>{{ total_rows }}</strong>
-    <small>Páginas + condados + servicios + ciudades</small>
-  </div>
+<div class="dev-sheet-accordion">
 
-  <div class="stat-card">
-    <span>Páginas listas</span>
-    <strong>{{ completed_rows }}/{{ total_rows }}</strong>
-    <div class="progress slim"><i style="width:{{ completed_percent }}%"></i></div>
-    <small>{{ completed_percent }}% completado</small>
-  </div>
-
-  <div class="stat-card">
-    <span>Revisión realizada</span>
-    <strong>{{ reviewed_rows }}/{{ total_rows }}</strong>
-    <div class="progress slim review-progress"><i style="width:{{ reviewed_percent }}%"></i></div>
-    <small>{{ reviewed_percent }}% revisado</small>
-  </div>
-
-  <div class="stat-card">
-    <span>Producción completa</span>
-    <strong>{{ completed_items }}/{{ total_production_items }}</strong>
-    <div class="progress slim"><i style="width:{{ production_percent }}%"></i></div>
-    <small>{{ production_percent }}% producción</small>
-  </div>
-
-  <div class="stat-card">
-    <span>Última edición</span>
-    <strong>{% if sheet.updated_by %}{{ sheet.updated_by.display_name }}{% else %}—{% endif %}</strong>
-    <small>{{ sheet.updated_at|date:'d/m/Y H:i' }}</small>
-  </div>
-</div>
-
-<div class="card production-builder">
-  <div class="card-head">
-    <div>
-      <h3>1. Crear estructura base</h3>
-      <p>Indica cantidades y el sistema crea únicamente los espacios faltantes. Nunca borra lo que ya llenaste.</p>
+<details class="dev-sheet-panel" open>
+  <summary><span class="dev-sheet-index">01</span><span><strong>Ficha del proyecto</strong><small>Páginas principales, condados, servicios por condado y ciudades</small></span><b class="dev-sheet-chevron">⌄</b></summary>
+  <div class="dev-sheet-content">
+    <div class="production-kpis production-kpis-v5">
+      <div class="stat-card"><span>Elementos SEO</span><strong>{{ total_rows }}</strong><small>Páginas + condados + servicios + ciudades</small></div>
+      <div class="stat-card"><span>Producción completa</span><strong>{{ completed_items }}/{{ total_production_items }}</strong><div class="progress slim"><i style="width:{{ production_percent }}%"></i></div><small>{{ production_percent }}%</small></div>
+      <div class="stat-card"><span>Revisión</span><strong>{{ reviewed_rows }}/{{ total_rows }}</strong><div class="progress slim review-progress"><i style="width:{{ reviewed_percent }}%"></i></div><small>{{ reviewed_percent }}%</small></div>
+      <div class="stat-card"><span>Última edición</span><strong>{% if sheet.updated_by %}{{ sheet.updated_by.display_name }}{% else %}—{% endif %}</strong><small>{{ sheet.updated_at|date:'d/m/Y H:i' }}</small></div>
     </div>
-    <span class="strategy-chip {% if seo_strategy == 'client_services' %}client{% endif %}">{{ strategy_label }}</span>
-  </div>
 
-  <form method="post" class="production-generator">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="generate_structure">
-    {% for field in structure_form %}
-      <div class="field">
-        <label>{{ field.label }}</label>
-        {{ field }}
-        <small>{{ field.help_text }}</small>
-      </div>
-    {% endfor %}
-    <button class="btn btn-primary" type="submit">Generar / completar</button>
-  </form>
-
-  {% if service_catalog %}
-    <div class="service-catalog-line">
-      <b>Servicios de la Ficha Técnica:</b>
-      {% for item in service_catalog %}
-        <span class="service-chip {% if item.primary %}primary{% endif %}">
-          {{ item.name }}{% if item.primary %} ★{% endif %}
-        </span>
-      {% endfor %}
+    <div class="card production-builder">
+      <div class="card-head"><div><h3>Estructura base</h3><p>Completa espacios faltantes sin borrar información existente.</p></div><span class="strategy-chip {% if seo_strategy == 'client_services' %}client{% endif %}">{{ strategy_label }}</span></div>
+      <form method="post" class="production-generator">{% csrf_token %}<input type="hidden" name="action" value="generate_structure">{% for field in structure_form %}<div class="field"><label>{{ field.label }}</label>{{ field }}<small>{{ field.help_text }}</small></div>{% endfor %}<button class="btn btn-primary" type="submit">Generar / completar</button></form>
     </div>
-  {% else %}
-    <div class="notice-card compact-notice">
-      Aún no hay servicios guardados en la Ficha Técnica. Puedes avanzar manualmente.
+
+    <div class="dev-table-block">
+      <div class="dev-table-head"><div><span class="eyebrow">Páginas</span><h3>Páginas principales y extras</h3></div><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_page"><button class="btn btn-secondary btn-sm" type="submit">＋ Agregar página</button></form></div>
+      <div class="production-table-wrap"><table class="production-table-v5 dev-production-table"><thead><tr><th>Página</th><th>Comp.</th><th>Puntos</th><th>Keyword</th><th>Slug</th><th>Responsable</th><th>Lista</th><th>Revisión</th><th>Acciones</th></tr></thead><tbody>
+      {% for p in pages %}<tr><td><strong>{{ p.name }}</strong></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="page"><input type="hidden" name="row_id" value="{{ p.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if p.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if p.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if p.complexity == 'C' %}selected{% endif %}>C</option></select></form></td><td><b>{{ p.points }}</b></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="page"><input type="hidden" name="row_id" value="{{ p.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ p.keyword|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="page"><input type="hidden" name="row_id" value="{{ p.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ p.slug|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="page"><input type="hidden" name="row_id" value="{{ p.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if p.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form></td><td>{% include 'operations/partials/quick_status.html' with row=p row_type='page' field='state' %}</td><td>{% include 'operations/partials/quick_status.html' with row=p row_type='page' field='review_status' %}</td><td><div class="dev-row-actions"><button type="button" class="production-edit-btn" data-production-edit data-row-type="page" data-row-id="{{ p.pk }}" title="Editar completo">✎</button><form method="post" onsubmit="return confirm('¿Eliminar {{ p.name|escapejs }}?');">{% csrf_token %}<input type="hidden" name="action" value="delete_page"><input type="hidden" name="row_id" value="{{ p.pk }}"><button class="dev-delete-btn" type="submit" title="Eliminar">×</button></form></div></td></tr>{% empty %}<tr><td colspan="9">No hay páginas.</td></tr>{% endfor %}
+      </tbody></table></div>
     </div>
-  {% endif %}
-</div>
 
-{% if service_catalog %}
-<form method="post" class="card global-service-card">
-  {% csrf_token %}
-  <input type="hidden" name="action" value="apply_global_service">
-
-  <div>
-    <span class="eyebrow">Aplicación global</span>
-    <h3>Aplicar un servicio a todos los condados</h3>
-    <p>Úsalo cuando un servicio debe crearse en todos los condados.</p>
-  </div>
-
-  <select name="global_service_name">
-    <option value="">Selecciona servicio...</option>
-    {% for item in service_catalog %}
-      <option value="{{ item.name }}">
-        {{ item.name }}{% if item.primary %} · Principal{% endif %}
-      </option>
-    {% endfor %}
-  </select>
-
-  <button class="btn btn-secondary" type="submit">Aplicar globalmente</button>
-</form>
-{% endif %}
-
-<div class="card production-table-card" id="production-table">
-  <div class="card-head">
-    <div>
-      <h3>2. Hoja de producción completa</h3>
-      <p>Edita cada elemento desde el lápiz. Los cambios rápidos de estado y revisión se guardan directamente desde la tabla.</p>
+    <div class="dev-table-block">
+      <div class="dev-table-head"><div><span class="eyebrow">Áreas</span><h3>Condados, servicios y ciudades</h3></div><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_county"><button class="btn btn-secondary btn-sm" type="submit">＋ Agregar condado</button></form></div>
+      {% for c in counties %}
+      <div class="county-workgroup">
+        <div class="county-workgroup-head"><div><strong>{{ c.name }}</strong><span>{{ c.complexity }} · {{ c.points }} puntos</span></div><div class="actions"><button type="button" class="production-edit-btn" data-production-edit data-row-type="county" data-row-id="{{ c.pk }}">✎ Editar</button><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_service"><input type="hidden" name="county_id" value="{{ c.pk }}"><button class="btn btn-secondary btn-sm" type="submit">＋ Servicio</button></form><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_city"><input type="hidden" name="county_id" value="{{ c.pk }}"><button class="btn btn-secondary btn-sm" type="submit">＋ Ciudad</button></form><form method="post" onsubmit="return confirm('¿Eliminar el condado y sus servicios?');">{% csrf_token %}<input type="hidden" name="action" value="delete_county"><input type="hidden" name="row_id" value="{{ c.pk }}"><button class="btn btn-danger-soft btn-sm" type="submit">Eliminar</button></form></div></div>
+        <div class="production-table-wrap"><table class="production-table-v5 dev-production-table compact"><thead><tr><th>Tipo</th><th>Nombre</th><th>Comp.</th><th>Puntos</th><th>Keyword</th><th>Slug</th><th>Responsable</th><th>Lista</th><th>Revisión</th><th>Acciones</th></tr></thead><tbody>
+          <tr class="county-parent-row"><td>Condado</td><td><strong>{{ c.name }}</strong></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if c.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if c.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if c.complexity == 'C' %}selected{% endif %}>C</option></select></form></td><td><b>{{ c.points }}</b></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ c.keyword|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ c.slug|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if c.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form></td><td>{% include 'operations/partials/quick_status.html' with row=c row_type='county' field='state' %}</td><td>{% include 'operations/partials/quick_status.html' with row=c row_type='county' field='review_status' %}</td><td><button type="button" class="production-edit-btn" data-production-edit data-row-type="county" data-row-id="{{ c.pk }}">✎</button></td></tr>
+          {% for s in c.services.all %}<tr><td>Servicio</td><td>{{ s.name }}</td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if s.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if s.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if s.complexity == 'C' %}selected{% endif %}>C</option></select></form></td><td><b>{{ s.points }}</b></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ s.keyword|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ s.slug|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if s.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form></td><td>{% include 'operations/partials/quick_status.html' with row=s row_type='service' field='state' %}</td><td>{% include 'operations/partials/quick_status.html' with row=s row_type='service' field='review_status' %}</td><td><div class="dev-row-actions"><button type="button" class="production-edit-btn" data-production-edit data-row-type="service" data-row-id="{{ s.pk }}">✎</button><form method="post" onsubmit="return confirm('¿Eliminar este servicio?');">{% csrf_token %}<input type="hidden" name="action" value="delete_service"><input type="hidden" name="row_id" value="{{ s.pk }}"><button class="dev-delete-btn" type="submit">×</button></form></div></td></tr>{% endfor %}
+          {% for city in c.cities.all %}<tr><td>Ciudad</td><td>{{ city.name }}</td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if city.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if city.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if city.complexity == 'C' %}selected{% endif %}>C</option></select></form></td><td><b>{{ city.points }}</b></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ city.keyword|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ city.slug|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if city.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form></td><td>{% include 'operations/partials/quick_status.html' with row=city row_type='city' field='state' %}</td><td>{% include 'operations/partials/quick_status.html' with row=city row_type='city' field='review_status' %}</td><td><div class="dev-row-actions"><button type="button" class="production-edit-btn" data-production-edit data-row-type="city" data-row-id="{{ city.pk }}">✎</button><form method="post" onsubmit="return confirm('¿Eliminar esta ciudad?');">{% csrf_token %}<input type="hidden" name="action" value="delete_city"><input type="hidden" name="row_id" value="{{ city.pk }}"><button class="dev-delete-btn" type="submit">×</button></form></div></td></tr>{% endfor %}
+        </tbody></table></div>
+      </div>{% empty %}<div class="notice-card">No hay condados todavía.</div>{% endfor %}
+      {% if unassigned_cities %}<div class="county-workgroup"><div class="county-workgroup-head"><strong>Ciudades sin condado</strong><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_city"><button class="btn btn-secondary btn-sm">＋ Ciudad libre</button></form></div><div class="production-table-wrap"><table class="production-table-v5 dev-production-table compact"><thead><tr><th>Tipo</th><th>Nombre</th><th>Comp.</th><th>Puntos</th><th>Keyword</th><th>Slug</th><th>Responsable</th><th>Acciones</th></tr></thead><tbody>{% for city in unassigned_cities %}<tr><td>Ciudad libre</td><td><strong>{{ city.name }}</strong></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if city.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if city.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if city.complexity == 'C' %}selected{% endif %}>C</option></select></form></td><td><b>{{ city.points }}</b></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ city.keyword|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ city.slug|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if city.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form></td><td><button type="button" class="production-edit-btn" data-production-edit data-row-type="city" data-row-id="{{ city.pk }}">✎ Editar</button></td></tr>{% endfor %}</tbody></table></div></div>{% endif %}
     </div>
+
   </div>
+</details>
 
-  <div class="production-table-wrap">
-    <table class="production-table-v5">
-      <thead>
-        <tr>
-          <th>Tipo</th>
-          <th>Página</th>
-          <th>Keyword</th>
-          <th>Slug</th>
-          <th>Responsable</th>
-          <th class="production-status-col">Lista</th>
-          <th class="production-status-col">Revisión</th>
-          <th class="production-edit-col">Editar</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {% for p in pages %}
-        <tr class="row-page" data-row-type="page" data-row-id="{{ p.pk }}">
-          <td>Principal</td>
-          <td>
-            <strong>{{ p.name }}</strong>
-            <button type="button" class="table-copy" data-copy-text="{{ p.name }}" title="Copiar nombre">⧉</button>
-          </td>
-          <td>
-            {{ p.keyword|default:'—' }}
-            {% if p.keyword %}
-              <button type="button" class="table-copy" data-copy-text="{{ p.keyword }}" title="Copiar keyword">⧉</button>
-            {% endif %}
-          </td>
-          <td>
-            <code>{{ p.slug|default:'—' }}</code>
-            {% if p.slug %}
-              <button type="button" class="table-copy" data-copy-text="{{ p.slug }}" title="Copiar slug">⧉</button>
-            {% endif %}
-          </td>
-          <td>{{ p.responsible.display_name|default:'—' }}</td>
-          <td class="production-status-cell">
-            {% include 'operations/partials/quick_status.html' with row=p row_type='page' field='state' %}
-          </td>
-          <td class="production-status-cell">
-            {% include 'operations/partials/quick_status.html' with row=p row_type='page' field='review_status' %}
-          </td>
-          <td class="production-edit-cell">
-            <button type="button" class="production-edit-btn" data-production-edit data-row-type="page" data-row-id="{{ p.pk }}" aria-label="Editar {{ p.name }}" title="Editar">
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path d="M4 20h4L19 9l-4-4L4 16v4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M13.5 6.5l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </button>
-          </td>
-        </tr>
-        {% endfor %}
-
-        {% for c in counties %}
-        <tr class="row-county" data-row-type="county" data-row-id="{{ c.pk }}">
-          <td>Condado</td>
-          <td>
-            <strong>{{ c.name }}</strong>
-            <button type="button" class="table-copy" data-copy-text="{{ c.name }}" title="Copiar nombre">⧉</button>
-          </td>
-          <td>
-            {{ c.keyword|default:'—' }}
-            {% if c.keyword %}
-              <button type="button" class="table-copy" data-copy-text="{{ c.keyword }}" title="Copiar keyword">⧉</button>
-            {% endif %}
-          </td>
-          <td>
-            <code>{{ c.slug|default:'—' }}</code>
-            {% if c.slug %}
-              <button type="button" class="table-copy" data-copy-text="{{ c.slug }}" title="Copiar slug">⧉</button>
-            {% endif %}
-          </td>
-          <td>{{ c.responsible.display_name|default:'—' }}</td>
-          <td class="production-status-cell">
-            {% include 'operations/partials/quick_status.html' with row=c row_type='county' field='state' %}
-          </td>
-          <td class="production-status-cell">
-            {% include 'operations/partials/quick_status.html' with row=c row_type='county' field='review_status' %}
-          </td>
-          <td class="production-edit-cell">
-            <button type="button" class="production-edit-btn" data-production-edit data-row-type="county" data-row-id="{{ c.pk }}" aria-label="Editar {{ c.name }}" title="Editar">
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path d="M4 20h4L19 9l-4-4L4 16v4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M13.5 6.5l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </button>
-          </td>
-        </tr>
-
-        {% for s in c.services.all %}
-        <tr class="row-service" data-row-type="service" data-row-id="{{ s.pk }}">
-          <td>Servicio</td>
-          <td>
-            <strong>{{ s.name }}</strong>
-            <button type="button" class="table-copy" data-copy-text="{{ s.name }}" title="Copiar nombre">⧉</button>
-          </td>
-          <td>
-            {{ s.keyword|default:'—' }}
-            {% if s.keyword %}
-              <button type="button" class="table-copy" data-copy-text="{{ s.keyword }}" title="Copiar keyword">⧉</button>
-            {% endif %}
-          </td>
-          <td>
-            <code>{{ s.slug|default:'—' }}</code>
-            {% if s.slug %}
-              <button type="button" class="table-copy" data-copy-text="{{ s.slug }}" title="Copiar slug">⧉</button>
-            {% endif %}
-          </td>
-          <td>{{ s.responsible.display_name|default:'—' }}</td>
-          <td class="production-status-cell">
-            {% include 'operations/partials/quick_status.html' with row=s row_type='service' field='state' %}
-          </td>
-          <td class="production-status-cell">
-            {% include 'operations/partials/quick_status.html' with row=s row_type='service' field='review_status' %}
-          </td>
-          <td class="production-edit-cell">
-            <button type="button" class="production-edit-btn" data-production-edit data-row-type="service" data-row-id="{{ s.pk }}" aria-label="Editar {{ s.name }}" title="Editar">
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path d="M4 20h4L19 9l-4-4L4 16v4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M13.5 6.5l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </button>
-          </td>
-        </tr>
-        {% endfor %}
-
-        {% for city in c.cities.all %}
-        <tr class="row-city" data-row-type="city" data-row-id="{{ city.pk }}">
-          <td>Ciudad</td>
-          <td>
-            <strong>{{ city.name }}</strong>
-            <button type="button" class="table-copy" data-copy-text="{{ city.name }}" title="Copiar nombre">⧉</button>
-          </td>
-          <td>
-            {{ city.keyword|default:'—' }}
-            {% if city.keyword %}
-              <button type="button" class="table-copy" data-copy-text="{{ city.keyword }}" title="Copiar keyword">⧉</button>
-            {% endif %}
-          </td>
-          <td>
-            <code>{{ city.slug|default:'—' }}</code>
-            {% if city.slug %}
-              <button type="button" class="table-copy" data-copy-text="{{ city.slug }}" title="Copiar slug">⧉</button>
-            {% endif %}
-          </td>
-          <td>{{ city.responsible.display_name|default:'—' }}</td>
-          <td class="production-status-cell">
-            {% include 'operations/partials/quick_status.html' with row=city row_type='city' field='state' %}
-          </td>
-          <td class="production-status-cell">
-            {% include 'operations/partials/quick_status.html' with row=city row_type='city' field='review_status' %}
-          </td>
-          <td class="production-edit-cell">
-            <button type="button" class="production-edit-btn" data-production-edit data-row-type="city" data-row-id="{{ city.pk }}" aria-label="Editar {{ city.name }}" title="Editar">
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path d="M4 20h4L19 9l-4-4L4 16v4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M13.5 6.5l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </button>
-          </td>
-        </tr>
-        {% endfor %}
-        {% endfor %}
-
-        {% for city in unassigned_cities %}
-        <tr class="row-city" data-row-type="city" data-row-id="{{ city.pk }}">
-          <td>Ciudad libre</td>
-          <td>
-            <strong>{{ city.name }}</strong>
-            <button type="button" class="table-copy" data-copy-text="{{ city.name }}" title="Copiar nombre">⧉</button>
-          </td>
-          <td>
-            {{ city.keyword|default:'—' }}
-            {% if city.keyword %}
-              <button type="button" class="table-copy" data-copy-text="{{ city.keyword }}" title="Copiar keyword">⧉</button>
-            {% endif %}
-          </td>
-          <td>
-            <code>{{ city.slug|default:'—' }}</code>
-            {% if city.slug %}
-              <button type="button" class="table-copy" data-copy-text="{{ city.slug }}" title="Copiar slug">⧉</button>
-            {% endif %}
-          </td>
-          <td>{{ city.responsible.display_name|default:'—' }}</td>
-          <td class="production-status-cell">
-            {% include 'operations/partials/quick_status.html' with row=city row_type='city' field='state' %}
-          </td>
-          <td class="production-status-cell">
-            {% include 'operations/partials/quick_status.html' with row=city row_type='city' field='review_status' %}
-          </td>
-          <td class="production-edit-cell">
-            <button type="button" class="production-edit-btn" data-production-edit data-row-type="city" data-row-id="{{ city.pk }}" aria-label="Editar {{ city.name }}" title="Editar">
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path d="M4 20h4L19 9l-4-4L4 16v4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M13.5 6.5l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </button>
-          </td>
-        </tr>
-        {% endfor %}
-
-        {% for section in internal_sections %}
-        <tr class="row-internal-section" data-row-type="internal_section" data-row-id="{{ section.pk }}">
-          <td>Sección interna</td>
-          <td>
-            <strong>{{ section.name }}</strong>
-            <button type="button" class="table-copy" data-copy-text="{{ section.name }}" title="Copiar nombre">⧉</button>
-          </td>
-          <td>—</td>
-          <td>—</td>
-          <td>{{ section.responsible.display_name|default:'—' }}</td>
-          <td class="production-status-cell">
-            {% include 'operations/partials/quick_status.html' with row=section row_type='internal_section' field='workflow_status' %}
-          </td>
-          <td class="production-status-cell">
-            {% if section.created %}
-              <span class="binary-badge yes">Creada</span>
-            {% else %}
-              <span class="binary-badge no">Pendiente</span>
-            {% endif %}
-          </td>
-          <td class="production-edit-cell">
-            <button type="button" class="production-edit-btn" data-production-edit data-row-type="internal_section" data-row-id="{{ section.pk }}" aria-label="Editar {{ section.name }}" title="Editar">
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path d="M4 20h4L19 9l-4-4L4 16v4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M13.5 6.5l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </button>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<details class="dev-sheet-panel">
+  <summary><span class="dev-sheet-index">02</span><span><strong>Secciones internas</strong><small>Responsables, puntos, estado y configuración especial de formularios</small></span><b class="dev-sheet-chevron">⌄</b></summary>
+  <div class="dev-sheet-content">
+    <div class="dev-table-head"><div><h3>Secciones internas del sitio</h3><p>Asigna el desarrollador responsable y el puntaje real de cada sección.</p></div><form method="post" class="inline-add-section">{% csrf_token %}<input name="section_name" placeholder="Nueva sección"><input type="hidden" name="action" value="add_internal_section"><button class="btn btn-secondary btn-sm" type="submit">＋ Agregar sección</button></form></div>
+    <div class="production-table-wrap"><table class="production-table-v5 dev-production-table"><thead><tr><th>Sección</th><th>Comp.</th><th>Puntos</th><th>Responsable</th><th>Creada</th><th>Estado</th><th>SMTP</th><th>Acciones</th></tr></thead><tbody>
+    {% for section in internal_sections %}<tr><td><strong>{{ section.name }}</strong></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if section.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if section.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if section.complexity == 'C' %}selected{% endif %}>C</option></select></form></td><td><b>{{ section.points }}</b></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if section.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><input type="hidden" name="field" value="created"><select name="value" data-auto-save><option value="no" {% if not section.created %}selected{% endif %}>No</option><option value="yes" {% if section.created %}selected{% endif %}>Sí</option></select></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><input type="hidden" name="field" value="workflow_status"><select name="value" data-auto-save><option value="not_started" {% if section.workflow_status == 'not_started' %}selected{% endif %}>Pendiente</option><option value="in_progress" {% if section.workflow_status == 'in_progress' %}selected{% endif %}>En progreso</option><option value="complete" {% if section.workflow_status == 'complete' %}selected{% endif %}>OK</option></select></form></td><td>{% if 'form' in section.name|lower %}{% if section.smtp_email or section.smtp_password_encrypted %}<span class="smtp-ready">Configurado</span>{% else %}<span class="smtp-pending">Pendiente</span>{% endif %}{% else %}—{% endif %}</td><td><div class="dev-row-actions"><button type="button" class="production-edit-btn" data-production-edit data-row-type="internal_section" data-row-id="{{ section.pk }}">✎</button><form method="post" onsubmit="return confirm('¿Eliminar esta sección?');">{% csrf_token %}<input type="hidden" name="action" value="delete_internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><button class="dev-delete-btn" type="submit">×</button></form></div></td></tr>{% empty %}<tr><td colspan="8">No hay secciones internas.</td></tr>{% endfor %}
+    </tbody></table></div>
   </div>
-</div>
+</details>
 
-<div class="card">
-  <div class="card-head">
-    <div>
-      <h3>3. Agregar elementos</h3>
-      <p>Agrega páginas, condados, servicios o ciudades sin abrir el editor antiguo.</p>
-    </div>
-  </div>
-
-  <div class="production-edit-grid">
-    <form method="post" class="field">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="add_page">
-      <label>Página principal / extra</label>
-      <button class="btn btn-secondary" type="submit">＋ Añadir página</button>
-    </form>
-
-    <form method="post" class="field">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="add_county">
-      <label>Condado</label>
-      <button class="btn btn-secondary" type="submit">＋ Añadir condado</button>
-    </form>
-
-    <form method="post" class="field">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="add_city">
-      <label>Ciudad sin condado</label>
-      <button class="btn btn-secondary" type="submit">＋ Ciudad libre</button>
+<details class="dev-sheet-panel">
+  <summary><span class="dev-sheet-index">03</span><span><strong>Estructura del header</strong><small>Ordena, renombra, agrega o elimina opciones de navegación</small></span><b class="dev-sheet-chevron">⌄</b></summary>
+  <div class="dev-sheet-content">
+    <form method="post" class="header-structure-card header-builder-form">{% csrf_token %}<input type="hidden" name="action" value="save_general"><textarea name="header_structure" id="headerStructureValue" hidden>{{ sheet.header_structure }}</textarea>
+      <div class="header-builder-toolbar"><p>Arrastra los bloques para cambiar el orden. El texto de cada opción es editable.</p><button type="button" class="btn btn-secondary btn-sm" id="header-default">Restaurar base</button></div>
+      <div id="headerBuilder" class="header-builder"></div>
+      <div class="header-add-row"><input id="headerNewItem" type="text" placeholder="Nueva opción, por ejemplo: Financing"><button type="button" class="btn btn-secondary" id="headerAddItem">＋ Agregar opción</button></div>
+      <div class="header-site-preview"><span>Vista previa</span><nav id="header-preview"></nav></div>
+      <div class="production-item-footer"><span>Los cambios se guardan por proyecto.</span><button class="btn btn-primary" type="submit">Guardar header</button></div>
     </form>
   </div>
+</details>
 
-  {% if counties %}
-  <div class="production-stack-v5">
-    {% for c in counties %}
-      <div class="county-subhead">
-        <div>
-          <b>{{ c.name }}</b>
-          <span>{{ c.services.count }} servicios · {{ c.cities.count }} ciudades</span>
-        </div>
-
-        <div class="actions">
-          <form method="post">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="add_service">
-            <input type="hidden" name="county_id" value="{{ c.pk }}">
-            <button class="btn btn-secondary btn-sm" type="submit">＋ Servicio</button>
-          </form>
-
-          <form method="post">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="add_city">
-            <input type="hidden" name="county_id" value="{{ c.pk }}">
-            <button class="btn btn-secondary btn-sm" type="submit">＋ Ciudad</button>
-          </form>
-        </div>
-      </div>
-    {% endfor %}
+<details class="dev-sheet-panel">
+  <summary><span class="dev-sheet-index">04</span><span><strong>Estilo de botones</strong><small>Pega código HTML/CSS, previsualiza, edita y guarda la versión del proyecto</small></span><b class="dev-sheet-chevron">⌄</b></summary>
+  <div class="dev-sheet-content">
+    <form method="post" id="buttonStyleForm" class="button-code-card" data-button-style-save>{% csrf_token %}<input type="hidden" name="action" value="save_button_style"><div class="button-code-grid"><div><label for="buttonStyleCode">Código de botones</label><textarea id="buttonStyleCode" name="button_style_code" rows="22" spellcheck="false" placeholder="Pega aquí tu <style> y el HTML de los botones...">{{ sheet.button_style_code }}</textarea><div class="actions"><button type="button" class="btn btn-secondary" id="buttonPreviewBtn">Previsualizar</button><button class="btn btn-primary" type="submit">Guardar código</button></div></div><div><label>Previsualización aislada</label><iframe id="buttonStylePreview" class="button-style-preview" sandbox="allow-same-origin"></iframe></div></div></form>
+    {% if sheet.button_style_code %}<form method="post" class="button-delete-form" data-button-style-delete>{% csrf_token %}<input type="hidden" name="action" value="delete_button_style"><button class="btn btn-danger-soft" type="submit">Eliminar estilo guardado</button></form>{% endif %}
   </div>
-  {% endif %}
+</details>
+
+<details class="dev-sheet-panel">
+  <summary><span class="dev-sheet-index">05</span><span><strong>Carga y equilibrio del equipo</strong><small>Suma automática de páginas, áreas y secciones internas por desarrollador</small></span><b class="dev-sheet-chevron">⌄</b></summary>
+  <div class="dev-sheet-content">
+    <div class="balance-grid points-balance">{% for item in balance_rows %}<div><strong>{{ item.name }}</strong><b>{{ item.points }} pts</b><span>{{ item.items }} elementos asignados</span></div>{% empty %}<div><strong>Sin asignaciones</strong><span>Asigna responsables para calcular la carga.</span></div>{% endfor %}{% if unassigned_points %}<div class="warning-soft"><strong>Sin asignar</strong><b>{{ unassigned_points }} pts</b><span>Puntos todavía sin responsable</span></div>{% endif %}</div>
+  </div>
+</details>
+
 </div>
 
-<form method="post" class="card header-structure-card">
-  {% csrf_token %}
-  <input type="hidden" name="action" value="save_general">
-
-  <div class="card-head">
-    <div>
-      <h3>4. Estructura del header</h3>
-      <p>Una guía rápida del orden de navegación.</p>
-    </div>
-
-    <button type="button" class="btn btn-secondary btn-sm" id="header-default">
-      Usar estructura base
-    </button>
-  </div>
-
-  <textarea name="header_structure" rows="2" placeholder="Home | About | Services | Areas We Service | Gallery | Contact">{{ sheet.header_structure }}</textarea>
-
-  <div class="header-preview" id="header-preview"></div>
-
-  <div class="production-item-footer">
-    <span>
-      Última edición: {{ sheet.updated_at|date:'d/m/Y H:i' }}
-      {% if sheet.updated_by %} · {{ sheet.updated_by.display_name }}{% endif %}
-    </span>
-
-    <button class="btn btn-primary" type="submit">Guardar configuración</button>
-  </div>
-</form>
-
-{% if balance_rows or unassigned_points %}
-<div class="card production-balance">
-  <div class="card-head">
-    <div>
-      <h3>Distribución del equipo</h3>
-      <p>La carga se calcula automáticamente; complejidad y puntos no son editables ni se muestran por fila.</p>
-    </div>
-  </div>
-
-  <div class="balance-grid">
-    {% for item in balance_rows %}
-      <div>
-        <strong>{{ item.name }}</strong>
-        <span>{{ item.items }} elementos asignados</span>
-      </div>
-    {% endfor %}
-
-    {% if unassigned_points %}
-      <div class="warning-soft">
-        <strong>Sin asignar</strong>
-        <span>Hay elementos pendientes de responsable</span>
-      </div>
-    {% endif %}
-  </div>
-</div>
-{% endif %}
-
+<style>
+.dev-sheet-accordion{display:grid;gap:14px}.dev-sheet-panel{border:1px solid #e3e8f0;border-radius:16px;background:#fff;overflow:hidden}.dev-sheet-panel>summary{list-style:none;display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:14px;padding:20px 22px;cursor:pointer}.dev-sheet-panel>summary::-webkit-details-marker{display:none}.dev-sheet-index{width:40px;height:40px;border-radius:12px;background:#eef3fb;display:grid;place-items:center;font-weight:900;color:#314f84}.dev-sheet-panel summary strong{display:block;font-size:16px}.dev-sheet-panel summary small{display:block;color:#748096;margin-top:4px}.dev-sheet-chevron{font-size:20px;transition:transform .2s}.dev-sheet-panel[open] .dev-sheet-chevron{transform:rotate(180deg)}.dev-sheet-content{border-top:1px solid #edf0f5;padding:20px}.dev-table-block{margin-top:20px;border:1px solid #e5eaf1;border-radius:14px;overflow:hidden}.dev-table-head,.county-workgroup-head,.header-builder-toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:16px 18px}.dev-table-head h3{margin:3px 0}.dev-production-table th,.dev-production-table td{vertical-align:middle}.work-chip{display:inline-grid;place-items:center;min-width:28px;height:28px;border-radius:8px;background:#eef3fb;font-weight:900}.dev-row-actions{display:flex;align-items:center;gap:7px}.dev-row-actions form{margin:0}.dev-delete-btn{width:32px;height:32px;border:1px solid #f0baba;border-radius:9px;background:#fff1f1;color:#b13939;font-size:18px;cursor:pointer}.county-workgroup{margin:14px;border:1px solid #e6eaf0;border-radius:12px;overflow:hidden}.county-workgroup-head{background:#f8fafc}.county-workgroup-head>div:first-child span{display:block;font-size:11px;color:#7c8799;margin-top:3px}.inline-add-section{display:flex;gap:8px}.inline-add-section input,.header-add-row input{min-width:240px;border:1px solid #dce2eb;border-radius:10px;padding:10px 12px}.smtp-ready{color:#176d57;background:#dcf4ea;padding:5px 9px;border-radius:999px;font-weight:800}.smtp-pending{color:#9d3636;background:#ffe8e8;padding:5px 9px;border-radius:999px;font-weight:800}.header-builder{display:flex;flex-wrap:wrap;gap:10px;padding:18px;border:1px dashed #cfd8e6;border-radius:14px;background:#f8fafc;min-height:74px}.header-builder-item{display:flex;align-items:center;gap:7px;padding:8px 9px;border:1px solid #dce3ed;border-radius:11px;background:#fff;cursor:grab}.header-builder-item.dragging{opacity:.45}.header-drag{color:#8b96a8;font-weight:900}.header-builder-item input{width:150px;border:0;outline:0;font-weight:800;background:transparent}.header-remove{border:0;background:#fff0f0;color:#b23d3d;border-radius:7px;width:26px;height:26px;cursor:pointer}.header-add-row{display:flex;gap:10px;margin-top:14px}.header-site-preview{margin-top:18px;padding:14px 16px;border-radius:12px;background:#f3f6fa}.header-site-preview>span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#7a8698;margin-bottom:10px}.header-site-preview nav{display:flex;flex-wrap:wrap;gap:18px;font-weight:800}.button-code-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.button-code-grid label{display:block;font-weight:800;margin-bottom:8px}.button-code-grid textarea{width:100%;font-family:Consolas,monospace;font-size:12px;border:1px solid #dce2eb;border-radius:12px;padding:14px;resize:vertical}.button-style-preview{width:100%;min-height:520px;border:1px solid #dce2eb;border-radius:12px;background:#fff}.button-delete-form{margin-top:12px}.points-balance>div{position:relative}.points-balance b{display:block;font-size:22px;color:#314f84;margin:4px 0}.production-table-v5.compact th,.production-table-v5.compact td{padding-top:9px;padding-bottom:9px}
+.dev-quick-form{margin:0;min-width:0}.dev-quick-form select,.dev-quick-form input[name="value"]{width:100%;min-width:92px;border:1px solid #dce2eb;border-radius:9px;background:#fff;padding:8px 9px;font:inherit}.dev-quick-form .complexity-select{min-width:58px;width:58px;font-weight:900}.quick-text-form input[name="value"]{min-width:155px}.dev-production-table td{min-width:90px}.dev-production-table td:nth-child(4),.dev-production-table td:nth-child(5){min-width:180px}.dev-async-busy{opacity:.72;pointer-events:none}
+@media(max-width:900px){.dev-table-head,.county-workgroup-head,.header-builder-toolbar{align-items:flex-start;flex-direction:column}.button-code-grid{grid-template-columns:1fr}.inline-add-section,.header-add-row{width:100%;flex-direction:column}.inline-add-section input,.header-add-row input{min-width:0;width:100%}.dev-sheet-content{padding:12px}.production-table-wrap{overflow:auto}}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  const hidden=document.getElementById('headerStructureValue'); const builder=document.getElementById('headerBuilder'); const preview=document.getElementById('header-preview');
+  function values(){return [...builder.querySelectorAll('.header-builder-item input')].map(i=>i.value.trim()).filter(Boolean)}
+  function sync(){const items=values(); hidden.value=items.join(' | '); preview.innerHTML=''; items.forEach(v=>{const s=document.createElement('span');s.textContent=v;preview.appendChild(s)})}
+  function addItem(value){const d=document.createElement('div');d.className='header-builder-item';d.draggable=true;d.innerHTML='<span class="header-drag">⋮⋮</span><input type="text"><button type="button" class="header-remove" aria-label="Eliminar">×</button>';d.querySelector('input').value=value;d.querySelector('input').addEventListener('input',sync);d.querySelector('.header-remove').addEventListener('click',()=>{d.remove();sync()});d.addEventListener('dragstart',()=>d.classList.add('dragging'));d.addEventListener('dragend',()=>{d.classList.remove('dragging');sync()});builder.appendChild(d)}
+  function load(text){builder.innerHTML='';(text||'').split('|').map(x=>x.trim()).filter(Boolean).forEach(addItem);sync()}
+  builder?.addEventListener('dragover',e=>{e.preventDefault();const dragging=builder.querySelector('.dragging');if(!dragging)return;const after=[...builder.querySelectorAll('.header-builder-item:not(.dragging)')].find(el=>{const r=el.getBoundingClientRect();return e.clientX<r.left+r.width/2});if(after)builder.insertBefore(dragging,after);else builder.appendChild(dragging)});
+  if(hidden&&builder){load(hidden.value)}
+  document.getElementById('headerAddItem')?.addEventListener('click',()=>{const input=document.getElementById('headerNewItem');if(input.value.trim()){addItem(input.value.trim());input.value='';sync()}});
+  document.getElementById('header-default')?.addEventListener('click',()=>load('Home | About | Services | Popular Services | Areas We Service | Gallery | Contact | Resources | Free Quote'));
+  document.querySelector('.header-builder-form')?.addEventListener('submit',sync);
+  const code=document.getElementById('buttonStyleCode'), frame=document.getElementById('buttonStylePreview');
+  function renderButtons(){if(!frame||!code)return;frame.srcdoc='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>'+code.value+'</body></html>'}
+  document.getElementById('buttonPreviewBtn')?.addEventListener('click',renderButtons); if(code?.value.trim()) renderButtons();
+});
+</script>
 <datalist id="service-catalog">
   {% for item in service_catalog %}
     <option value="{{ item.name }}"></option>
@@ -1131,6 +763,20 @@
         </div>
 
         <div class="field">
+          <label>Complejidad</label>
+          <select name="internal_{{ section.pk }}_complexity">
+            <option value="S" {% if section.complexity == 'S' %}selected{% endif %}>S · Simple</option>
+            <option value="M" {% if section.complexity == 'M' %}selected{% endif %}>M · Media</option>
+            <option value="C" {% if section.complexity == 'C' %}selected{% endif %}>C · Compleja</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Puntos</label>
+          <input type="number" min="1" max="3" name="internal_{{ section.pk }}_points" value="{{ section.points }}" readonly>
+        </div>
+
+        <div class="field">
           <label>Responsable</label>
           <select name="internal_{{ section.pk }}_responsible">
             <option value="">Sin asignar</option>
@@ -1176,6 +822,18 @@
           <input value="{% if section.updated_by %}{{ section.updated_by.display_name }}{% else %}—{% endif %}" readonly>
         </div>
 
+        {% if 'form' in section.name|lower %}
+        <div class="field form-wide smtp-config-field">
+          <label>SMTP Email</label>
+          <input type="email" name="internal_{{ section.pk }}_smtp_email" value="{{ section.smtp_email }}" autocomplete="off" placeholder="info@dominio.com">
+        </div>
+        <div class="field form-wide smtp-config-field">
+          <label>SMTP Password</label>
+          <input type="password" name="internal_{{ section.pk }}_smtp_password" value="" autocomplete="new-password" placeholder="{% if section.smtp_password_encrypted %}Contraseña guardada · escribe solo para reemplazar{% else %}Contraseña SMTP{% endif %}">
+          {% if section.smtp_password_encrypted %}<label class="mini-choice"><input type="checkbox" name="internal_{{ section.pk }}_clear_smtp_password" value="1"> Eliminar contraseña SMTP guardada</label>{% endif %}
+        </div>
+        {% endif %}
+
         <div class="field form-wide">
           <label>Notas</label>
           <textarea rows="3" name="internal_{{ section.pk }}_notes">{{ section.notes }}</textarea>
@@ -1188,7 +846,10 @@
           {% if section.updated_by %} · {{ section.updated_by.display_name }}{% endif %}
         </span>
 
-        <button class="btn btn-primary" type="submit">Guardar sección</button>
+        <div class="actions">
+          <button class="btn btn-primary" type="submit">Guardar sección</button>
+          <button class="btn btn-danger-soft btn-sm" type="submit" onclick="if(!confirm('¿Eliminar esta sección interna?')) return false; this.form.querySelector('[name=action]').value='delete_internal_section';">Eliminar</button>
+        </div>
       </div>
     </form>
   </div>
@@ -1603,6 +1264,295 @@
       restoreActiveForm();
     }
   );
+})();
+</script>
+
+
+
+<style>
+#devAsyncSaveToast{
+  position:fixed;
+  right:24px;
+  bottom:24px;
+  z-index:100000;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  max-width:min(420px,calc(100vw - 32px));
+  padding:12px 16px;
+  border:1px solid #cfe8dd;
+  border-radius:12px;
+  background:#f0fbf6;
+  color:#176d57;
+  box-shadow:0 12px 34px rgba(15,34,48,.14);
+  font-weight:800;
+  opacity:0;
+  transform:translateY(12px);
+  pointer-events:none;
+  transition:opacity .2s ease,transform .2s ease;
+}
+#devAsyncSaveToast.is-visible{opacity:1;transform:translateY(0)}
+#devAsyncSaveToast.is-error{border-color:#f0c8c8;background:#fff3f3;color:#a73535}
+.dev-async-busy{opacity:.65;pointer-events:none}
+@media(max-width:767px){#devAsyncSaveToast{right:16px;bottom:16px;left:16px;max-width:none}}
+</style>
+
+<div id="devAsyncSaveToast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  const workspaceSelector = '.dev-sheet-accordion';
+  const sourcesSelector = '#productionEditSources';
+  let saving = false;
+  let toastTimer = null;
+
+  function toast(message, error){
+    const el = document.getElementById('devAsyncSaveToast');
+    if(!el) return;
+    window.clearTimeout(toastTimer);
+    el.textContent = message;
+    el.classList.toggle('is-error', !!error);
+    el.classList.add('is-visible');
+    toastTimer = window.setTimeout(function(){
+      el.classList.remove('is-visible');
+    }, 2200);
+  }
+
+  function openPanels(){
+    return Array.from(document.querySelectorAll('.dev-sheet-panel')).map(function(panel,index){
+      return panel.open ? index : -1;
+    }).filter(function(index){ return index >= 0; });
+  }
+
+  function restorePanels(indexes){
+    document.querySelectorAll('.dev-sheet-panel').forEach(function(panel,index){
+      panel.open = indexes.includes(index);
+    });
+  }
+
+  function closePopup(){
+    const popup = document.querySelector('.production-edit-popup, [data-production-popup]');
+    if(popup){
+      popup.classList.remove('is-open');
+      popup.setAttribute('aria-hidden','true');
+    }
+    document.body.classList.remove('production-popup-open');
+    const body = document.querySelector('[data-production-popup-body], .production-popup-body');
+    if(body) body.innerHTML = '';
+  }
+
+  function initializeHeaderBuilder(){
+    const hidden = document.getElementById('headerStructureValue');
+    const builder = document.getElementById('headerBuilder');
+    const preview = document.getElementById('header-preview');
+    if(!hidden || !builder || builder.dataset.asyncReady === '1') return;
+    builder.dataset.asyncReady = '1';
+
+    function values(){
+      return Array.from(builder.querySelectorAll('.header-builder-item input')).map(function(input){
+        return input.value.trim();
+      }).filter(Boolean);
+    }
+    function sync(){
+      const items = values();
+      hidden.value = items.join(' | ');
+      if(preview){
+        preview.innerHTML = '';
+        items.forEach(function(value){
+          const span = document.createElement('span');
+          span.textContent = value;
+          preview.appendChild(span);
+        });
+      }
+    }
+    function addItem(value){
+      const item = document.createElement('div');
+      item.className = 'header-builder-item';
+      item.draggable = true;
+      item.innerHTML = '<span class="header-drag">⋮⋮</span><input type="text"><button type="button" class="header-remove" aria-label="Eliminar">×</button>';
+      item.querySelector('input').value = value;
+      item.querySelector('input').addEventListener('input', sync);
+      item.querySelector('.header-remove').addEventListener('click', function(){ item.remove(); sync(); });
+      item.addEventListener('dragstart', function(){ item.classList.add('dragging'); });
+      item.addEventListener('dragend', function(){ item.classList.remove('dragging'); sync(); });
+      builder.appendChild(item);
+    }
+    function load(value){
+      builder.innerHTML = '';
+      String(value || '').split('|').map(function(item){ return item.trim(); }).filter(Boolean).forEach(addItem);
+      sync();
+    }
+
+    builder.addEventListener('dragover', function(event){
+      event.preventDefault();
+      const dragging = builder.querySelector('.dragging');
+      if(!dragging) return;
+      const candidates = Array.from(builder.querySelectorAll('.header-builder-item:not(.dragging)'));
+      const after = candidates.find(function(item){
+        const rect = item.getBoundingClientRect();
+        return event.clientX < rect.left + rect.width / 2;
+      });
+      if(after) builder.insertBefore(dragging, after); else builder.appendChild(dragging);
+    });
+
+    document.getElementById('headerAddItem')?.addEventListener('click', function(){
+      const input = document.getElementById('headerNewItem');
+      if(input && input.value.trim()){
+        addItem(input.value.trim());
+        input.value = '';
+        sync();
+      }
+    });
+    document.getElementById('header-default')?.addEventListener('click', function(){
+      load('Home | About | Services | Popular Services | Areas We Service | Gallery | Contact | Resources | Free Quote');
+    });
+    document.querySelector('.header-builder-form')?.addEventListener('submit', sync);
+    load(hidden.value);
+  }
+
+  function initializeButtonPreview(){
+    const code = document.getElementById('buttonStyleCode');
+    const frame = document.getElementById('buttonStylePreview');
+    const button = document.getElementById('buttonPreviewBtn');
+    if(!code || !frame || !button || button.dataset.asyncReady === '1') return;
+    button.dataset.asyncReady = '1';
+    function render(){
+      frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>' + code.value + '</body></html>';
+    }
+    button.addEventListener('click', render);
+    if(code.value.trim()) render();
+  }
+
+  function initializeDynamic(){
+    initializeHeaderBuilder();
+    initializeButtonPreview();
+  }
+
+  async function refreshWorkspace(response, panels, scrollY){
+    const html = await response.text();
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    const nextWorkspace = parsed.querySelector(workspaceSelector);
+    const currentWorkspace = document.querySelector(workspaceSelector);
+    if(nextWorkspace && currentWorkspace){
+      currentWorkspace.replaceWith(nextWorkspace);
+    }
+    const nextSources = parsed.querySelector(sourcesSelector);
+    const currentSources = document.querySelector(sourcesSelector);
+    if(nextSources && currentSources){
+      currentSources.replaceWith(nextSources);
+    }
+    closePopup();
+    restorePanels(panels);
+    initializeDynamic();
+    window.scrollTo({top:scrollY,left:0,behavior:'auto'});
+  }
+
+  async function saveButtonStyleForm(form){
+    if(saving) return;
+    saving = true;
+    const submitter = form.querySelector('[type="submit"]');
+    submitter?.setAttribute('disabled','disabled');
+    try{
+      const response = await fetch(form.action || window.location.href, {
+        method: 'POST',
+        body: new FormData(form),
+        credentials: 'same-origin',
+        headers: {'X-Requested-With':'XMLHttpRequest'}
+      });
+      if(!response.ok) throw new Error('HTTP ' + response.status);
+      if(form.matches('[data-button-style-delete]')){
+        const code = document.getElementById('buttonStyleCode');
+        const frame = document.getElementById('buttonStylePreview');
+        if(code) code.value = '';
+        if(frame) frame.srcdoc = '';
+        form.remove();
+        toast('Estilo de botones eliminado.');
+      }else{
+        if(!document.querySelector('[data-button-style-delete]')){
+          const deleteForm = document.createElement('form');
+          deleteForm.method = 'post';
+          deleteForm.className = 'button-delete-form';
+          deleteForm.dataset.buttonStyleDelete = '1';
+          const csrf = form.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
+          deleteForm.innerHTML = '<input type="hidden" name="csrfmiddlewaretoken" value="'+csrf+'"><input type="hidden" name="action" value="delete_button_style"><button class="btn btn-danger-soft" type="submit">Eliminar estilo guardado</button>';
+          form.insertAdjacentElement('afterend', deleteForm);
+        }
+        toast('Estilo de botones guardado.');
+      }
+    }catch(error){
+      console.error('Estilo de botones:', error);
+      toast('No se pudo guardar el estilo de botones.', true);
+    }finally{
+      saving = false;
+      submitter?.removeAttribute('disabled');
+    }
+  }
+
+  async function saveForm(form){
+    if(saving) return;
+    saving = true;
+    const panels = openPanels();
+    const scrollY = window.scrollY;
+    const submitter = form.querySelector('[type="submit"]');
+    const workspace = document.querySelector(workspaceSelector);
+    submitter?.setAttribute('disabled','disabled');
+    workspace?.classList.add('dev-async-busy');
+
+    try{
+      const response = await fetch(form.action || window.location.href, {
+        method: (form.method || 'POST').toUpperCase(),
+        body: new FormData(form),
+        credentials: 'same-origin',
+        headers: {'X-Requested-With':'XMLHttpRequest'}
+      });
+      if(!response.ok) throw new Error('HTTP ' + response.status);
+      await refreshWorkspace(response, panels, scrollY);
+      toast('Cambios guardados correctamente.');
+    }catch(error){
+      console.error('Guardado asíncrono:', error);
+      toast('No se pudo guardar. Revisa la conexión e inténtalo otra vez.', true);
+    }finally{
+      saving = false;
+      document.querySelector(workspaceSelector)?.classList.remove('dev-async-busy');
+      submitter?.removeAttribute('disabled');
+    }
+  }
+
+  document.addEventListener('submit', function(event){
+    const form = event.target;
+    if(!(form instanceof HTMLFormElement)) return;
+    const belongs = form.closest(workspaceSelector) || form.closest(sourcesSelector) || form.closest('.production-edit-popup') || form.closest('[data-production-popup]');
+    if(!belongs) return;
+    event.preventDefault();
+    if(form.matches('[data-button-style-save],[data-button-style-delete]')){
+      if(form.matches('[data-button-style-delete]') && !window.confirm('¿Eliminar el código de botones guardado?')) return;
+      saveButtonStyleForm(form);
+      return;
+    }
+    saveForm(form);
+  }, true);
+
+  document.addEventListener('change', function(event){
+    const select = event.target.closest('.quick-status-form select');
+    if(select){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      saveForm(select.form);
+      return;
+    }
+    const quick = event.target.closest('[data-auto-save]');
+    if(quick && quick.form){
+      event.preventDefault();
+      saveForm(quick.form);
+    }
+  }, true);
+
+  document.addEventListener('change', function(event){
+    const input = event.target.closest('[data-auto-save-text]');
+    if(input && input.form) saveForm(input.form);
+  }, true);
+
+  initializeDynamic();
 })();
 </script>
 

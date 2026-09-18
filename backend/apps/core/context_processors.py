@@ -16,10 +16,12 @@ def _navigation_context(request):
         "general_audit", "general_audit_check", "social_tracking", "social_tracking_audit"
     }:
         group, module, page = "control", "Control / Auditoría", "Auditoría General"
+    elif namespace == "operations" and url_name == "development_tasks":
+        group, module, page = "development", "Desarrollo", "Tareas"
     elif namespace == "operations" and url_name in {
         "web_production_sheet", "web_production_quick_toggle"
     }:
-        group, module, page = "development", "Desarrollo", "Resumen de tareas"
+        group, module, page = "development", "Desarrollo", "Ficha de producción"
     elif namespace == "dashboard":
         group, module, page = "dashboard", "Dashboard", "Inicio"
     elif namespace == "design":

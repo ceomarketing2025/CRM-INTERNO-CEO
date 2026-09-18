@@ -2384,3 +2384,131 @@ def web_production_quick_toggle(
         "operations:web_production_sheet",
         project_pk=project.pk,
     )
+
+@role_required("developer")
+def development_tasks(request):
+    from django.utils import timezone
+    from .models import DevelopmentTask
+
+    can_assign = bool(
+        request.user.is_superuser
+        or getattr(request.user, "role", "") == "manager"
+    )
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+
+        if action == "create":
+            if not can_assign:
+                raise PermissionDenied("No tienes permiso para asignar tareas.")
+
+            title = (request.POST.get("title") or "").strip()
+            assigned_to_id = (request.POST.get("assigned_to") or "").strip()
+            assigned_date = (request.POST.get("assigned_date") or "").strip()
+
+            if not title or not assigned_to_id or not assigned_date:
+                payload = {"ok": False, "message": "Completa tarea, desarrollador y fecha de asignación."}
+                return JsonResponse(payload, status=400) if request.headers.get("x-requested-with") == "XMLHttpRequest" else redirect("operations:development_tasks")
+
+            assigned_to = get_object_or_404(
+                UserAccount,
+                pk=assigned_to_id,
+                role="developer",
+                is_active=True,
+            )
+
+            project = None
+            project_id = (request.POST.get("project_id") or "").strip()
+            if project_id:
+                project = get_object_or_404(Project, pk=project_id)
+
+            due_date = (request.POST.get("due_date") or "").strip() or None
+            priority = (request.POST.get("priority") or "medium").strip()
+            if priority not in {"low", "medium", "high"}:
+                priority = "medium"
+
+            task = DevelopmentTask.objects.create(
+                title=title,
+                description=(request.POST.get("description") or "").strip(),
+                project=project,
+                assigned_to=assigned_to,
+                assigned_by=request.user,
+                assigned_date=assigned_date,
+                due_date=due_date,
+                priority=priority,
+                status="pending",
+                assignment_note=(request.POST.get("assignment_note") or "").strip(),
+                updated_by=request.user,
+            )
+            log_activity(request.user, "operations", "development_task_create", task)
+
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"ok": True, "task_id": task.pk})
+            messages.success(request, "Tarea asignada.")
+            return redirect("operations:development_tasks")
+
+        if action == "update":
+            task = get_object_or_404(DevelopmentTask, pk=request.POST.get("task_id"))
+            if not can_assign and task.assigned_to_id != request.user.id:
+                raise PermissionDenied("No puedes modificar esta tarea.")
+
+            status = (request.POST.get("status") or task.status).strip()
+            valid_statuses = {"pending", "in_progress", "issue", "completed"}
+            if status not in valid_statuses:
+                status = task.status
+
+            issue_reason = (request.POST.get("issue_reason") or "").strip()
+            if status == "issue" and not issue_reason:
+                payload = {"ok": False, "message": "Debes registrar el motivo del inconveniente."}
+                return JsonResponse(payload, status=400) if request.headers.get("x-requested-with") == "XMLHttpRequest" else redirect("operations:development_tasks")
+
+            task.status = status
+            task.issue_reason = issue_reason if status == "issue" else ""
+            if "developer_note" in request.POST:
+                task.developer_note = (request.POST.get("developer_note") or "").strip()
+            task.completed_at = timezone.now() if status == "completed" else None
+            task.updated_by = request.user
+            task.save(update_fields=["status", "issue_reason", "developer_note", "completed_at", "updated_by", "updated_at"])
+            log_activity(request.user, "operations", "development_task_update", task)
+
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"ok": True, "status": task.status})
+            messages.success(request, "Tarea actualizada.")
+            return redirect("operations:development_tasks")
+
+    qs = DevelopmentTask.objects.select_related("project", "assigned_to", "assigned_by").all()
+    if not can_assign:
+        qs = qs.filter(assigned_to=request.user)
+
+    status_filter = (request.GET.get("status") or "all").strip()
+    if status_filter in {"pending", "in_progress", "issue", "completed"}:
+        qs = qs.filter(status=status_filter)
+    else:
+        status_filter = "all"
+
+    today = timezone.localdate()
+    base_stats = DevelopmentTask.objects.all() if can_assign else DevelopmentTask.objects.filter(assigned_to=request.user)
+    stats = {
+        "today": base_stats.filter(assigned_date=today).count(),
+        "pending": base_stats.filter(status="pending").count(),
+        "in_progress": base_stats.filter(status="in_progress").count(),
+        "issue": base_stats.filter(status="issue").count(),
+        "completed": base_stats.filter(status="completed").count(),
+    }
+
+    developers = UserAccount.objects.filter(role="developer", is_active=True).order_by("first_name", "last_name", "email") if can_assign else UserAccount.objects.none()
+    projects = Project.objects.order_by("-created_at")[:300] if can_assign else Project.objects.filter(assignments__user=request.user).distinct().order_by("-created_at")[:300]
+
+    return render(request, "operations/development_tasks.html", {
+        "tasks": qs[:300],
+        "stats": stats,
+        "status_filter": status_filter,
+        "status_choices": DevelopmentTask.STATUS_CHOICES,
+        "developers": developers,
+        "projects": projects,
+        "can_assign": can_assign,
+        "today": today,
+        "active_nav_group": "development",
+        "current_page_label": "Tareas",
+    })
+

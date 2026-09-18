@@ -48,7 +48,7 @@
         <summary><span class="nav-section-icon">⌘</span><b>Desarrollo</b><i>⌄</i></summary>
         <div class="nav-section-links">
           <a href="{% url 'questionnaires:development_information' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Información' and not request.GET.view %}active{% endif %}"><span>◫</span><b>Información</b></a>
-          <a href="{% url 'questionnaires:development_dashboard' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Tareas' %}active{% endif %}"><span>✓</span><b>Tareas</b></a>
+          <a href="{% url 'operations:development_tasks' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Tareas' %}active{% endif %}"><span>✓</span><b>Tareas</b></a>
           <a href="{% url 'questionnaires:development_information' %}?view=production" class="nav-link {% if active_nav_group == 'development' and request.GET.view == 'production' %}active{% endif %}"><span>▣</span><b>Ficha de producción</b></a>
           <a href="{% url 'questionnaires:development_information' %}?view=styles" class="nav-link {% if active_nav_group == 'development' and request.GET.view == 'styles' %}active{% endif %}"><span>✦</span><b>Estilos</b></a>
           <a href="{% url 'questionnaires:seo_status' %}" class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Matriz SEO' %}active{% endif %}"><span>↗</span><b>Matriz SEO</b></a>

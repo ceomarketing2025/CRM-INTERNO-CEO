@@ -17,6 +17,7 @@
     <p>Registra la información levantada con el cliente. El estado de esta etapa se calcula automáticamente según el checklist; las credenciales se administran fuera de Marketing.</p>
   </div>
   <div class="actions">
+    <a class="btn btn-primary" href="{% url 'marketing:task_create' %}?project={{ project.pk }}&amp;return_to=ficha">＋ Tarea</a>
     <a class="btn btn-secondary" href="{% url 'marketing:document_add' project.pk %}">＋ Documentación Legal</a>
     <a class="btn btn-secondary" href="{% url 'handoff:summary' project.pk %}">Resumen general</a>
   </div>

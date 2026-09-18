@@ -96,12 +96,32 @@ def _progress_for_checks(checks):
     return total, complete, percent
 
 
-def _task_count_for_project(project, area):
-    qs = project.marketing_tasks.filter(area=area)
+def _ficha_progress_for_project_area(project, area):
+    """Devuelve el avance vivo de la Ficha Marketing para el área de una tarea.
+
+    No duplica estados en MarketingTask: la fuente de verdad sigue siendo el
+    checklist de la ficha. Así, Tareas de Marketing siempre refleja los cambios
+    guardados en Información inicial, Google Business, Google LSA y Publicidad.
+    """
+    area_map = {
+        "general": ["intake"],
+        "google_business": ["google_profile"],
+        "google_lsa": ["google_lsa"],
+        "digital_ads": ["traditional", "meta_ads", "google_ads", "tiktok_ads"],
+    }
+    checklist_areas = area_map.get(area)
+    if not checklist_areas:
+        return None
+
+    workspace = ensure_workspace(project)
+    sync_workspace_checks(workspace)
+    checks = workspace.checklist_items.filter(area__in=checklist_areas, active=True)
+    total, complete, percent = _progress_for_checks(checks)
     return {
-        "total": qs.count(),
-        "pending": qs.exclude(status="done").count(),
-        "done": qs.filter(status="done").count(),
+        "total": total,
+        "complete": complete,
+        "percent": percent,
+        "is_complete": bool(total and complete == total),
     }
 
 
@@ -231,7 +251,6 @@ def google_business_list(request):
             "total": total,
             "complete": complete,
             "percent": percent,
-            "tasks": _task_count_for_project(project, "google_business"),
         })
     return render(request, "marketing/google_business_list.html", {
         "rows": rows,
@@ -264,7 +283,6 @@ def google_lsa_list(request):
             "total": total,
             "complete": complete,
             "percent": percent,
-            "tasks": _task_count_for_project(project, "google_lsa"),
         })
     return render(request, "marketing/google_lsa_list.html", {
         "rows": rows,
@@ -300,7 +318,6 @@ def digital_ads_list(request):
             "campaign_total": campaigns.count(),
             "campaign_active": campaigns.filter(status__in=["approved", "scheduled", "launched"]).count(),
             "campaign_review": campaigns.filter(status="manager_review").count(),
-            "tasks": _task_count_for_project(project, "digital_ads"),
         })
     return render(request, "marketing/digital_ads_list.html", {"rows": rows, "q": q, "current_page_label": "Publicidad Digital"})
 
@@ -1052,7 +1069,7 @@ def brief_edit(request, project_pk):
 
 @role_required("marketing")
 def task_list(request):
-    """Bandeja operativa propia de Marketing, separada de la ficha de información."""
+    """Bandeja operativa vinculada en vivo con la Ficha Marketing."""
     from django.db.models import Q
 
     records = MarketingTask.objects.select_related("project__client", "assigned_to").order_by("status", "due_date", "project__client__business_name")
@@ -1078,7 +1095,14 @@ def task_list(request):
     if area:
         records = records.filter(area=area)
 
-    visible = records[:300]
+    visible = list(records[:300])
+    progress_cache = {}
+    for task in visible:
+        cache_key = (task.project_id, task.area)
+        if cache_key not in progress_cache:
+            progress_cache[cache_key] = _ficha_progress_for_project_area(task.project, task.area)
+        task.ficha_progress = progress_cache[cache_key]
+
     return render(request, "marketing/task_list.html", {
         "records": visible,
         "q": q,
@@ -1107,12 +1131,14 @@ def task_create(request):
     if request.method == "POST" and form.is_valid():
         obj = form.save()
         log_activity(request.user, "marketing", "task_create", obj)
-        messages.success(request, "Tarea de Marketing creada.")
+        messages.success(request, "Tarea de Marketing creada y vinculada a la ficha del proyecto.")
+        if (request.GET.get("return_to") or "").strip() == "ficha":
+            return redirect("marketing:workspace", project_pk=obj.project_id)
         return redirect("marketing:tasks")
     return render(request, "marketing/form.html", {
         "form": form,
         "title": "Nueva tarea de Marketing",
-        "subtitle": "Actividad operativa separada de la información recopilada del cliente.",
+        "subtitle": "La tarea queda vinculada al proyecto y su avance de Ficha Marketing se muestra en Tareas de Marketing.",
     })
 
 

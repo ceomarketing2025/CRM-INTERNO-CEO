@@ -309,20 +309,62 @@
 
       {% if current_role == 'sales' or current_role == 'manager' or request.user.is_superuser %}
 
-      <a
-        href="{% url 'sales:dashboard' %}"
-        class="nav-link nav-link-main {% if active_nav_group == 'sales' %}active{% endif %}"
-      >
-        <span class="nav-svg">
-          <svg viewBox="0 0 24 24">
-            <path d="M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8-1a3 3 0 1 0 0-6m-8 9c-4 0-6 2-6 5v2h12v-2c0-3-2-5-6-5Zm8 0c3 0 5 2 5 5v2h-5"/>
-          </svg>
-        </span>
-        <b>Vendedores</b>
-      </a>
+<details
+  class="nav-section"
+  data-nav-section
+  {% if active_nav_group == 'sales' %}open{% endif %}
+>
 
-      {% endif %}
+  <summary>
+    <span class="nav-svg">
+      <svg viewBox="0 0 24 24">
+        <path d="M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8-1a3 3 0 1 0 0-6m-8 9c-4 0-6 2-6 5v2h12v-2c0-3-2-5-6-5Zm8 0c3 0 5 2 5 5v2h-5"/>
+      </svg>
+    </span>
 
+    <b>Vendedores</b>
+    <i>⌄</i>
+  </summary>
+
+  <div class="nav-section-links">
+
+    <a
+      href="{% url 'sales:dashboard' %}"
+      class="nav-link {% if active_nav_group == 'sales' and current_url_name == 'dashboard' %}active{% endif %}"
+    >
+      <span>01</span>
+      <b>Panel comercial</b>
+    </a>
+
+    <a
+      href="{% url 'sales:lead_list' %}"
+      class="nav-link {% if active_nav_group == 'sales' and current_url_name == 'lead_list' or active_nav_group == 'sales' and current_url_name == 'lead_create' or active_nav_group == 'sales' and current_url_name == 'lead_detail' %}active{% endif %}"
+    >
+      <span>02</span>
+      <b>Leads</b>
+    </a>
+
+    <a
+      href="{% url 'sales:followup_list' %}"
+      class="nav-link {% if active_nav_group == 'sales' and current_url_name == 'followup_list' or active_nav_group == 'sales' and current_url_name == 'create_followup_from_agenda' or active_nav_group == 'sales' and current_url_name == 'complete_followup' %}active{% endif %}"
+    >
+      <span>03</span>
+      <b>Seguimientos</b>
+    </a>
+
+    <a
+      href="{% url 'sales:meeting_list' %}"
+      class="nav-link {% if active_nav_group == 'sales' and current_url_name == 'meeting_list' or active_nav_group == 'sales' and current_url_name == 'create_meeting_from_agenda' or active_nav_group == 'sales' and current_url_name == 'update_meeting' %}active{% endif %}"
+    >
+      <span>04</span>
+      <b>Reuniones</b>
+    </a>
+
+  </div>
+
+</details>
+
+{% endif %}
 
       {% if current_role == 'manager' or request.user.is_superuser %}
 

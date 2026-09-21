@@ -9,7 +9,7 @@
       <p>Selecciona un proyecto para administrar su estructura, responsables, páginas, condados, servicios y ciudades.</p>
     {% elif request.GET.view == 'styles' %}
       <h2>Estilos</h2>
-      <p>Selecciona un proyecto para administrar la estructura del header y los estilos de botones.</p>
+      <p>Selecciona un proyecto para administrar tipografía, paleta, botones y estructura del header.</p>
     {% else %}
       <h2>Información</h2>
       <p>Selecciona un proyecto para consultar y completar su ficha técnica.</p>
@@ -32,7 +32,7 @@
       {% if request.GET.view == 'production' %}
         <div><span>Producción</span><strong>Ficha del proyecto</strong><small>Páginas, condados, servicios, ciudades y secciones internas.</small></div>
       {% elif request.GET.view == 'styles' %}
-        <div><span>Estilos</span><strong>Header y botones</strong><small>Configuración visual guardada para este proyecto.</small></div>
+        <div><span>Estilos</span><strong>Tipografía, paleta, botones y header</strong><small>Sistema visual y componentes base del proyecto.</small></div>
       {% else %}
         <div><span>Ficha técnica</span><strong>Información del proyecto</strong><small>Datos del cliente, negocio, servicios, cobertura y recursos.</small></div>
       {% endif %}
@@ -42,7 +42,7 @@
       {% if request.GET.view == 'production' %}
         <a href="{% url 'operations:web_production_sheet' p.pk %}">Abrir ficha de producción</a>
       {% elif request.GET.view == 'styles' %}
-        <a href="{% url 'operations:web_production_sheet' p.pk %}?section=styles#project-styles">Abrir estilos</a>
+        <a href="{% url 'operations:development_project_styles' p.pk %}">Abrir estilos</a>
       {% else %}
         {% if row.questionnaire %}<a href="{% url 'questionnaires:fill' row.questionnaire.pk %}">Abrir información</a>{% else %}<a href="{% url 'questionnaires:create_for_project' p.pk %}?auto=1">Crear información</a>{% endif %}
       {% endif %}

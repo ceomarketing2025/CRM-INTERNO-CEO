@@ -1,0 +1,39 @@
+<div class="dev-history form-wide">
+  <div class="dev-history-head">
+    <div>
+      <span>Historial de actividad</span>
+      <small>Últimos cambios registrados para este elemento.</small>
+    </div>
+    <b>{{ history_items|length }}</b>
+  </div>
+
+  {% if history_items %}
+  <div class="dev-history-list">
+    {% for history in history_items %}
+    <article class="dev-history-item dev-history-{{ history.event }}">
+      <div class="dev-history-dot"></div>
+      <div class="dev-history-body">
+        <div class="dev-history-title">
+          <strong>{{ history.event_label }}</strong>
+          <time>{{ history.created_at|date:'d/m/Y H:i' }}</time>
+        </div>
+        <div class="dev-history-meta">
+          <span>{% if history.actor %}{{ history.actor.display_name }}{% else %}Sistema{% endif %}</span>
+          {% if history.from_status_label or history.to_status_label %}
+            <i>·</i>
+            <span>
+              {% if history.from_status_label %}{{ history.from_status_label }}{% endif %}
+              {% if history.from_status_label and history.to_status_label %} → {% endif %}
+              {% if history.to_status_label %}{{ history.to_status_label }}{% endif %}
+            </span>
+          {% endif %}
+        </div>
+        {% if history.note %}<p>{{ history.note }}</p>{% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="dev-history-empty">Todavía no hay eventos registrados para este elemento.</div>
+  {% endif %}
+</div>

@@ -391,30 +391,9 @@ def _website_save(questionnaire, request):
         )
     )
 
-    form_receiver_whatsapp = _clean(
-        request.POST.get(
-            "form_receiver_whatsapp"
-        )
-    )
-
-    form_confirmation_message = _clean(
-        request.POST.get(
-            "form_confirmation_message"
-        )
-    )
-
-    form_redirect = _clean(
-        request.POST.get(
-            "form_redirect"
-        )
-    )
-
     forms_complete = (
         bool(form_fields) and
-        bool(
-            form_receiver_email or
-            form_receiver_whatsapp
-        )
+        bool(form_receiver_email)
     )
 
     forms_lines = []
@@ -430,23 +409,6 @@ def _website_save(questionnaire, request):
             f"Email receptor: {form_receiver_email}"
         )
 
-    if form_receiver_whatsapp:
-        forms_lines.append(
-            "WhatsApp receptor: " +
-            form_receiver_whatsapp
-        )
-
-    if form_confirmation_message:
-        forms_lines.append(
-            "Confirmación: " +
-            form_confirmation_message
-        )
-
-    if form_redirect:
-        forms_lines.append(
-            f"Redirección: {form_redirect}"
-        )
-
     save_key_answer(
         questionnaire=questionnaire,
         key="website_forms",
@@ -458,12 +420,6 @@ def _website_save(questionnaire, request):
             "fields": form_fields,
             "receiver_email":
                 form_receiver_email,
-            "receiver_whatsapp":
-                form_receiver_whatsapp,
-            "confirmation_message":
-                form_confirmation_message,
-            "redirect":
-                form_redirect,
         },
         complete=forms_complete,
     )
@@ -1054,8 +1010,10 @@ def _website_save(questionnaire, request):
     social_has = _yes_no(request.POST.get("social_has"))
     social_keys = ["facebook", "instagram", "tiktok", "youtube", "twitter", "yelp", "linkedin", "nextdoor"]
     networks = {}
+    enabled_networks = []
     for key in social_keys:
         if request.POST.get(f"social_enabled_{key}") == "1":
+            enabled_networks.append(key)
             networks[key] = _clean(request.POST.get(f"social_url_{key}"))
     custom_names = request.POST.getlist("social_custom_name")
     custom_urls = request.POST.getlist("social_custom_url")
@@ -1065,8 +1023,8 @@ def _website_save(questionnaire, request):
         url = _clean(custom_urls[index]) if index < len(custom_urls) else ""
         if name or url:
             custom_social.append({"name": name, "url": url})
-    has_social_link = any(networks.values()) or any(item.get("url") for item in custom_social)
-    social_complete = social_has == "no" or (social_has == "yes" and has_social_link)
+    has_social_selection = bool(enabled_networks) or bool(custom_social)
+    social_complete = social_has == "no" or (social_has == "yes" and has_social_selection)
     social_labels = {
         "facebook": "Facebook", "instagram": "Instagram", "tiktok": "TikTok", "youtube": "YouTube",
         "twitter": "X / Twitter", "yelp": "Yelp", "linkedin": "LinkedIn", "nextdoor": "Nextdoor",
@@ -1076,7 +1034,7 @@ def _website_save(questionnaire, request):
     social_text = "No tiene redes sociales" if social_has == "no" else "\n".join(social_lines)
     save_key_answer(
         questionnaire=questionnaire, key="has_social", user=user,
-        value_text=social_text, value_json={"has": social_has, "networks": networks, "custom": custom_social},
+        value_text=social_text, value_json={"has": social_has, "networks": networks, "enabled": enabled_networks, "custom": custom_social},
         complete=social_complete, negative=social_has == "no",
     )
 
@@ -2162,18 +2120,12 @@ def fill(request, pk):
                     "questionnaires",
                     "save_website_technical",
                     questionnaire,
-                    description=(
-                        f"Ficha técnica "
-                        f"{progress['percent']}%"
-                    ),
+                    description="Ficha técnica guardada.",
                 )
 
             messages.success(
                 request,
-                (
-                    "Ficha técnica guardada · "
-                    f"{progress['percent']}% completado."
-                ),
+                "Ficha técnica guardada.",
             )
 
             if (
@@ -2193,7 +2145,7 @@ def fill(request, pk):
                 )
 
             return redirect(
-                "questionnaires:development_dashboard"
+                "questionnaires:development_information"
             )
         return render(
             request,

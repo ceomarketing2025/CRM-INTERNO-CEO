@@ -191,7 +191,7 @@
 
           <a
             href="{% url 'questionnaires:development_information' %}?view=production"
-            class="nav-link {% if active_nav_group == 'development' and request.GET.view == 'production' %}active{% endif %}"
+            class="nav-link {% if active_nav_group == 'development' and request.GET.view == 'production' or active_nav_group == 'development' and current_page_label == 'Ficha de producción' %}active{% endif %}"
           >
             <span>03</span>
             <b>Ficha de producción</b>
@@ -199,7 +199,7 @@
 
           <a
             href="{% url 'questionnaires:development_information' %}?view=styles"
-            class="nav-link {% if active_nav_group == 'development' and request.GET.view == 'styles' %}active{% endif %}"
+            class="nav-link {% if active_nav_group == 'development' and request.GET.view == 'styles' or active_nav_group == 'development' and current_page_label == 'Estilos' %}active{% endif %}"
           >
             <span>04</span>
             <b>Estilos</b>

@@ -1,4 +1,4 @@
-﻿from django.conf import settings
+from django.conf import settings
 
 
 def _navigation_context(request):
@@ -14,10 +14,12 @@ def _navigation_context(request):
         "general_audit", "general_audit_check", "social_tracking", "social_tracking_audit"
     }:
         group, module, page = "audit", "Auditor├¡a", "Auditor├¡a Proyectos"
+    elif namespace == "operations" and url_name == "development_project_styles":
+        group, module, page = "development", "Desarrollo", "Estilos"
     elif namespace == "operations" and url_name in {
         "web_production_sheet", "web_production_quick_toggle"
     }:
-        group, module, page = "development", "Desarrollo", "Resumen de tareas"
+        group, module, page = "development", "Desarrollo", "Ficha de producción"
     elif namespace == "dashboard":
         user = getattr(request, "user", None)
         if user and getattr(user, "is_authenticated", False) and (getattr(user, "is_manager", False) or getattr(user, "is_superuser", False)):
@@ -159,6 +161,15 @@ def global_ui(request):
         "PROJECT_NAME": settings.PROJECT_NAME,
         "current_role": role,
     }
+    if user and getattr(user, "is_authenticated", False):
+        from apps.operations.models import DevelopmentTaskNotification
+        context["development_task_unread_count"] = (
+            DevelopmentTaskNotification.objects
+            .filter(recipient=user, is_read=False)
+            .count()
+        )
+    else:
+        context["development_task_unread_count"] = 0
     context.update(nav_context)
     context.update(_management_area_context(request, nav_context))
     return context

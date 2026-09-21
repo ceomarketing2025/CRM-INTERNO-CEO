@@ -13,7 +13,7 @@ from apps.core.decorators import role_required
 from apps.operations.models import WebProductionSheet
 from apps.projects.models import Project
 from apps.projects.selectors import can_access_project, projects_for_area
-from apps.projects.services import sync_project_area_records
+from apps.projects.services import sync_project_area_records, _development_template_for_project
 from .forms import ProjectQuestionnaireCreateForm
 from .models import Answer, ProjectQuestionnaire, QuestionnaireTemplate
 from .models.choices import AnswerState, QuestionnaireStatus
@@ -25,6 +25,8 @@ from openpyxl import load_workbook
 
 from apps.reminders.models import Reminder
 
+
+from .client_outputs import build_development_outputs
 
 from .services import (
     WEBSITE_TEMPLATE_CODE,
@@ -391,30 +393,9 @@ def _website_save(questionnaire, request):
         )
     )
 
-    form_receiver_whatsapp = _clean(
-        request.POST.get(
-            "form_receiver_whatsapp"
-        )
-    )
-
-    form_confirmation_message = _clean(
-        request.POST.get(
-            "form_confirmation_message"
-        )
-    )
-
-    form_redirect = _clean(
-        request.POST.get(
-            "form_redirect"
-        )
-    )
-
     forms_complete = (
         bool(form_fields) and
-        bool(
-            form_receiver_email or
-            form_receiver_whatsapp
-        )
+        bool(form_receiver_email)
     )
 
     forms_lines = []
@@ -430,23 +411,6 @@ def _website_save(questionnaire, request):
             f"Email receptor: {form_receiver_email}"
         )
 
-    if form_receiver_whatsapp:
-        forms_lines.append(
-            "WhatsApp receptor: " +
-            form_receiver_whatsapp
-        )
-
-    if form_confirmation_message:
-        forms_lines.append(
-            "Confirmación: " +
-            form_confirmation_message
-        )
-
-    if form_redirect:
-        forms_lines.append(
-            f"Redirección: {form_redirect}"
-        )
-
     save_key_answer(
         questionnaire=questionnaire,
         key="website_forms",
@@ -458,12 +422,6 @@ def _website_save(questionnaire, request):
             "fields": form_fields,
             "receiver_email":
                 form_receiver_email,
-            "receiver_whatsapp":
-                form_receiver_whatsapp,
-            "confirmation_message":
-                form_confirmation_message,
-            "redirect":
-                form_redirect,
         },
         complete=forms_complete,
     )
@@ -1054,8 +1012,10 @@ def _website_save(questionnaire, request):
     social_has = _yes_no(request.POST.get("social_has"))
     social_keys = ["facebook", "instagram", "tiktok", "youtube", "twitter", "yelp", "linkedin", "nextdoor"]
     networks = {}
+    enabled_networks = []
     for key in social_keys:
         if request.POST.get(f"social_enabled_{key}") == "1":
+            enabled_networks.append(key)
             networks[key] = _clean(request.POST.get(f"social_url_{key}"))
     custom_names = request.POST.getlist("social_custom_name")
     custom_urls = request.POST.getlist("social_custom_url")
@@ -1065,8 +1025,8 @@ def _website_save(questionnaire, request):
         url = _clean(custom_urls[index]) if index < len(custom_urls) else ""
         if name or url:
             custom_social.append({"name": name, "url": url})
-    has_social_link = any(networks.values()) or any(item.get("url") for item in custom_social)
-    social_complete = social_has == "no" or (social_has == "yes" and has_social_link)
+    has_social_selection = bool(enabled_networks) or bool(custom_social)
+    social_complete = social_has == "no" or (social_has == "yes" and has_social_selection)
     social_labels = {
         "facebook": "Facebook", "instagram": "Instagram", "tiktok": "TikTok", "youtube": "YouTube",
         "twitter": "X / Twitter", "yelp": "Yelp", "linkedin": "LinkedIn", "nextdoor": "Nextdoor",
@@ -1076,7 +1036,7 @@ def _website_save(questionnaire, request):
     social_text = "No tiene redes sociales" if social_has == "no" else "\n".join(social_lines)
     save_key_answer(
         questionnaire=questionnaire, key="has_social", user=user,
-        value_text=social_text, value_json={"has": social_has, "networks": networks, "custom": custom_social},
+        value_text=social_text, value_json={"has": social_has, "networks": networks, "enabled": enabled_networks, "custom": custom_social},
         complete=social_complete, negative=social_has == "no",
     )
 
@@ -1204,10 +1164,16 @@ def development_information(request):
                 ),
             }
 
+        outputs = build_development_outputs(
+            project,
+            questionnaire,
+        )
+
         rows.append({
             "project": project,
             "questionnaire": questionnaire,
             "progress": progress,
+            **outputs,
         })
 
     return render(
@@ -2069,17 +2035,37 @@ def create_for_project(request, project_pk):
         raise PermissionDenied("Este proyecto no está asignado a Desarrollo.")
 
     if request.method == "GET" and request.GET.get("auto") == "1":
-        template = QuestionnaireTemplate.objects.filter(project_type=project.project_type, is_active=True).order_by("id").first()
-        if not template and project.project_type == "seo":
-            template = QuestionnaireTemplate.objects.filter(project_type="website", is_active=True).order_by("id").first()
-        if template:
-            obj, _ = ProjectQuestionnaire.objects.get_or_create(
-                project=project,
-                template=template,
-                defaults={"created_by": request.user, "status": QuestionnaireStatus.DRAFT},
+        # Desarrollo no debe pedir al usuario elegir una plantilla manualmente.
+        # Resolvemos la ficha según el tipo/planes reales del proyecto.
+        template = _development_template_for_project(project)
+
+        # Fallback defensivo para proyectos antiguos o personalizados.
+        if not template:
+            template = QuestionnaireTemplate.objects.filter(
+                code=WEBSITE_TEMPLATE_CODE,
+                is_active=True,
+            ).first()
+        if not template:
+            template = QuestionnaireTemplate.objects.filter(
+                project_type="website",
+                is_active=True,
+            ).order_by("id").first()
+
+        if not template:
+            messages.error(
+                request,
+                "No existe una plantilla técnica activa para Desarrollo. Revisa la configuración de plantillas.",
             )
+            return redirect("questionnaires:development_information")
+
+        obj, created = ProjectQuestionnaire.objects.get_or_create(
+            project=project,
+            template=template,
+            defaults={"created_by": request.user, "status": QuestionnaireStatus.DRAFT},
+        )
+        if created:
             log_activity(request.user, "questionnaires", "create", obj)
-            return redirect("questionnaires:fill", pk=obj.pk)
+        return redirect("questionnaires:fill", pk=obj.pk)
 
     form = ProjectQuestionnaireCreateForm(request.POST or None, project=project)
     if request.method == "POST" and form.is_valid():
@@ -2162,18 +2148,12 @@ def fill(request, pk):
                     "questionnaires",
                     "save_website_technical",
                     questionnaire,
-                    description=(
-                        f"Ficha técnica "
-                        f"{progress['percent']}%"
-                    ),
+                    description="Ficha técnica guardada.",
                 )
 
             messages.success(
                 request,
-                (
-                    "Ficha técnica guardada · "
-                    f"{progress['percent']}% completado."
-                ),
+                "Ficha técnica guardada.",
             )
 
             if (
@@ -2193,7 +2173,7 @@ def fill(request, pk):
                 )
 
             return redirect(
-                "questionnaires:development_dashboard"
+                "questionnaires:development_information"
             )
         return render(
             request,

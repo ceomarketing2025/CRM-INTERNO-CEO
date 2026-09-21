@@ -1232,6 +1232,22 @@ class ProductionWorkStatus(models.TextChoices):
     )
 
 
+
+
+DEFAULT_TYPOGRAPHY_CONFIG = {
+    "h1": {"font": "Poppins", "size": 64, "weight": 700, "line_height": "1.08"},
+    "h2": {"font": "Poppins", "size": 48, "weight": 700, "line_height": "1.12"},
+    "h3": {"font": "Montserrat", "size": 30, "weight": 700, "line_height": "1.20"},
+    "h4": {"font": "Montserrat", "size": 24, "weight": 700, "line_height": "1.25"},
+    "h5": {"font": "Montserrat", "size": 20, "weight": 700, "line_height": "1.30"},
+    "paragraph": {"font": "Montserrat", "size": 16, "weight": 400, "line_height": "1.70"},
+    "kicker": {"font": "Montserrat", "size": 10, "weight": 800, "line_height": "1.20", "letter_spacing": "0.14em"},
+}
+
+
+def default_typography_config():
+    return {key: dict(value) for key, value in DEFAULT_TYPOGRAPHY_CONFIG.items()}
+
 class WebProductionSheet(TimestampedModel):
     project = models.OneToOneField(
         "projects.Project",
@@ -1261,6 +1277,13 @@ class WebProductionSheet(TimestampedModel):
             default=0,
             verbose_name="Ciudades por condado",
         )
+    )
+
+
+    typography_config = models.JSONField(
+        default=default_typography_config,
+        blank=True,
+        verbose_name="Configuración de tipografía",
     )
 
     header_structure = models.TextField(
@@ -1698,3 +1721,126 @@ class WebProductionInternalSection(
 
     def __str__(self):
         return self.name
+
+class WebProductionHistory(models.Model):
+    sheet = models.ForeignKey(
+        WebProductionSheet,
+        on_delete=models.CASCADE,
+        related_name="history_entries",
+    )
+    row_type = models.CharField(max_length=32)
+    row_id = models.PositiveBigIntegerField()
+    row_label = models.CharField(max_length=220, blank=True)
+    event = models.CharField(max_length=40)
+    from_status = models.CharField(max_length=32, blank=True)
+    to_status = models.CharField(max_length=32, blank=True)
+    note = models.TextField(blank=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="web_production_history_entries",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["sheet", "row_type", "row_id", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.row_label or self.row_type} · {self.event}"
+
+
+class WebProductionNotification(models.Model):
+    sheet = models.ForeignKey(
+        WebProductionSheet,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="web_production_notifications",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="web_production_notifications_sent",
+    )
+    row_type = models.CharField(max_length=32)
+    row_id = models.PositiveBigIntegerField()
+    row_label = models.CharField(max_length=220, blank=True)
+    event = models.CharField(max_length=40)
+    message = models.TextField(blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(
+                fields=["recipient", "is_read", "created_at"],
+                name="devnotif_recipient_read_idx",
+            ),
+            models.Index(
+                fields=["sheet", "created_at"],
+                name="devnotif_sheet_created_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.recipient} · {self.row_label or self.row_type} · {self.event}"
+
+
+class DevelopmentTaskNotification(models.Model):
+    EVENT_CHOICES = [
+        ("task_assigned", "Nueva tarea asignada"),
+        ("task_reassigned", "Tarea reasignada"),
+    ]
+
+    task = models.ForeignKey(
+        DevelopmentTask,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="development_task_notifications",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="development_task_notifications_sent",
+    )
+    event = models.CharField(
+        max_length=32,
+        choices=EVENT_CHOICES,
+        default="task_assigned",
+    )
+    message = models.TextField(blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(
+                fields=["recipient", "is_read", "created_at"],
+                name="devtasknotif_rec_read_idx",
+            ),
+            models.Index(
+                fields=["task", "created_at"],
+                name="devtasknotif_task_created_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.recipient} · {self.get_event_display()} · {self.task.title}"

@@ -24,242 +24,152 @@
   {% csrf_token %}
 
   <div class="requirement-accordion">
-
-
-    <section class="requirement-card" data-requirement-section="general">
-
-      <button
-        type="button"
-        class="requirement-card-head"
-        data-requirement-toggle
-      >
+    <section class="requirement-card" data-requirement-section="business">
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
         <span class="requirement-number">01</span>
-
         <span class="requirement-copy">
-          <strong>Cliente e información general</strong>
-          <small>
-            Datos del cliente, empresa, contacto, dirección y dominio.
-          </small>
+          <strong>Lógica del negocio</strong>
+          <small>Actividad, tipo de cliente y objetivo comercial.</small>
         </span>
-
-        <span class="requirement-toggle-text">
-          Ver más
-        </span>
+        <span class="requirement-toggle-text">Ver más</span>
       </button>
-
-
       <div class="requirement-card-body">
-
-        <div
-          class="tech-card {% if data.company_description.complete %}complete{% endif %}"
-          id="block-company"
-        >
-
-          <div class="tech-head">
-            <div>
-              <strong>
-                Breve descripción de la empresa
-              </strong>
-
-              <small>
-                ¿A qué se dedica la empresa?
-              </small>
+        <div class="business-logic-grid">
+          <div class="tech-card business-description-card {% if data.company_description.complete %}complete{% endif %}" id="block-company">
+            <div class="tech-head"><div>
+              <strong>Breve descripción de la empresa</strong>
+              <small>¿A qué se dedica la empresa?</small>
+            </div></div>
+            <textarea name="company_description" rows="8" placeholder="Descripción de la actividad...">{{ data.company_description.text }}</textarea>
+          </div>
+          <div class="business-logic-side">
+            <div class="tech-card">
+              <div class="tech-head"><div>
+                <strong>Tipo de cliente</strong>
+                <small>Selecciona a quién atiende la empresa.</small>
+              </div></div>
+              <div class="choice-pills">
+                <label><input type="radio" name="customer_type" value="residential" {% if data.business_logic.json.customer_type == 'residential' %}checked{% endif %}> Residencial</label>
+                <label><input type="radio" name="customer_type" value="commercial" {% if data.business_logic.json.customer_type == 'commercial' %}checked{% endif %}> Comercial</label>
+                <label><input type="radio" name="customer_type" value="both" {% if data.business_logic.json.customer_type == 'both' %}checked{% endif %}> Ambos</label>
+                <label><input type="radio" name="customer_type" value="na" {% if data.business_logic.json.customer_type == 'na' %}checked{% endif %}> No aplica</label>
+              </div>
+            </div>
+            <div class="tech-card business-action-card">
+              <div class="tech-head"><div>
+                <strong>Qué acción queremos que realice el visitante</strong>
+                <small>Selecciona la acción principal esperada en el sitio web.</small>
+              </div></div>
+              <select name="visitor_action">
+                <option value="">Seleccionar</option>
+                <option value="call" {% if data.business_logic.json.visitor_action == 'call' %}selected{% endif %}>Llamar</option>
+                <option value="quote" {% if data.business_logic.json.visitor_action == 'quote' %}selected{% endif %}>Solicitar cotización</option>
+                <option value="estimate" {% if data.business_logic.json.visitor_action == 'estimate' %}selected{% endif %}>Solicitar estimado</option>
+                <option value="other" {% if data.business_logic.json.visitor_action == 'other' %}selected{% endif %}>Otro</option>
+              </select>
+              <div class="conditional-panel" data-show-when="visitor_action:other">
+                <label>Especifique otra acción</label>
+                <input type="text" name="visitor_action_other" value="{{ data.business_logic.json.visitor_action_other|default:'' }}" placeholder="Ej.: Enviar mensaje, solicitar inspección...">
+              </div>
             </div>
           </div>
-
-          <textarea
-            name="company_description"
-            rows="4"
-            placeholder="Descripción de la actividad..."
-          >{{ data.company_description.text }}</textarea>
-
         </div>
-
-
         <div class="section-save-actions">
-
-          <button
-            type="submit"
-            class="btn btn-secondary"
-          >
-            Guardar sección
-          </button>
-
-          <button
-            type="button"
-            class="btn btn-primary requirement-save-close"
-          >
-            Guardar y cerrar
-          </button>
-
+          <button type="submit" class="btn btn-secondary">Guardar sección</button>
+          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
         </div>
-
       </div>
-
     </section>
 
 
 
-    <section class="requirement-card" data-requirement-section="business">
 
-      <button
-        type="button"
-        class="requirement-card-head"
-        data-requirement-toggle
-      >
+    <section class="requirement-card" data-requirement-section="brand">
+
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
 
         <span class="requirement-number">02</span>
 
         <span class="requirement-copy">
-          <strong>Lógica del negocio</strong>
+          <strong>Misión, visión y marca</strong>
           <small>
-            Actividad, tipo de cliente y objetivo comercial.
+            Misión, visión, slogan e información de marca.
           </small>
         </span>
-
-        <span class="requirement-toggle-text">
-          Ver más
-        </span>
+        <span class="requirement-toggle-text">Ver más</span>
 
       </button>
 
 
       <div class="requirement-card-body">
 
-        <div class="tech-card">
+        <div class="tech-grid two">
 
-          <div class="tech-head">
-            <div>
-              <strong>Tipo de cliente</strong>
-              <small>
-                Selecciona a quién atiende la empresa.
-              </small>
+          <div class="tech-card {% if data.slogan.complete %}complete{% endif %}" id="block-slogan">
+
+            <strong>Slogan</strong>
+
+            <div class="choice-pills">
+              <label><input type="radio" name="slogan_mode" value="existing" {% if data.slogan.json.mode == 'existing' %}checked{% endif %}> Ya tiene</label>
+              <label><input type="radio" name="slogan_mode" value="create" {% if data.slogan.json.mode == 'create' %}checked{% endif %}> Crear uno</label>
+              <label><input type="radio" name="slogan_mode" value="none" {% if data.slogan.json.mode == 'none' %}checked{% endif %}> No crear</label>
             </div>
+
+            <div id="slogan-detail" class="conditional-panel">
+              <input
+                type="text"
+                name="slogan_text"
+                value="{{ data.slogan.json.text|default:'' }}"
+              >
+            </div>
+
           </div>
 
-         <div class="choice-pills">
 
-            <label>
-              <input
-                type="radio"
-                name="customer_type"
-                value="residential"
-                {% if data.business_logic.json.customer_type == 'residential' %}checked{% endif %}
-              >
-              Residencial
-            </label>
+          <div class="tech-card {% if data.has_mission_vision.complete %}complete{% endif %}" id="block-mission">
 
-            <label>
-              <input
-                type="radio"
-                name="customer_type"
-                value="commercial"
-                {% if data.business_logic.json.customer_type == 'commercial' %}checked{% endif %}
-              >
-              Comercial
-            </label>
+            <strong>¿La empresa tiene misión y visión?</strong>
 
-            <label>
-              <input
-                type="radio"
-                name="customer_type"
-                value="both"
-                {% if data.business_logic.json.customer_type == 'both' %}checked{% endif %}
-              >
-              Ambos
-            </label>
+            <div class="choice-pills">
+              <label><input type="radio" name="mission_has" value="yes" {% if data.has_mission_vision.json.has == 'yes' %}checked{% endif %}> Sí</label>
+              <label><input type="radio" name="mission_has" value="no" {% if data.has_mission_vision.json.has == 'no' %}checked{% endif %}> No</label>
+            </div>
 
-            <label>
-              <input
-                type="radio"
-                name="customer_type"
-                value="na"
-                {% if data.business_logic.json.customer_type == 'na' %}checked{% endif %}
-              >
-              No aplica
-            </label>
+            <div class="conditional-panel" data-show-when="mission_has:yes">
+
+              <label>Misión original</label>
+              <textarea name="mission_text" rows="3">{{ data.has_mission_vision.json.mission|default:'' }}</textarea>
+
+              <label>Visión original</label>
+              <textarea name="vision_text" rows="3">{{ data.has_mission_vision.json.vision|default:'' }}</textarea>
+
+            </div>
+
+
+            <div class="conditional-panel" data-show-when="mission_has:no">
+
+              <label>¿Por qué nació la empresa?</label>
+              <textarea name="mission_origin" rows="2">{{ data.has_mission_vision.json.mission_origin|default:'' }}</textarea>
+
+              <label>¿A quién ayuda y qué la hace diferente?</label>
+              <textarea name="mission_clients" rows="2">{{ data.has_mission_vision.json.mission_clients|default:'' }}</textarea>
+
+              <label>¿Cómo imagina la empresa en 5 a 10 años?</label>
+              <textarea name="vision_future" rows="2">{{ data.has_mission_vision.json.vision_future|default:'' }}</textarea>
+
+              <label>¿Qué huella quiere dejar?</label>
+              <textarea name="vision_legacy" rows="2">{{ data.has_mission_vision.json.vision_legacy|default:'' }}</textarea>
+
+            </div>
 
           </div>
 
         </div>
 
 
-
-    <div class="tech-card">
-
-  <label>
-    Qué acción queremos que realice el visitante
-  </label>
-
-  <select name="visitor_action">
-
-    <option value="">
-      Seleccionar
-    </option>
-
-    <option
-      value="call"
-      {% if data.business_logic.json.visitor_action == 'call' %}selected{% endif %}
-    >
-      Llamar
-    </option>
-
-    <option
-      value="quote"
-      {% if data.business_logic.json.visitor_action == 'quote' %}selected{% endif %}
-    >
-      Solicitar cotización
-    </option>
-
-    <option
-      value="estimate"
-      {% if data.business_logic.json.visitor_action == 'estimate' %}selected{% endif %}
-    >
-      Solicitar estimado
-    </option>
-
-    <option
-      value="other"
-      {% if data.business_logic.json.visitor_action == 'other' %}selected{% endif %}
-    >
-      Otro
-    </option>
-
-  </select>
-
-
-  <div
-    class="conditional-panel"
-    data-show-when="visitor_action:other"
-  >
-
-    <label>
-      Especifique otra acción
-    </label>
-
-    <input
-      type="text"
-      name="visitor_action_other"
-      value="{{ data.business_logic.json.visitor_action_other|default:'' }}"
-      placeholder="Ej.: Enviar mensaje, solicitar inspección..."
-    >
-
-  </div>
-
-</div>
-
-
         <div class="section-save-actions">
-          <button type="submit" class="btn btn-secondary">
-            Guardar sección
-          </button>
-
-          <button
-            type="button"
-            class="btn btn-primary requirement-save-close"
-          >
-            Guardar y cerrar
-          </button>
+          <button type="submit" class="btn btn-secondary">Guardar sección</button>
+          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
         </div>
 
       </div>
@@ -268,305 +178,207 @@
 
 
 
-    <section class="requirement-card" data-requirement-section="services">
+
+<section class="requirement-card" data-requirement-section="team">
+
+  <button
+    type="button"
+    class="requirement-card-head"
+    data-requirement-toggle
+  >
+
+    <span class="requirement-number">03</span>
+
+    <span class="requirement-copy">
+      <strong>About y Team</strong>
+      <small>
+        Define si se mostrará al dueño, al equipo o contenido relacionado.
+      </small>
+    </span>
+
+    <span class="requirement-toggle-text">
+      Ver más
+    </span>
+
+  </button>
+
+
+  <div class="requirement-card-body">
+
+    <div
+      class="tech-card {% if data.show_team.complete %}complete{% endif %}"
+      id="block-team"
+    >
+
+      <strong>
+        ¿Desea incluir contenido de About / Team?
+      </strong>
+
+      <div class="choice-pills">
+
+        <label>
+          <input
+            type="radio"
+            name="team_include"
+            value="yes"
+            {% if data.show_team.json.include == 'yes' %}checked{% endif %}
+          >
+          Sí
+        </label>
+
+        <label>
+          <input
+            type="radio"
+            name="team_include"
+            value="no"
+            {% if data.show_team.json.include == 'no' %}checked{% endif %}
+          >
+          No
+        </label>
+
+      </div>
+
+
+      <div
+        class="conditional-panel"
+        data-show-when="team_include:yes"
+      >
+
+        <strong>
+          ¿Qué contenido desea mostrar?
+        </strong>
+
+        <div class="choice-cards team-scope-grid">
+
+          <label>
+            <input type="radio" name="team_scope" value="owner_photo" {% if data.show_team.json.scope == 'owner_photo' %}checked{% endif %}>
+            <span><b>Foto del dueño</b><small>Mostrar al propietario o representante principal.</small></span>
+          </label>
+
+          <label>
+            <input type="radio" name="team_scope" value="team_photo" {% if data.show_team.json.scope == 'team_photo' %}checked{% endif %}>
+            <span><b>Foto con el team</b><small>Mostrar una fotografía general con el equipo.</small></span>
+          </label>
+
+          <label>
+            <input type="radio" name="team_scope" value="group_photos" {% if data.show_team.json.scope == 'group_photos' %}checked{% endif %}>
+            <span><b>Fotos por grupos</b><small>Mostrar distintas fotografías por equipo o área.</small></span>
+          </label>
+
+          <label>
+            <input type="radio" name="team_scope" value="no_photo" {% if data.show_team.json.scope == 'no_photo' %}checked{% endif %}>
+            <span><b>Sin foto</b><small>Incluir contenido de About / Team únicamente con texto.</small></span>
+          </label>
+
+          <label class="team-other-choice">
+            <input type="radio" name="team_scope" value="other" {% if data.show_team.json.scope == 'other' %}checked{% endif %}>
+            <span><b>Otro</b><small>Registrar una opción diferente.</small></span>
+          </label>
+
+          <div class="conditional-panel team-other-field" data-show-when="team_scope:other">
+            <label>Especifique otra opción</label>
+            <input
+              type="text"
+              name="team_other"
+              value="{{ data.show_team.json.other|default:'' }}"
+              placeholder="Escriba cómo desea presentar esta sección"
+            >
+          </div>
+
+        </div>
+
+
+        <label>
+          Notas adicionales
+        </label>
+
+        <textarea
+          name="team_notes"
+          rows="3"
+          placeholder="Información adicional sobre About, dueño o equipo..."
+        >{{ data.show_team.json.notes|default:'' }}</textarea>
+
+      </div>
+
+    </div>
+
+
+    <div class="section-save-actions">
+
+      <button
+        type="submit"
+        class="btn btn-secondary"
+      >
+        Guardar sección
+      </button>
 
       <button
         type="button"
-        class="requirement-card-head"
-        data-requirement-toggle
+        class="btn btn-primary requirement-save-close"
       >
-
-        <span class="requirement-number">03</span>
-
-        <span class="requirement-copy">
-          <strong>Servicios</strong>
-          <small>
-            Servicio principal, categorías, complementarios y excluidos.
-          </small>
-        </span>
-
-        <span class="requirement-toggle-text">
-          Ver más
-        </span>
-
+        Guardar y cerrar
       </button>
 
+    </div>
 
+  </div>
+
+</section>
+
+    <section class="requirement-card" data-requirement-section="services">
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+        <span class="requirement-number">04</span>
+        <span class="requirement-copy">
+          <strong>Servicios</strong>
+          <small>Selecciona los servicios y define uno como principal.</small>
+        </span>
+        <span class="requirement-toggle-text">Ver más</span>
+      </button>
       <div class="requirement-card-body">
-
-        <div
-          class="tech-card important-card {% if data.main_services.complete %}complete{% endif %}"
-          id="block-services"
-        >
-
-          <div class="tech-head">
-            <div>
-              <strong>Servicios de la empresa</strong>
-              <small>
-                Organiza los servicios por bloques y prioridad.
-              </small>
-            </div>
-          </div>
-
-
+        <div class="tech-card important-card {% if data.main_services.complete %}complete{% endif %}" id="block-services">
+          <div class="tech-head"><div>
+            <strong>Servicios de la empresa</strong>
+            <small>Agrega los servicios que ofrece la empresa y marca uno como principal.</small>
+          </div></div>
           <div class="business-template-selector">
-
             <label>Tipo de negocio</label>
-
             <div class="choice-cards business-type-cards">
-
-              <label>
-                <input
-                  type="radio"
-                  name="business_type"
-                  value="tree_service"
-                  {% if data.main_services.json.business_type == 'tree_service' %}checked{% endif %}
-                >
-                <span>
-                  <b>Tree Service</b>
-                  <small>Servicios de árboles.</small>
-                </span>
-              </label>
-
-              <label>
-                <input
-                  type="radio"
-                  name="business_type"
-                  value="roofing"
-                  {% if data.main_services.json.business_type == 'roofing' %}checked{% endif %}
-                >
-                <span>
-                  <b>Roofing</b>
-                  <small>Servicios de techos.</small>
-                </span>
-              </label>
-
-              <label>
-                <input
-                  type="radio"
-                  name="business_type"
-                  value="remodeling"
-                  {% if data.main_services.json.business_type == 'remodeling' %}checked{% endif %}
-                >
-                <span>
-                  <b>Remodeling</b>
-                  <small>Remodelaciones y construcción.</small>
-                </span>
-              </label>
-
-              <label>
-                <input
-                  type="radio"
-                  name="business_type"
-                  value="other"
-                  {% if data.main_services.json.business_type == 'other' %}checked{% endif %}
-                >
-                <span>
-                  <b>Otro</b>
-                  <small>Crear categorías manualmente.</small>
-                </span>
-              </label>
-
+              <label><input type="radio" name="business_type" value="tree_service" {% if data.main_services.json.business_type == 'tree_service' %}checked{% endif %}><span><b>Tree Service</b><small>Servicios de árboles.</small></span></label>
+              <label><input type="radio" name="business_type" value="roofing" {% if data.main_services.json.business_type == 'roofing' %}checked{% endif %}><span><b>Roofing</b><small>Servicios de techos.</small></span></label>
+              <label><input type="radio" name="business_type" value="remodeling" {% if data.main_services.json.business_type == 'remodeling' %}checked{% endif %}><span><b>Remodeling</b><small>Remodelaciones y construcción.</small></span></label>
+              <label><input type="radio" name="business_type" value="other" {% if data.main_services.json.business_type == 'other' %}checked{% endif %}><span><b>Otro</b><small>Agregar servicios manualmente.</small></span></label>
             </div>
-
-
-            <div
-              class="conditional-panel"
-              data-show-when="business_type:other"
-            >
+            <div class="conditional-panel" data-show-when="business_type:other">
               <label>Tipo de negocio</label>
-
-              <input
-                type="text"
-                name="business_type_other"
-                value="{{ data.main_services.json.business_type_other|default:'' }}"
-                placeholder="Ej.: Masonry"
-              >
+              <input type="text" name="business_type_other" value="{{ data.main_services.json.business_type_other|default:'' }}" placeholder="Ej.: Masonry">
             </div>
-
           </div>
-
-
           <div class="service-suggestions-area">
-
-  <div class="service-block-heading">
-
-    <div>
-      <strong>Servicios sugeridos</strong>
-      <small>
-        Aparecen automáticamente según el tipo de negocio.
-        Selecciona los que ofrece la empresa.
-      </small>
-    </div>
-
-  </div>
-
-  <div
-    id="service-suggestions"
-    class="service-suggestions"
-  >
-    <div class="service-suggestions-empty">
-      Selecciona el tipo de negocio.
-    </div>
-  </div>
-
-</div>
-
-<div class="service-selected-area">
-
-  <div class="service-block-heading">
-
-    <div>
-      <strong>Servicios seleccionados</strong>
-      <small>
-        Puedes ordenarlos, editarlos o moverlos a una categoría.
-      </small>
-    </div>
-
-    <button
-      type="button"
-      class="btn btn-secondary btn-sm"
-      id="add-service-item"
-    >
-      Agregar servicio
-    </button>
-
-  </div>
-
-  <div
-    id="service-pool"
-    class="service-category-items service-drop-zone service-pool"
-    data-service-zone="pool"
-  >
-    <div class="service-pool-empty">
-      Todavía no has seleccionado servicios.
-    </div>
-  </div>
-
-</div>
-          <div class="service-main-area">
-
+            <div class="service-block-heading"><div><strong>Servicios sugeridos</strong><small>Aparecen según el tipo de negocio. Selecciona los que ofrece la empresa.</small></div></div>
+            <div id="service-suggestions" class="service-suggestions"><div class="service-suggestions-empty">Selecciona el tipo de negocio.</div></div>
+          </div>
+          <div class="service-selected-area">
             <div class="service-block-heading">
-              <div>
-                <strong>Servicio principal</strong>
-                <small>Solo puede existir uno.</small>
-              </div>
+              <div><strong>Servicios seleccionados</strong><small>Puedes editar, marcar como principal o eliminar cada servicio.</small></div>
+              <button type="button" class="btn btn-secondary btn-sm" id="add-service-item">Agregar servicio</button>
             </div>
-
-            <div
-              id="primary-service-zone"
-              class="service-drop-zone primary-service-zone"
-              data-service-zone="primary"
-            >
-              <div class="service-zone-empty">
-                Arrastra aquí el servicio principal.
-              </div>
+            <div id="service-pool" class="service-category-items service-pool">
+              <div class="service-pool-empty">Todavía no has seleccionado servicios.</div>
             </div>
-
           </div>
-
-
-          <div class="service-block-heading">
-
-            <div>
-              <strong>Categorías de servicios</strong>
-<small>
-  Créelo si necesita agrupar los servicios.
-</small>
-            </div>
-
-            <button
-              type="button"
-              class="btn btn-secondary btn-sm"
-              id="add-service-category"
-            >
-              Crear categoría
-            </button>
-
+          <div class="service-primary-summary" id="primary-service-summary">
+            <strong>Servicio principal</strong>
+            <span id="primary-service-name">Selecciona “Principal” en uno de los servicios.</span>
           </div>
-
-
-          <div
-            id="service-categories"
-            class="service-categories"
-          ></div>
           {{ data.main_services.json|json_script:"saved-services-data" }}
-
-          <div class="excluded-services-area">
-
-            <div class="service-block-heading">
-
-              <div>
-                <strong>Servicios excluidos</strong>
-                <small>
-                  Servicios que no deben ofrecerse ni publicarse.
-                </small>
-              </div>
-
-              <button
-                type="button"
-                class="btn btn-secondary btn-sm"
-                id="add-excluded-service"
-              >
-                Agregar servicio excluido
-              </button>
-
-            </div>
-
-            <div
-              id="excluded-services"
-              class="excluded-services-list"
-            >
-
-              {% for item in data.main_services.json.excluded_services %}
-
-              <div class="excluded-service-row">
-
-                <input
-                  type="text"
-                  name="excluded_service_name"
-                  value="{{ item }}"
-                >
-
-                <button
-                  type="button"
-                  class="row-remove"
-                >
-                  Eliminar
-                </button>
-
-              </div>
-
-              {% endfor %}
-
-            </div>
-
-          </div>
-
         </div>
-
-
         <div class="section-save-actions">
-
-          <button
-            type="submit"
-            class="btn btn-secondary"
-          >
-            Guardar sección
-          </button>
-
-          <button
-            type="button"
-            class="btn btn-primary requirement-save-close"
-          >
-            Guardar y cerrar
-          </button>
-
+          <button type="submit" class="btn btn-secondary">Guardar sección</button>
+          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
         </div>
-
       </div>
-
     </section>
+
 
 
 
@@ -576,7 +388,7 @@
 
       <button type="button" class="requirement-card-head" data-requirement-toggle>
 
-        <span class="requirement-number">04</span>
+        <span class="requirement-number">05</span>
 
         <span class="requirement-copy">
           <strong>Cobertura geográfica</strong>
@@ -696,11 +508,12 @@
 
 
 
+
     <section class="requirement-card" data-requirement-section="contact">
 
       <button type="button" class="requirement-card-head" data-requirement-toggle>
 
-        <span class="requirement-number">05</span>
+        <span class="requirement-number">06</span>
 
         <span class="requirement-copy">
           <strong>Horarios y contacto</strong>
@@ -715,7 +528,7 @@
 
       <div class="requirement-card-body">
 
-        <div class="tech-grid two">
+        <div class="tech-grid two contact-hours-grid">
 
           <div class="tech-card {% if data.business_hours.complete %}complete{% endif %}" id="block-hours">
 
@@ -727,8 +540,12 @@
                 <label>Desde</label>
                 <div>
                   <input
-                    type="text"
+                    type="number"
                     name="hours_start"
+                    min="1"
+                    max="12"
+                    step="1"
+                    inputmode="numeric"
                     value="{{ data.business_hours.json.start|default:'' }}"
                   >
 
@@ -743,8 +560,12 @@
                 <label>Hasta</label>
                 <div>
                   <input
-                    type="text"
+                    type="number"
                     name="hours_end"
+                    min="1"
+                    max="12"
+                    step="1"
+                    inputmode="numeric"
                     value="{{ data.business_hours.json.end|default:'' }}"
                   >
 
@@ -896,13 +717,81 @@
 
     </section>
 
+    <section class="requirement-card" data-requirement-section="marketing">
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+        <span class="requirement-number">07</span>
+        <span class="requirement-copy"><strong>Redes sociales</strong><small>Selecciona las redes que utiliza la empresa.</small></span>
+        <span class="requirement-toggle-text">Ver más</span>
+      </button>
+      <div class="requirement-card-body">
+        <div class="tech-card {% if data.has_social.complete %}complete{% endif %}" id="block-social">
+          {{ data.has_social.json|json_script:"saved-social-data" }}
+          <strong>Redes sociales</strong>
+          <div class="choice-pills">
+            <label><input type="radio" name="social_has" value="yes" {% if data.has_social.json.has == 'yes' %}checked{% endif %}> Sí</label>
+            <label><input type="radio" name="social_has" value="no" {% if data.has_social.json.has == 'no' %}checked{% endif %}> No</label>
+          </div>
+          <div class="conditional-panel" data-show-when="social_has:yes">
+            <div class="social-network-grid">
+              {% for key,label in social_networks %}
+              {% with url=data.has_social.json.networks|get_item:key %}
+              <div class="social-network-item" data-social-key="{{ key }}">
+                <label class="network-check"><input type="checkbox" name="social_enabled_{{ key }}" value="1"> {{ label }}</label>
+                <input class="social-url" type="url" name="social_url_{{ key }}" value="{{ url|default:'' }}" placeholder="https://...">
+              </div>
+              {% endwith %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">Guardar sección</button>
+          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="requirement-card" data-requirement-section="forms">
+      <button type="button" class="requirement-card-head" data-requirement-toggle>
+        <span class="requirement-number">08</span>
+        <span class="requirement-copy"><strong>Formularios</strong><small>Campos y configuración del formulario web.</small></span>
+        <span class="requirement-toggle-text">Ver más</span>
+      </button>
+      <div class="requirement-card-body">
+        <div class="tech-card">
+          {{ data.website_forms.json|json_script:"saved-form-data" }}
+          <strong>Campos del formulario</strong>
+          <div class="choice-pills">
+            <label><input type="checkbox" name="form_fields" value="name"> Nombre</label>
+            <label><input type="checkbox" name="form_fields" value="phone"> Teléfono</label>
+            <label><input type="checkbox" name="form_fields" value="email"> Email</label>
+            <label><input type="checkbox" name="form_fields" value="address"> Dirección</label>
+            <label><input type="checkbox" name="form_fields" value="city"> Ciudad</label>
+            <label><input type="checkbox" name="form_fields" value="zip"> ZIP</label>
+            <label><input type="checkbox" name="form_fields" value="service"> Servicio</label>
+            <label><input type="checkbox" name="form_fields" value="date"> Fecha</label>
+            <label><input type="checkbox" name="form_fields" value="description"> Descripción</label>
+            <label><input type="checkbox" name="form_fields" value="photos"> Fotografías</label>
+            <label><input type="checkbox" name="form_fields" value="other"> Otro</label>
+          </div>
+          <label>Email receptor</label>
+          <input type="email" name="form_receiver_email" value="{{ data.website_forms.json.receiver_email|default:'' }}">
+        </div>
+        <div class="section-save-actions">
+          <button type="submit" class="btn btn-secondary">Guardar sección</button>
+          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
+        </div>
+      </div>
+    </section>
+
+
 
 
     <section class="requirement-card" data-requirement-section="quotes">
 
       <button type="button" class="requirement-card-head" data-requirement-toggle>
 
-        <span class="requirement-number">06</span>
+        <span class="requirement-number">09</span>
 
         <span class="requirement-copy">
           <strong>Cotizaciones</strong>
@@ -979,105 +868,12 @@
 
 
 
-    <section class="requirement-card" data-requirement-section="brand">
-
-      <button type="button" class="requirement-card-head" data-requirement-toggle>
-
-        <span class="requirement-number">07</span>
-
-        <span class="requirement-copy">
-          <strong>Misión, visión y marca</strong>
-          <small>
-            Misión, visión, slogan e información de marca.
-          </small>
-        </span>
-        <span class="requirement-toggle-text">Ver más</span>
-
-      </button>
-
-
-      <div class="requirement-card-body">
-
-        <div class="tech-grid two">
-
-          <div class="tech-card {% if data.slogan.complete %}complete{% endif %}" id="block-slogan">
-
-            <strong>Slogan</strong>
-
-            <div class="choice-pills">
-              <label><input type="radio" name="slogan_mode" value="existing" {% if data.slogan.json.mode == 'existing' %}checked{% endif %}> Ya tiene</label>
-              <label><input type="radio" name="slogan_mode" value="create" {% if data.slogan.json.mode == 'create' %}checked{% endif %}> Crear uno</label>
-              <label><input type="radio" name="slogan_mode" value="none" {% if data.slogan.json.mode == 'none' %}checked{% endif %}> No crear</label>
-            </div>
-
-            <div id="slogan-detail" class="conditional-panel">
-              <input
-                type="text"
-                name="slogan_text"
-                value="{{ data.slogan.json.text|default:'' }}"
-              >
-            </div>
-
-          </div>
-
-
-          <div class="tech-card {% if data.has_mission_vision.complete %}complete{% endif %}" id="block-mission">
-
-            <strong>¿La empresa tiene misión y visión?</strong>
-
-            <div class="choice-pills">
-              <label><input type="radio" name="mission_has" value="yes" {% if data.has_mission_vision.json.has == 'yes' %}checked{% endif %}> Sí</label>
-              <label><input type="radio" name="mission_has" value="no" {% if data.has_mission_vision.json.has == 'no' %}checked{% endif %}> No</label>
-            </div>
-
-            <div class="conditional-panel" data-show-when="mission_has:yes">
-
-              <label>Misión original</label>
-              <textarea name="mission_text" rows="3">{{ data.has_mission_vision.json.mission|default:'' }}</textarea>
-
-              <label>Visión original</label>
-              <textarea name="vision_text" rows="3">{{ data.has_mission_vision.json.vision|default:'' }}</textarea>
-
-            </div>
-
-
-            <div class="conditional-panel" data-show-when="mission_has:no">
-
-              <label>¿Por qué nació la empresa?</label>
-              <textarea name="mission_origin" rows="2">{{ data.has_mission_vision.json.mission_origin|default:'' }}</textarea>
-
-              <label>¿A quién ayuda y qué la hace diferente?</label>
-              <textarea name="mission_clients" rows="2">{{ data.has_mission_vision.json.mission_clients|default:'' }}</textarea>
-
-              <label>¿Cómo imagina la empresa en 5 a 10 años?</label>
-              <textarea name="vision_future" rows="2">{{ data.has_mission_vision.json.vision_future|default:'' }}</textarea>
-
-              <label>¿Qué huella quiere dejar?</label>
-              <textarea name="vision_legacy" rows="2">{{ data.has_mission_vision.json.vision_legacy|default:'' }}</textarea>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <div class="section-save-actions">
-          <button type="submit" class="btn btn-secondary">Guardar sección</button>
-          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
-        </div>
-
-      </div>
-
-    </section>
-
-
 
     <section class="requirement-card" data-requirement-section="certifications">
 
       <button type="button" class="requirement-card-head" data-requirement-toggle>
 
-        <span class="requirement-number">08</span>
+        <span class="requirement-number">10</span>
 
         <span class="requirement-copy">
           <strong>Certificaciones y garantías</strong>
@@ -1135,383 +931,6 @@
             >
 
           </div>
-
-        </div>
-
-
-        <div class="section-save-actions">
-          <button type="submit" class="btn btn-secondary">Guardar sección</button>
-          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
-        </div>
-
-      </div>
-
-    </section>
-
-
-
-<section class="requirement-card" data-requirement-section="team">
-
-  <button
-    type="button"
-    class="requirement-card-head"
-    data-requirement-toggle
-  >
-
-    <span class="requirement-number">09</span>
-
-    <span class="requirement-copy">
-      <strong>About y Team</strong>
-      <small>
-        Define si se mostrará al dueño, al equipo o contenido relacionado.
-      </small>
-    </span>
-
-    <span class="requirement-toggle-text">
-      Ver más
-    </span>
-
-  </button>
-
-
-  <div class="requirement-card-body">
-
-    <div
-      class="tech-card {% if data.show_team.complete %}complete{% endif %}"
-      id="block-team"
-    >
-
-      <strong>
-        ¿Desea incluir contenido de About / Team?
-      </strong>
-
-      <div class="choice-pills">
-
-        <label>
-          <input
-            type="radio"
-            name="team_include"
-            value="yes"
-            {% if data.show_team.json.include == 'yes' %}checked{% endif %}
-          >
-          Sí
-        </label>
-
-        <label>
-          <input
-            type="radio"
-            name="team_include"
-            value="no"
-            {% if data.show_team.json.include == 'no' %}checked{% endif %}
-          >
-          No
-        </label>
-
-      </div>
-
-
-      <div
-        class="conditional-panel"
-        data-show-when="team_include:yes"
-      >
-
-        <strong>
-          ¿Qué contenido desea mostrar?
-        </strong>
-
-        <div class="choice-cards vertical">
-
-          <label>
-            <input
-              type="radio"
-              name="team_scope"
-              value="owner_photo"
-              {% if data.show_team.json.scope == 'owner_photo' %}checked{% endif %}
-            >
-
-            <span>
-              <b>Foto del dueño</b>
-              <small>
-                Mostrar al propietario o representante principal.
-              </small>
-            </span>
-          </label>
-
-
-          <label>
-            <input
-              type="radio"
-              name="team_scope"
-              value="team_photo"
-              {% if data.show_team.json.scope == 'team_photo' %}checked{% endif %}
-            >
-
-            <span>
-              <b>Foto con el team</b>
-              <small>
-                Mostrar una fotografía general con el equipo.
-              </small>
-            </span>
-          </label>
-
-
-          <label>
-            <input
-              type="radio"
-              name="team_scope"
-              value="group_photos"
-              {% if data.show_team.json.scope == 'group_photos' %}checked{% endif %}
-            >
-
-            <span>
-              <b>Fotos por grupos</b>
-              <small>
-                Mostrar distintas fotografías por equipo o área.
-              </small>
-            </span>
-          </label>
-
-
-          <label>
-            <input
-              type="radio"
-              name="team_scope"
-              value="no_photo"
-              {% if data.show_team.json.scope == 'no_photo' %}checked{% endif %}
-            >
-
-            <span>
-              <b>Sin foto</b>
-              <small>
-                Incluir contenido de About / Team únicamente con texto.
-              </small>
-            </span>
-          </label>
-
-
-          <label>
-            <input
-              type="radio"
-              name="team_scope"
-              value="other"
-              {% if data.show_team.json.scope == 'other' %}checked{% endif %}
-            >
-
-            <span>
-              <b>Otro</b>
-              <small>
-                Registrar una opción diferente.
-              </small>
-            </span>
-          </label>
-
-        </div>
-
-
-        <div
-          class="conditional-panel"
-          data-show-when="team_scope:other"
-        >
-
-          <label>
-            Especifique otra opción
-          </label>
-
-          <input
-            type="text"
-            name="team_other"
-            value="{{ data.show_team.json.other|default:'' }}"
-            placeholder="Escriba cómo desea presentar esta sección"
-          >
-
-        </div>
-
-
-        <label>
-          Notas adicionales
-        </label>
-
-        <textarea
-          name="team_notes"
-          rows="3"
-          placeholder="Información adicional sobre About, dueño o equipo..."
-        >{{ data.show_team.json.notes|default:'' }}</textarea>
-
-      </div>
-
-    </div>
-
-
-    <div class="section-save-actions">
-
-      <button
-        type="submit"
-        class="btn btn-secondary"
-      >
-        Guardar sección
-      </button>
-
-      <button
-        type="button"
-        class="btn btn-primary requirement-save-close"
-      >
-        Guardar y cerrar
-      </button>
-
-    </div>
-
-  </div>
-
-</section>
-
-
-    <section class="requirement-card" data-requirement-section="marketing">
-
-      <button type="button" class="requirement-card-head" data-requirement-toggle>
-
-        <span class="requirement-number">10</span>
-
-        <span class="requirement-copy">
-        <strong>Redes sociales</strong>
-      
-        </span>
-        <span class="requirement-toggle-text">Ver más</span>
-
-      </button>
-
-
-      <div class="requirement-card-body">
-
-        <div class="tech-card {% if data.has_social.complete %}complete{% endif %}" id="block-social">
-
-          <strong>Redes sociales</strong>
-
-          <div class="choice-pills">
-            <label><input type="radio" name="social_has" value="yes" {% if data.has_social.json.has == 'yes' %}checked{% endif %}> Sí</label>
-            <label><input type="radio" name="social_has" value="no" {% if data.has_social.json.has == 'no' %}checked{% endif %}> No</label>
-          </div>
-
-          <div class="conditional-panel" data-show-when="social_has:yes">
-
-            <div class="social-network-grid">
-
-              {% for key,label in social_networks %}
-              {% with url=data.has_social.json.networks|get_item:key %}
-
-              <div class="social-network-item">
-
-                <label class="network-check">
-                  <input
-                    type="checkbox"
-                    name="social_enabled_{{ key }}"
-                    value="1"
-                    {% if url %}checked{% endif %}
-                  >
-                  {{ label }}
-                </label>
-
-                <input
-                  class="social-url"
-                  type="url"
-                  name="social_url_{{ key }}"
-                  value="{{ url|default:'' }}"
-                  placeholder="https://..."
-                >
-
-              </div>
-
-              {% endwith %}
-              {% endfor %}
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-
-
-
-        <div class="section-save-actions">
-          <button type="submit" class="btn btn-secondary">Guardar sección</button>
-          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
-        </div>
-
-      </div>
-
-    </section>
-
-
-
-
-
-
-
-
-    <section class="requirement-card" data-requirement-section="forms">
-
-      <button type="button" class="requirement-card-head" data-requirement-toggle>
-
-        <span class="requirement-number">11</span>
-
-        <span class="requirement-copy">
-          <strong>Formularios</strong>
-          <small>
-            Campos y configuración del formulario web.
-          </small>
-        </span>
-        <span class="requirement-toggle-text">Ver más</span>
-
-      </button>
-
-
-      <div class="requirement-card-body">
-
-        <div class="tech-card">
-
-          <strong>Campos del formulario</strong>
-
-          <div class="choice-pills">
-            <label><input type="checkbox" name="form_fields" value="name"> Nombre</label>
-            <label><input type="checkbox" name="form_fields" value="phone"> Teléfono</label>
-            <label><input type="checkbox" name="form_fields" value="email"> Email</label>
-            <label><input type="checkbox" name="form_fields" value="address"> Dirección</label>
-            <label><input type="checkbox" name="form_fields" value="city"> Ciudad</label>
-            <label><input type="checkbox" name="form_fields" value="zip"> ZIP</label>
-            <label><input type="checkbox" name="form_fields" value="service"> Servicio</label>
-            <label><input type="checkbox" name="form_fields" value="date"> Fecha</label>
-            <label><input type="checkbox" name="form_fields" value="description"> Descripción</label>
-            <label><input type="checkbox" name="form_fields" value="photos"> Fotografías</label>
-            <label><input type="checkbox" name="form_fields" value="other"> Otro</label>
-          </div>
-
-          <label>Email receptor</label>
-          <input
-            type="email"
-            name="form_receiver_email"
-            value="{{ data.website_forms.json.receiver_email|default:'' }}"
-          >
-
-          <label>WhatsApp receptor</label>
-          <input
-              type="text"
-              name="form_receiver_whatsapp"
-              value="{{ data.website_forms.json.receiver_whatsapp|default:'' }}"
-            >
-
-          <label>Mensaje de confirmación</label>
-          <textarea
-              name="form_confirmation_message"
-              rows="2"
-            >{{ data.website_forms.json.confirmation_message|default:'' }}</textarea>
-
-          <label>Redirección</label>
-          <input
-              type="text"
-              name="form_redirect"
-              value="{{ data.website_forms.json.redirect|default:'' }}"
-            >
 
         </div>
 
@@ -2184,6 +1603,148 @@
 
 }
 
+
+/* CEOJA — Ficha técnica responsive fixes */
+.team-scope-grid{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  align-items:stretch;
+}
+.team-scope-grid > label{
+  width:100%;
+  min-width:0;
+}
+.team-scope-grid .team-other-choice{
+  grid-column:1;
+}
+.team-scope-grid .team-other-field{
+  grid-column:2;
+  margin:0 !important;
+  align-self:stretch;
+}
+.team-scope-grid .team-other-field.visible{
+  display:flex !important;
+  flex-direction:column;
+  justify-content:center;
+}
+
+#block-areas .area-row{
+  display:grid !important;
+  grid-template-columns:120px minmax(0,1fr) auto !important;
+  gap:10px !important;
+  align-items:center !important;
+}
+#block-areas .area-row select,
+#block-areas .area-row input{
+  width:100% !important;
+  min-width:0 !important;
+}
+#block-areas .area-row .row-remove{
+  width:auto !important;
+  min-width:108px;
+  white-space:nowrap;
+}
+
+.contact-hours-grid{
+  display:grid !important;
+  grid-template-columns:minmax(0,2fr) minmax(220px,.7fr) !important;
+  gap:12px !important;
+}
+#block-hours .time-range{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:12px !important;
+  align-items:end !important;
+}
+#block-hours .time-range > div > div{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) 82px !important;
+  gap:8px !important;
+  align-items:center !important;
+}
+#block-hours .time-range input,
+#block-hours .time-range select{
+  width:100% !important;
+  min-width:0 !important;
+}
+
+#block-phones .phone-row{
+  display:grid !important;
+  grid-template-columns:minmax(220px,1fr) auto auto auto !important;
+  gap:8px !important;
+  align-items:center !important;
+}
+#block-phones .phone-row > input[type="tel"]{
+  width:100% !important;
+  min-width:0 !important;
+}
+#block-phones .phone-row .row-remove{
+  width:auto !important;
+  min-width:100px;
+  white-space:nowrap;
+}
+
+@media(max-width:900px){
+  .contact-hours-grid{
+    grid-template-columns:1fr !important;
+  }
+  #block-areas .area-row{
+    grid-template-columns:110px minmax(0,1fr) !important;
+  }
+  #block-areas .area-row .row-remove{
+    grid-column:1 / -1;
+    justify-self:start;
+  }
+  #block-phones .phone-row{
+    grid-template-columns:minmax(0,1fr) auto auto !important;
+  }
+  #block-phones .phone-row .row-remove{
+    grid-column:1 / -1;
+    justify-self:start;
+  }
+}
+
+@media(max-width:650px){
+  .team-scope-grid{
+    grid-template-columns:1fr !important;
+  }
+  .team-scope-grid .team-other-choice,
+  .team-scope-grid .team-other-field{
+    grid-column:1 !important;
+  }
+  #block-areas .area-row,
+  #block-phones .phone-row,
+  #block-hours .time-range,
+  #block-hours .time-range > div > div{
+    grid-template-columns:1fr !important;
+  }
+  #block-areas .area-row .row-remove,
+  #block-phones .phone-row .row-remove{
+    grid-column:auto;
+    width:100% !important;
+  }
+}
+
+
+
+.business-logic-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:stretch}
+.business-description-card{height:100%;display:flex;flex-direction:column}.business-description-card textarea{flex:1;min-height:220px;resize:vertical}
+.business-logic-side{display:grid;grid-template-rows:auto 1fr;gap:14px}.business-action-card{height:100%}
+.contact-top-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,.34fr);gap:14px;align-items:stretch}
+#block-hours .time-range{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+#block-hours .time-range>div>div{display:grid;grid-template-columns:minmax(0,1fr) 86px;gap:8px;align-items:center}
+#block-hours input[type="number"]{width:100%;min-width:0}
+#block-247{min-width:0}
+.service-selected-area .service-category-items{display:flex;flex-direction:column;gap:8px}
+.service-item{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;gap:9px;align-items:center}
+.service-item.is-primary{border-color:#8bc8aa;background:#f3fbf6}
+.service-item.is-primary .service-make-primary{background:#e9f7ef;border-color:#9bd0b3;color:#176b45}
+.service-primary-summary{margin-top:14px;padding:14px 16px;border:1px solid #dfe6ee;border-radius:10px;background:#f8fafc;display:flex;justify-content:space-between;gap:16px;align-items:center}
+.service-primary-summary strong{color:#17243a}.service-primary-summary span{color:#607086;text-align:right}
+@media(max-width:900px){.business-logic-grid,.contact-top-grid{grid-template-columns:1fr}.business-description-card textarea{min-height:160px}}
+@media(max-width:650px){#block-hours .time-range{grid-template-columns:1fr}#block-hours .time-range>div>div{grid-template-columns:minmax(0,1fr) 76px}.service-item{grid-template-columns:1fr!important}.service-item .service-make-primary,.service-item .service-remove{width:100%}.service-primary-summary{align-items:flex-start;flex-direction:column}.service-primary-summary span{text-align:left}}
+
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function(){
@@ -2607,6 +2168,32 @@ if (requestedSection) {
 
       });
 
+    const savedSocialNode = document.getElementById('saved-social-data');
+
+    if (savedSocialNode && savedSocialNode.dataset.restored !== '1') {
+      try {
+        const savedSocial = JSON.parse(savedSocialNode.textContent || '{}');
+        const enabled = new Set(
+          Array.isArray(savedSocial.enabled)
+            ? savedSocial.enabled
+            : Object.keys(savedSocial.networks || {})
+        );
+
+        enabled.forEach((key)=>{
+          const checkbox = form.querySelector(`[name="social_enabled_${key}"]`);
+          if (checkbox) checkbox.checked = true;
+        });
+
+        savedSocialNode.dataset.restored = '1';
+
+        form.querySelectorAll('.social-network-item').forEach((item)=>{
+          const checkbox = item.querySelector('input[type="checkbox"]');
+          const url = item.querySelector('.social-url');
+          if (url) url.style.display = checkbox?.checked ? 'block' : 'none';
+        });
+      } catch (error) {}
+    }
+
   }
 
 /* ==========================================
@@ -2637,10 +2224,6 @@ function updateSectionProgress(){
 
   const sectionData = {
 
-    general: [
-      hasValue('company_description')
-    ],
-
 business: [
 
   checked('customer_type'),
@@ -2667,42 +2250,14 @@ business: [
 ],
 
     services: [
-
       (()=>{
-
-        const businessType =
-          radio('business_type');
-
-        if (!businessType) {
-          return false;
-        }
-
-        if (
-          businessType === 'other'
-        ) {
-          return Boolean(
-            val('business_type_other')
-          );
-        }
-
+        const businessType = radio('business_type');
+        if (!businessType) return false;
+        if (businessType === 'other') return Boolean(val('business_type_other'));
         return true;
-
       })(),
-
-      Boolean(
-        document.querySelector(
-          '#primary-service-zone .service-item [name="service_name"]'
-        )?.value.trim()
-      ),
-
-      [
-        ...document.querySelectorAll(
-          '.service-item [name="service_name"]'
-        )
-      ].some(
-        field => field.value.trim()
-      )
-
+      Boolean(form.querySelector('.service-item.is-primary [name="service_name"]')?.value.trim()),
+      [...form.querySelectorAll('#service-pool .service-item [name="service_name"]')].some(field => field.value.trim())
     ],
 
     coverage: [
@@ -2763,9 +2318,7 @@ business: [
 
     forms: [
       checkedAny('form_fields'),
-
-      hasValue('form_receiver_email') ||
-      hasValue('form_receiver_whatsapp')
+      hasValue('form_receiver_email')
     ]
 
   };
@@ -2942,40 +2495,12 @@ setDone(
 
   /* SERVICIOS */
 
-  const serviceInputs = [
-    ...form.querySelectorAll(
-      '.service-item [name="service_name"]'
-    )
-  ];
+  const serviceInputs = [...form.querySelectorAll('#service-pool .service-item [name="service_name"]')];
+  const validServices = serviceInputs.filter(input => input.value.trim());
+  const primaryService = form.querySelector('#service-pool .service-item.is-primary [name="service_name"]');
+  const primaryName = primaryService?.value.trim();
 
-  const validServices =
-    serviceInputs.filter(
-      (input) =>
-        input.value.trim()
-    );
-
-  const primaryZone =
-    document.getElementById(
-      'primary-service-zone'
-    );
-
-  const primaryService =
-    primaryZone
-      ?.querySelector(
-        '.service-item [name="service_name"]'
-      );
-
-  const primaryName =
-    primaryService
-      ?.value
-      .trim();
-
-  setDone(
-    'block-services',
-    validServices.length >= 1 &&
-    Boolean(primaryName)
-  );
-
+  setDone('block-services', validServices.length >= 1 && Boolean(primaryName));
 
   /* ÁREAS */
 
@@ -3031,25 +2556,9 @@ setDone(
   const socialMode =
     radio('social_has');
 
-  const hasSocialUrl =
-    [
-      ...form.querySelectorAll(
-        '.social-url'
-      )
-    ].some(
-      (input) =>
-        input.offsetParent !== null &&
-        input.value.trim()
-    );
+  const hasSocialSelection = [...form.querySelectorAll('.social-network-item input[type="checkbox"]')].some(input => input.checked);
 
-  setDone(
-    'block-social',
-    socialMode === 'no' ||
-    (
-      socialMode === 'yes' &&
-      hasSocialUrl
-    )
-  );
+  setDone('block-social', socialMode === 'no' || (socialMode === 'yes' && hasSocialSelection));
 
 
   /* CERTIFICACIONES */
@@ -3103,19 +2612,7 @@ setDone(
 
   /* PROGRESO TOTAL */
 
-  const clientSections = [
-    'general',
-    'business',
-    'services',
-    'coverage',
-    'contact',
-    'quotes',
-    'brand',
-    'certifications',
-    'team',
-    'marketing',
-    'forms'
-  ]
+  const clientSections = ['business','brand','team','services','coverage','contact','marketing','forms','quotes','certifications']
     .map((section)=>
       document.querySelector(
         `[data-requirement-section="${section}"]`
@@ -3286,1344 +2783,132 @@ function normalizePhoneOrder(){
 
 
   /* ==========================================
-     SERVICIOS PREDEFINIDOS
-  ========================================== */
-const serviceTemplates = {
-
-  tree_service: [
-    'Tree Removal',
-    'Tree Trimming',
-    'Tree Pruning',
-    'Stump Removal',
-    'Stump Grinding',
-    'Emergency Tree Service',
-    'Storm Damage Cleanup',
-    'Land Clearing',
-    'Property Cleanup'
-  ],
-
-  roofing: [
-    'Roof Installation',
-    'Roof Replacement',
-    'Roof Repair',
-    'Emergency Roof Repair',
-    'Roof Leak Repair',
-    'Shingle Roofing',
-    'Metal Roofing',
-    'Flat Roofing',
-    'Roof Inspection',
-    'Gutter Installation',
-    'Gutter Repair',
-    'Skylight Services'
-  ],
-
-  remodeling: [
-    'Interior Remodeling',
-    'Kitchen Remodeling',
-    'Bathroom Remodeling',
-    'Basement Remodeling',
-    'Exterior Remodeling',
-    'Home Additions',
-    'Room Additions',
-    'Flooring',
-    'Painting',
-    'Drywall',
-    'Carpentry',
-    'Decks',
-    'Patios'
-  ]
-
-};
-
-function getExistingServiceNames(){
-
-  return new Set(
-    [
-      ...form.querySelectorAll(
-        '.service-item [name="service_name"]'
-      )
-    ]
-      .map(
-        input =>
-          input.value
-            .trim()
-            .toLowerCase()
-      )
-      .filter(Boolean)
-  );
-
-}
-
-
-function refreshServicePool(){
-
-  const pool =
-    document.getElementById(
-      'service-pool'
-    );
-
-  if (!pool) return;
-
-
-  let empty =
-    pool.querySelector(
-      '.service-pool-empty'
-    );
-
-
-  const hasServices =
-    Boolean(
-      pool.querySelector(
-        '.service-item'
-      )
-    );
-
-
-  if (hasServices) {
-
-    empty?.remove();
-
-  } else {
-
-    if (!empty) {
-
-      empty =
-        document.createElement(
-          'div'
-        );
-
-      empty.className =
-        'service-pool-empty';
-
-      empty.textContent =
-        'Todavía no has seleccionado servicios.';
-
-      pool.appendChild(
-        empty
-      );
-
-    }
-
-  }
-
-}
-
-
-function refreshServiceSuggestions(){
-
-  const container =
-    document.getElementById(
-      'service-suggestions'
-    );
-
-  if (!container) return;
-
-
-  const type =
-    radio('business_type');
-
-
-  container.innerHTML = '';
-
-
-  if (!type) {
-
-    container.innerHTML = `
-      <div class="service-suggestions-empty">
-        Selecciona el tipo de negocio.
-      </div>
-    `;
-
-    return;
-
-  }
-
-
-  if (type === 'other') {
-
-    container.innerHTML = `
-      <div class="service-suggestions-empty">
-        Para otro tipo de negocio puedes agregar los servicios manualmente.
-      </div>
-    `;
-
-    return;
-
-  }
-
-
-  const services =
-    serviceTemplates[type] || [];
-
-
-  const existing =
-    getExistingServiceNames();
-
-
-  services.forEach(
-    serviceName => {
-
-      const button =
-        document.createElement(
-          'button'
-        );
-
-      button.type =
-        'button';
-
-      button.className =
-        'service-suggestion';
-
-      button.textContent =
-        serviceName;
-
-
-      const alreadyAdded =
-        existing.has(
-          serviceName.toLowerCase()
-        );
-
-
-      if (alreadyAdded) {
-
-        button.classList.add(
-          'is-added'
-        );
-
-        button.disabled =
-          true;
-
-        button.textContent =
-          `${serviceName} ✓`;
-
-      }
-
-
-      button.addEventListener(
-        'click',
-        ()=>{
-
-          if (button.disabled) {
-            return;
-          }
-
-
-          const pool =
-            document.getElementById(
-              'service-pool'
-            );
-
-          if (!pool) return;
-
-
-          pool
-            .querySelector(
-              '.service-pool-empty'
-            )
-            ?.remove();
-
-
-          pool.appendChild(
-            createServiceRow(
-              serviceName
-            )
-          );
-
-
-          wireServiceItems();
-
-          refreshServicePool();
-
-          refreshServiceSuggestions();
-
-          updateChecks();
-
-        }
-      );
-
-
-      container.appendChild(
-        button
-      );
-
-    }
-  );
-
-}
-  /* ==========================================
-     CREAR SERVICIO
+     SERVICIOS
   ========================================== */
 
-  function createServiceRow(
-    name = ''
-  ){
+  const serviceTemplates = {
+    tree_service: ['Tree Removal','Tree Trimming','Tree Pruning','Stump Removal','Stump Grinding','Emergency Tree Service','Storm Damage Cleanup','Land Clearing','Property Cleanup'],
+    roofing: ['Roof Installation','Roof Replacement','Roof Repair','Emergency Roof Repair','Roof Leak Repair','Shingle Roofing','Metal Roofing','Flat Roofing','Roof Inspection','Gutter Installation','Gutter Repair','Skylight Services'],
+    remodeling: ['Interior Remodeling','Kitchen Remodeling','Bathroom Remodeling','Basement Remodeling','Exterior Remodeling','Flooring','Painting','Drywall','Carpentry','Decks','Patios']
+  };
 
-    const row =
-      document.createElement(
-        'div'
-      );
+  function getExistingServiceNames(){
+    return new Set([...form.querySelectorAll('#service-pool .service-item [name="service_name"]')].map(input=>input.value.trim().toLowerCase()).filter(Boolean));
+  }
 
-    row.className =
-      'service-item';
-
-    row.draggable =
-      true;
-
-
-    row.innerHTML = `
-
-      <div
-        class="service-item-handle"
-        title="Arrastrar servicio"
-      >
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-
-      <input
-        type="text"
-        name="service_name"
-        value=""
-        placeholder="Nombre del servicio"
-      >
-
-      <button
-        type="button"
-        class="service-make-primary"
-      >
-        Principal
-      </button>
-
-      <button
-        type="button"
-        class="service-remove"
-      >
-        Eliminar
-      </button>
-
-    `;
-
-
-    const input =
-      row.querySelector(
-        '[name="service_name"]'
-      );
-
-    if (input) {
-      input.value = name;
+  function refreshServicePool(){
+    const pool=document.getElementById('service-pool');
+    if(!pool) return;
+    let empty=pool.querySelector('.service-pool-empty');
+    const hasServices=Boolean(pool.querySelector('.service-item'));
+    if(hasServices){ empty?.remove(); }
+    else if(!empty){
+      empty=document.createElement('div');
+      empty.className='service-pool-empty';
+      empty.textContent='Todavía no has seleccionado servicios.';
+      pool.appendChild(empty);
     }
+  }
 
+  function refreshPrimarySummary(){
+    const primary=form.querySelector('#service-pool .service-item.is-primary [name="service_name"]');
+    const target=document.getElementById('primary-service-name');
+    if(target) target.textContent=primary?.value.trim() || 'Selecciona “Principal” en uno de los servicios.';
+    form.querySelectorAll('#service-pool .service-item').forEach(item=>{
+      const button=item.querySelector('.service-make-primary');
+      if(button) button.textContent=item.classList.contains('is-primary') ? 'Principal ✓' : 'Principal';
+    });
+  }
 
+  function createServiceRow(name='', isPrimary=false){
+    const row=document.createElement('div');
+    row.className='service-item'+(isPrimary?' is-primary':'');
+    row.innerHTML=`
+      <input type="text" name="service_name" value="" placeholder="Nombre del servicio">
+      <button type="button" class="service-make-primary">Principal</button>
+      <button type="button" class="service-remove">Eliminar</button>`;
+    const input=row.querySelector('[name="service_name"]');
+    if(input) input.value=name;
     return row;
-
   }
-
-
-  /* ==========================================
-     CREAR CATEGORIA
-  ========================================== */
-
-  function createCategory(
-    name = '',
-    services = [],
-    priority = 'medium'
-  ){
-
-    const category =
-      document.createElement(
-        'div'
-      );
-
-    category.className =
-      'service-category';
-
-    category.draggable =
-      true;
-
-
-    category.innerHTML = `
-
-      <div
-        class="service-category-header"
-      >
-
-        <div
-          class="service-category-drag"
-          title="Arrastrar categoría"
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
-
-        <input
-          type="text"
-          name="service_category_name"
-          placeholder="Nombre de categoría"
-        >
-
-        <select
-          name="service_category_priority"
-        >
-          <option value="high">
-            Alta
-          </option>
-
-          <option value="medium">
-            Media
-          </option>
-
-          <option value="low">
-            Baja
-          </option>
-        </select>
-
-        <button
-          type="button"
-          class="service-category-remove"
-        >
-          Eliminar categoría
-        </button>
-
-      </div>
-
-
-      <div
-        class="service-category-items service-drop-zone"
-        data-service-zone="category"
-      >
-      </div>
-
-
-      <button
-        type="button"
-        class="btn btn-secondary btn-sm add-service-inside"
-      >
-        Agregar servicio
-      </button>
-
-    `;
-
-
-    const categoryName =
-      category.querySelector(
-        '[name="service_category_name"]'
-      );
-
-    if (categoryName) {
-      categoryName.value =
-        name;
-    }
-
-
-    const priorityField =
-      category.querySelector(
-        '[name="service_category_priority"]'
-      );
-
-    if (priorityField) {
-      priorityField.value =
-        priority;
-    }
-
-
-    const items =
-      category.querySelector(
-        '.service-category-items'
-      );
-
-
-    services.forEach(
-      (serviceName)=>{
-
-        items.appendChild(
-          createServiceRow(
-            serviceName
-          )
-        );
-
-      }
-    );
-
-
-    wireCategory(category);
-
-    return category;
-
-  }
-
-
-  /* ==========================================
-     CATEGORIA
-  ========================================== */
-
-  function wireCategory(category){
-
-    if (
-      category.dataset.wired === '1'
-    ) {
-      return;
-    }
-
-    category.dataset.wired =
-      '1';
-
-
-    category
-  .querySelector(
-    '.service-category-remove'
-  )
-  ?.addEventListener(
-    'click',
-    ()=>{
-
-      const pool =
-        document.getElementById(
-          'service-pool'
-        );
-
-
-      if (pool) {
-
-        [
-          ...category.querySelectorAll(
-            '.service-item'
-          )
-        ].forEach(
-          service => {
-
-            pool.appendChild(
-              service
-            );
-
-          }
-        );
-
-      }
-
-
-      category.remove();
-
-      refreshServicePool();
-
-    refreshServiceSuggestions();
-
-      wireServiceItems();
-
-      updateChecks();
-
-    }
-  );
-
-  }
-
-
-  /* ==========================================
-     DRAG DE SERVICIOS
-  ========================================== */
-
-  let draggedService =
-    null;
-
-
-  function wireServiceItems(){
-
-    form
-      .querySelectorAll(
-        '.service-item'
-      )
-      .forEach((item)=>{
-
-        if (
-          item.dataset.serviceWired ===
-          '1'
-        ) {
-          return;
-        }
-
-        item.dataset.serviceWired =
-          '1';
-
-
-        item.addEventListener(
-          'dragstart',
-          (event)=>{
-
-            draggedService =
-              item;
-
-            item.classList.add(
-              'dragging'
-            );
-
-            if (
-              event.dataTransfer
-            ) {
-
-              event.dataTransfer
-                .setData(
-                  'text/plain',
-                  'service'
-                );
-
-              event.dataTransfer
-                .effectAllowed =
-                  'move';
-
-            }
-
-          }
-        );
-
-
-        item.addEventListener(
-          'dragend',
-          ()=>{
-
-            item.classList.remove(
-              'dragging'
-            );
-
-            draggedService =
-              null;
-
-            refreshPrimaryZone();
-
-            updateChecks();
-
-          }
-        );
-
-
-        item
-          .querySelector(
-            '.service-remove'
-          )
-          ?.addEventListener(
-            'click',
-            ()=>{
-
-              item.remove();
-
-              refreshPrimaryZone();
-
-              updateChecks();
-
-            }
-          );
-
-
-        item
-          .querySelector(
-            '.service-make-primary'
-          )
-          ?.addEventListener(
-            'click',
-            ()=>{
-
-              makePrimary(item);
-
-            }
-          );
-
-      });
-
-
-    wireServiceDropZones();
-
-  }
-
-
-  /* ==========================================
-     SERVICIO PRINCIPAL
-  ========================================== */
 
   function makePrimary(item){
-
-    const primary =
-      document.getElementById(
-        'primary-service-zone'
-      );
-
-    if (!primary) return;
-
-
-    const existing =
-      primary.querySelector(
-        '.service-item'
-      );
-
-
-if (
-  existing &&
-  existing !== item
-) {
-
-  const pool =
-    document.getElementById(
-      'service-pool'
-    );
-
-  if (pool) {
-
-    pool.appendChild(
-      existing
-    );
-
-  }
-
-}
-
-
-    primary
-      .querySelector(
-        '.service-zone-empty'
-      )
-      ?.remove();
-
-
-    primary.appendChild(
-      item
-    );
-
-
-    refreshPrimaryZone();
-
-    wireServiceItems();
-
+    form.querySelectorAll('#service-pool .service-item').forEach(row=>row.classList.remove('is-primary'));
+    item.classList.add('is-primary');
+    refreshPrimarySummary();
     updateChecks();
-
   }
 
+  function wireServiceItems(){
+    form.querySelectorAll('#service-pool .service-item').forEach(item=>{
+      if(item.dataset.serviceWired==='1') return;
+      item.dataset.serviceWired='1';
+      item.querySelector('.service-remove')?.addEventListener('click',()=>{
+        const wasPrimary=item.classList.contains('is-primary');
+        item.remove();
+        if(wasPrimary){
+          const first=form.querySelector('#service-pool .service-item');
+          if(first) first.classList.add('is-primary');
+        }
+        refreshServicePool();
+        refreshPrimarySummary();
+        refreshServiceSuggestions();
+        updateChecks();
+      });
+      item.querySelector('.service-make-primary')?.addEventListener('click',()=>makePrimary(item));
+      item.querySelector('[name="service_name"]')?.addEventListener('input',()=>{
+        refreshPrimarySummary();
+        refreshServiceSuggestions();
+      });
+    });
+    refreshPrimarySummary();
+  }
 
-  function refreshPrimaryZone(){
-
-    const primary =
-      document.getElementById(
-        'primary-service-zone'
-      );
-
-    if (!primary) return;
-
-
-    const item =
-      primary.querySelector(
-        '.service-item'
-      );
-
-
-    let empty =
-      primary.querySelector(
-        '.service-zone-empty'
-      );
-
-
-    if (!item) {
-
-      if (!empty) {
-
-        empty =
-          document.createElement(
-            'div'
-          );
-
-        empty.className =
-          'service-zone-empty';
-
-        empty.textContent =
-          'Arrastra aquí el servicio principal.';
-
-        primary.appendChild(
-          empty
-        );
-
+  function refreshServiceSuggestions(){
+    const container=document.getElementById('service-suggestions');
+    if(!container) return;
+    const type=radio('business_type');
+    container.innerHTML='';
+    if(!type){ container.innerHTML='<div class="service-suggestions-empty">Selecciona el tipo de negocio.</div>'; return; }
+    if(type==='other'){ container.innerHTML='<div class="service-suggestions-empty">Para otro tipo de negocio puedes agregar los servicios manualmente.</div>'; return; }
+    const existing=getExistingServiceNames();
+    (serviceTemplates[type]||[]).forEach(serviceName=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='service-suggestion';
+      button.textContent=serviceName;
+      if(existing.has(serviceName.toLowerCase())){
+        button.classList.add('is-added'); button.disabled=true; button.textContent=`${serviceName} ✓`;
       }
-
-    } else if (empty) {
-
-      empty.remove();
-
-    }
-
-
-    form
-      .querySelectorAll(
-        '.service-item'
-      )
-      .forEach((service)=>{
-
-        const button =
-          service.querySelector(
-            '.service-make-primary'
-          );
-
-        if (!button) return;
-
-
-        if (
-          service.parentElement ===
-          primary
-        ) {
-
-          button.textContent =
-            'Servicio principal';
-
-          button.disabled =
-            true;
-
-        } else {
-
-          button.textContent =
-            'Principal';
-
-          button.disabled =
-            false;
-
-        }
-
-      });
-
-  }
-
-
-  /* ==========================================
-     DROP ZONES SERVICIOS
-  ========================================== */
-
-  function wireServiceDropZones(){
-
-    form
-      .querySelectorAll(
-        '.service-drop-zone'
-      )
-      .forEach((zone)=>{
-
-        zone.ondragover =
-          (event)=>{
-
-            if (!draggedService) {
-              return;
-            }
-
-            event.preventDefault();
-
-
-            const target =
-              event.target.closest(
-                '.service-item'
-              );
-
-            if (
-              !target ||
-              target === draggedService ||
-              target.parentElement !== zone
-            ) {
-              return;
-            }
-
-
-            const rect =
-              target
-                .getBoundingClientRect();
-
-
-            const after =
-              event.clientY >
-              rect.top +
-              rect.height / 2;
-
-
-            if (after) {
-
-              target.after(
-                draggedService
-              );
-
-            } else {
-
-              target.before(
-                draggedService
-              );
-
-            }
-
-          };
-
-
-        zone.ondrop =
-          (event)=>{
-
-            if (!draggedService) {
-              return;
-            }
-
-            event.preventDefault();
-
-
-            const primary =
-              zone.id ===
-              'primary-service-zone';
-
-
-            if (primary) {
-
-              const existing =
-                zone.querySelector(
-                  '.service-item'
-                );
-
-
-              if (
-                existing &&
-                existing !==
-                draggedService
-              ) {
-
-                const firstCategory =
-                  document.querySelector(
-                    '.service-category-items'
-                  );
-
-
-                if (firstCategory) {
-
-                  firstCategory.appendChild(
-                    existing
-                  );
-
-                }
-
-              }
-
-            }
-
-
-            const target =
-              event.target.closest(
-                '.service-item'
-              );
-
-
-            if (
-              target &&
-              target !==
-              draggedService &&
-              target.parentElement ===
-              zone
-            ) {
-
-              const rect =
-                target.getBoundingClientRect();
-
-              const after =
-                event.clientY >
-                rect.top +
-                rect.height / 2;
-
-
-              if (after) {
-
-                target.after(
-                  draggedService
-                );
-
-              } else {
-
-                target.before(
-                  draggedService
-                );
-
-              }
-
-            } else {
-
-              zone.appendChild(
-                draggedService
-              );
-
-            }
-
-
-            refreshPrimaryZone();
-
-            wireServiceItems();
-
-            updateChecks();
-
-          };
-
-      });
-
-  }
-
-
-  /* ==========================================
-     DRAG DE CATEGORIAS
-  ========================================== */
-
-  let draggedCategory =
-    null;
-
-
-  function wireCategorySorting(){
-
-    const container =
-      document.getElementById(
-        'service-categories'
-      );
-
-    if (!container) return;
-
-
-    container
-      .querySelectorAll(
-        '.service-category'
-      )
-      .forEach((category)=>{
-
-        if (
-          category.dataset.sortWired ===
-          '1'
-        ) {
-          return;
-        }
-
-        category.dataset.sortWired =
-          '1';
-
-
-        category.addEventListener(
-          'dragstart',
-          (event)=>{
-
-            if (
-              event.target.closest(
-                '.service-item'
-              )
-            ) {
-              return;
-            }
-
-            draggedCategory =
-              category;
-
-            category.classList.add(
-              'category-dragging'
-            );
-
-
-            if (
-              event.dataTransfer
-            ) {
-
-              event.dataTransfer
-                .setData(
-                  'text/plain',
-                  'category'
-                );
-
-              event.dataTransfer
-                .effectAllowed =
-                  'move';
-
-            }
-
-          }
-        );
-
-
-        category.addEventListener(
-          'dragend',
-          ()=>{
-
-            category.classList.remove(
-              'category-dragging'
-            );
-
-            draggedCategory =
-              null;
-
-          }
-        );
-
-      });
-
-
-    container.ondragover =
-      (event)=>{
-
-        if (
-          !draggedCategory ||
-          draggedService
-        ) {
-          return;
-        }
-
-        event.preventDefault();
-
-
-        const target =
-          event.target.closest(
-            '.service-category'
-          );
-
-
-        if (
-          !target ||
-          target ===
-          draggedCategory
-        ) {
-          return;
-        }
-
-
-        const rect =
-          target.getBoundingClientRect();
-
-
-        const after =
-          event.clientY >
-          rect.top +
-          rect.height / 2;
-
-
-        if (after) {
-
-          target.after(
-            draggedCategory
-          );
-
-        } else {
-
-          target.before(
-            draggedCategory
-          );
-
-        }
-
-      };
-
-  }
-
-
-  /* ==========================================
-     NUEVA CATEGORIA
-  ========================================== */
-
-  document
-    .getElementById(
-      'add-service-category'
-    )
-    ?.addEventListener(
-      'click',
-      ()=>{
-
-        const container =
-          document.getElementById(
-            'service-categories'
-          );
-
-        if (!container) return;
-
-
-        container.appendChild(
-          createCategory(
-            'Nueva categoría',
-            [],
-            'medium'
-          )
-        );
-
-
+      button.addEventListener('click',()=>{
+        if(button.disabled) return;
+        const pool=document.getElementById('service-pool');
+        if(!pool) return;
+        pool.querySelector('.service-pool-empty')?.remove();
+        const row=createServiceRow(serviceName,!pool.querySelector('.service-item'));
+        pool.appendChild(row);
         wireServiceItems();
-
-        wireCategorySorting();
-
+        refreshServicePool();
+        refreshServiceSuggestions();
         updateChecks();
-
-      }
-    );
-
-/* ==========================================
-   SUGERENCIAS AUTOMÁTICAS
-========================================== */
-
-form
-  .querySelectorAll(
-    '[name="business_type"]'
-  )
-  .forEach(
-    input => {
-
-      input.addEventListener(
-        'change',
-        ()=>{
-
-          refreshServiceSuggestions();
-
-          updateConditionals();
-
-          updateChecks();
-
-        }
-      );
-
-    }
-  );
-
-
-document
-  .getElementById(
-    'add-service-item'
-  )
-  ?.addEventListener(
-    'click',
-    ()=>{
-
-      const pool =
-        document.getElementById(
-          'service-pool'
-        );
-
-      if (!pool) return;
-
-
-      pool
-        .querySelector(
-          '.service-pool-empty'
-        )
-        ?.remove();
-
-
-      const row =
-        createServiceRow(
-          ''
-        );
-
-
-      pool.appendChild(
-        row
-      );
-
-
-      wireServiceItems();
-
-      refreshServicePool();
-
-      refreshServiceSuggestions();
-
-      updateChecks();
-
-
-      row
-        .querySelector(
-          '[name="service_name"]'
-        )
-        ?.focus();
-
-    }
-  );
- 
-
-  /* ==========================================
-     SERVICIOS EXCLUIDOS
-  ========================================== */
-
-  function wireExcludedServices(){
-
-    form
-      .querySelectorAll(
-        '#excluded-services .row-remove'
-      )
-      .forEach((button)=>{
-
-        if (
-          button.dataset.excludedWired ===
-          '1'
-        ) {
-          return;
-        }
-
-        button.dataset.excludedWired =
-          '1';
-
-
-        button.addEventListener(
-          'click',
-          ()=>{
-
-            button
-              .closest(
-                '.excluded-service-row'
-              )
-              ?.remove();
-
-            updateChecks();
-
-          }
-        );
-
       });
-
+      container.appendChild(button);
+    });
   }
 
+  form.querySelectorAll('[name="business_type"]').forEach(input=>{
+    input.addEventListener('change',()=>{refreshServiceSuggestions();updateConditionals();updateChecks();});
+  });
 
-  document
-    .getElementById(
-      'add-excluded-service'
-    )
-    ?.addEventListener(
-      'click',
-      ()=>{
-
-        const container =
-          document.getElementById(
-            'excluded-services'
-          );
-
-        if (!container) return;
-
-
-        const row =
-          document.createElement(
-            'div'
-          );
-
-        row.className =
-          'excluded-service-row';
-
-
-        row.innerHTML = `
-
-          <input
-            type="text"
-            name="excluded_service_name"
-            placeholder="Servicio excluido"
-          >
-
-          <button
-            type="button"
-            class="row-remove"
-          >
-            Eliminar
-          </button>
-
-        `;
-
-
-        container.appendChild(
-          row
-        );
-
-
-        wireExcludedServices();
-
-        updateChecks();
-
-      }
-    );
-
+  document.getElementById('add-service-item')?.addEventListener('click',()=>{
+    const pool=document.getElementById('service-pool');
+    if(!pool) return;
+    pool.querySelector('.service-pool-empty')?.remove();
+    const row=createServiceRow('',!pool.querySelector('.service-item'));
+    pool.appendChild(row);
+    wireServiceItems(); refreshServicePool(); refreshPrimarySummary(); updateChecks();
+    row.querySelector('[name="service_name"]')?.focus();
+  });
 
   /* ==========================================
      FILAS GENERALES
@@ -4851,448 +3136,70 @@ document
     });
 
 
-  /* ==========================================
-     PREPARAR SERVICIOS PARA GUARDADO
-  ========================================== */
-
-  function prepareServicesForSubmit(){
-
-    form
-      .querySelectorAll(
-        '[data-generated-service-field]'
-      )
-      .forEach(
-        (field)=>field.remove()
-      );
-
-
-    const allServiceItems = [
-      ...form.querySelectorAll(
-        '.service-item'
-      )
-    ];
-
-
-    const primaryZone =
-      document.getElementById(
-        'primary-service-zone'
-      );
-
-
-    const primaryItem =
-      primaryZone
-        ?.querySelector(
-          '.service-item'
-        );
-
-
-    /*
-      service_name ya existe en cada
-      .service-item, por lo que Django
-      recibirá los nombres normalmente.
-    */
-
-
-    if (primaryItem) {
-
-      const index =
-        allServiceItems.indexOf(
-          primaryItem
-        );
-
-
-      if (index >= 0) {
-
-        const field =
-          document.createElement(
-            'input'
-          );
-
-        field.type =
-          'hidden';
-
-        field.name =
-          'service_primary';
-
-        field.value =
-          index;
-
-        field.dataset.generatedServiceField =
-          '1';
-
-        form.appendChild(
-          field
-        );
-
-      }
-
-    }
-
-
-    /*
-      Datos nuevos para el siguiente
-      cambio del backend.
-    */
-
-    const businessType =
-      radio('business_type');
-
-
-    if (businessType) {
-
-      const hidden =
-        document.createElement(
-          'input'
-        );
-
-      hidden.type =
-        'hidden';
-
-      hidden.name =
-        'services_business_type';
-
-      hidden.value =
-        businessType;
-
-      hidden.dataset.generatedServiceField =
-        '1';
-
-      form.appendChild(hidden);
-
-    }
-
-
-    const categories = [
-      ...document.querySelectorAll(
-        '#service-categories .service-category'
-      )
-    ];
-
-
-    const structure =
-      categories.map(
-        (category, categoryIndex)=>{
-
-          return {
-
-            name:
-              category
-                .querySelector(
-                  '[name="service_category_name"]'
-                )
-                ?.value
-                .trim() || '',
-
-            priority:
-              category
-                .querySelector(
-                  '[name="service_category_priority"]'
-                )
-                ?.value || 'medium',
-
-            order:
-              categoryIndex,
-
-            services:
-              [
-                ...category.querySelectorAll(
-                  '.service-item'
-                )
-              ].map(
-                (item, serviceIndex)=>({
-
-                  name:
-                    item
-                      .querySelector(
-                        '[name="service_name"]'
-                      )
-                      ?.value
-                      .trim() || '',
-
-                  order:
-                    serviceIndex
-
-                })
-              )
-
-          };
-
-        }
-      );
-
-
-    const structureField =
-      document.createElement(
-        'input'
-      );
-
-    structureField.type =
-      'hidden';
-
-    structureField.name =
-      'service_structure_json';
-
-    structureField.value =
-      JSON.stringify(
-        structure
-      );
-
-    structureField.dataset.generatedServiceField =
-      '1';
-
-    form.appendChild(
-      structureField
-    );
-
-  }
-
-
-
-
 /* ==========================================
-   RESTAURAR SERVICIOS GUARDADOS
+   PREPARAR Y RESTAURAR SERVICIOS
 ========================================== */
 
-function restoreSavedServices(){
-
-  const node =
-    document.getElementById(
-      'saved-services-data'
-    );
-
-  if (!node) return;
-
-
-  let saved = {};
-
-  try {
-
-    saved =
-      JSON.parse(
-        node.textContent || '{}'
-      );
-
-  } catch (error) {
-
-    return;
-
-  }
-
-
-  const container =
-    document.getElementById(
-      'service-categories'
-    );
-
-  const primaryZone =
-    document.getElementById(
-      'primary-service-zone'
-    );
-
-
-  if (container) {
-
-    container.innerHTML = '';
-
-    const categories =
-      Array.isArray(
-        saved.categories
-      )
-        ? saved.categories
-        : [];
-
-
-    categories.forEach(
-      (category)=>{
-
-        const services =
-          Array.isArray(
-            category.services
-          )
-            ? category.services
-            : [];
-
-
-        const names =
-          services
-            .map(
-              (service)=>{
-
-                if (
-                  typeof service ===
-                  'string'
-                ) {
-                  return service;
-                }
-
-                return (
-                  service?.name || ''
-                );
-
-              }
-            )
-            .filter(Boolean);
-
-
-        container.appendChild(
-          createCategory(
-            category.name || '',
-            names,
-            category.priority ||
-            'medium'
-          )
-        );
-
+  function prepareServicesForSubmit(){
+    form.querySelectorAll('[data-generated-service-field]').forEach(field=>field.remove());
+    const allServiceItems=[...form.querySelectorAll('#service-pool .service-item')];
+    const primaryItem=form.querySelector('#service-pool .service-item.is-primary');
+    if(primaryItem){
+      const index=allServiceItems.indexOf(primaryItem);
+      if(index>=0){
+        const field=document.createElement('input');
+        field.type='hidden'; field.name='service_primary'; field.value=index; field.dataset.generatedServiceField='1'; form.appendChild(field);
       }
-    );
-
-
-    /*
-      Compatibilidad con datos viejos
-      si todavía no existen categories
-    */
-
-    const pool =
-  document.getElementById(
-    'service-pool'
-  );
-
-
-if (pool) {
-
-  pool
-    .querySelectorAll(
-      '.service-item'
-    )
-    .forEach(
-      item => item.remove()
-    );
-
-
-  const categorizedNames =
-    new Set();
-
-
-  categories.forEach(
-    category => {
-
-      const services =
-        Array.isArray(
-          category.services
-        )
-          ? category.services
-          : [];
-
-
-      services.forEach(
-        service => {
-
-          const name =
-            typeof service === 'string'
-              ? service
-              : service?.name || '';
-
-
-          if (name) {
-
-            categorizedNames.add(
-              name.toLowerCase()
-            );
-
-          }
-
-        }
-      );
-
     }
-  );
-
-
-  const savedItems =
-    Array.isArray(
-      saved.items
-    )
-      ? saved.items
-      : [];
-
-
-  savedItems
-    .filter(
-      item =>
-        item &&
-        !item.primary &&
-        !item.excluded &&
-        item.name &&
-        !categorizedNames.has(
-          item.name.toLowerCase()
-        )
-    )
-    .forEach(
-      item => {
-
-        pool.appendChild(
-          createServiceRow(
-            item.name
-          )
-        );
-
-      }
-    );
-
-}
-
+    const businessType=radio('business_type');
+    if(businessType){
+      const hidden=document.createElement('input');
+      hidden.type='hidden'; hidden.name='services_business_type'; hidden.value=businessType; hidden.dataset.generatedServiceField='1'; form.appendChild(hidden);
+    }
   }
 
-
-  if (primaryZone) {
-
-    primaryZone.innerHTML = '';
-
-
-    const items =
-      Array.isArray(
-        saved.items
-      )
-        ? saved.items
-        : [];
-
-
-    const primary =
-      items.find(
-        (item)=>
-          item &&
-          item.primary &&
-          !item.excluded &&
-          item.name
-      );
-
-
-    if (primary) {
-
-      primaryZone.appendChild(
-        createServiceRow(
-          primary.name
-        )
-      );
-
+  function restoreSavedServices(){
+    const node=document.getElementById('saved-services-data');
+    const pool=document.getElementById('service-pool');
+    if(!node||!pool) return;
+    let saved={};
+    try{ saved=JSON.parse(node.textContent||'{}'); }catch(error){ return; }
+    pool.querySelectorAll('.service-item').forEach(item=>item.remove());
+    const items=Array.isArray(saved.items)?saved.items:[];
+    items.filter(item=>item&&item.name&&!item.excluded).forEach(item=>pool.appendChild(createServiceRow(item.name,Boolean(item.primary))));
+    if(!pool.querySelector('.service-item.is-primary')){
+      pool.querySelector('.service-item')?.classList.add('is-primary');
     }
-
+    wireServiceItems(); refreshServicePool(); refreshPrimarySummary(); refreshServiceSuggestions(); updateChecks();
   }
 
+  function restoreMultiSelections(){
+    const formNode=document.getElementById('saved-form-data');
+    if(formNode){
+      try{
+        const saved=JSON.parse(formNode.textContent||'{}');
+        const fields=Array.isArray(saved.fields)?saved.fields:[];
+        form.querySelectorAll('[name="form_fields"]').forEach(input=>{ input.checked=fields.includes(input.value); });
+      }catch(error){}
+    }
+    const socialNode=document.getElementById('saved-social-data');
+    if(socialNode){
+      try{
+        const saved=JSON.parse(socialNode.textContent||'{}');
+        const enabled=Array.isArray(saved.enabled)?saved.enabled:[];
+        const networks=saved.networks&&typeof saved.networks==='object'?saved.networks:{};
+        form.querySelectorAll('.social-network-item').forEach(item=>{
+          const key=item.dataset.socialKey;
+          const check=item.querySelector('input[type="checkbox"]');
+          const url=item.querySelector('.social-url');
+          const selected=enabled.includes(key)||Object.prototype.hasOwnProperty.call(networks,key);
+          if(check) check.checked=selected;
+          if(url&&networks[key]!==undefined) url.value=networks[key]||'';
+        });
+      }catch(error){}
+    }
+  }
 
-wireServiceItems();
-
-wireCategorySorting();
-
-refreshPrimaryZone();
-
-refreshServicePool();
-
-refreshServiceSuggestions();
-
-updateChecks();
-
-}
   /* ==========================================
      EVENTOS GENERALES
   ========================================== */
@@ -5338,8 +3245,6 @@ updateChecks();
   ========================================== */
 
 wireGeneralRemove(form);
-
-wireExcludedServices();
 
 restoreSavedServices();
 

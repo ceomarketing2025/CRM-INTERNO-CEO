@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
-{% block page_heading %}Ficha de producción{% endblock %}
+{% block page_heading %}Ficha de producción
+{% endblock %}
 {% block content %}
 
 <div class="page-intro">
@@ -15,7 +16,151 @@
   </div>
 </div>
 
+{% if not can_manage_project %}
+<div class="dev-permission-notice">
+  <strong>Acceso por asignación</strong>
+  <span>Puedes editar únicamente las páginas y secciones donde figuras como responsable. La estructura, asignaciones y elementos de otros responsables permanecen bloqueados.</span>
+</div>
+{% endif %}
 
+<section class="dev-notifications" aria-label="Notificaciones de producción">
+  <div class="dev-notifications-head">
+    <div>
+      <span class="eyebrow">Flujo de revisión</span>
+      <h3>Notificaciones</h3>
+      <p>Envíos a revisión, devoluciones y aprobaciones relacionadas contigo.</p>
+    </div>
+    <div class="dev-notifications-count">
+      <strong>{{ production_notification_unread_count }}</strong>
+      <span>sin leer</span>
+    </div>
+  </div>
+
+  {% if production_notifications %}
+  <div class="dev-notifications-list">
+    {% for notification in production_notifications %}
+    <article class="dev-notification-item {% if not notification.is_read %}is-unread{% endif %} event-{{ notification.event }}">
+      <div class="dev-notification-dot" aria-hidden="true"></div>
+      <div class="dev-notification-copy">
+        <div class="dev-notification-meta">
+          <strong>{{ notification.event_label }}</strong>
+          <span>{{ notification.created_at|date:'d/m/Y H:i' }}</span>
+        </div>
+        <p>{{ notification.message }}</p>
+        <small>
+          {% if notification.actor %}{{ notification.actor.display_name }} · {% endif %}
+          {{ notification.row_label }}
+        </small>
+      </div>
+      {% if not notification.is_read %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="mark_production_notification_read">
+        <input type="hidden" name="notification_id" value="{{ notification.pk }}">
+        <button type="submit" class="dev-notification-read">Marcar leída</button>
+      </form>
+      {% else %}
+      <span class="dev-notification-read-state">Leída</span>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+
+  {% if production_notification_unread_count %}
+  <form method="post" class="dev-notifications-all-read">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="mark_all_production_notifications_read">
+    <button type="submit" class="btn btn-secondary btn-sm">Marcar todas como leídas</button>
+  </form>
+  {% endif %}
+  {% else %}
+  <div class="dev-notifications-empty">No tienes notificaciones de revisión en este proyecto.</div>
+  {% endif %}
+</section>
+<style>
+.dev-notifications{margin:0 0 18px;border:1px solid #e3e8f0;border-radius:16px;background:#fff;padding:20px}.dev-notifications-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.dev-notifications-head h3{margin:4px 0;font-size:18px}.dev-notifications-head p{margin:0;color:#748096;font-size:10px}.dev-notifications-count{text-align:right}.dev-notifications-count strong{display:block;font-size:27px;line-height:1;color:#314f84}.dev-notifications-count span{display:block;margin-top:5px;color:#77849a;font-size:9px;font-weight:800}.dev-notifications-list{display:grid;gap:8px;margin-top:16px}.dev-notification-item{display:grid;grid-template-columns:10px minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 13px;border:1px solid #e7ebf1;border-radius:12px;background:#fafbfd}.dev-notification-item.is-unread{background:#f7f9ff;border-color:#d8e0f5}.dev-notification-dot{width:8px;height:8px;border-radius:999px;background:#a7b0bf}.dev-notification-item.event-sent_to_review .dev-notification-dot{background:#6654a8}.dev-notification-item.event-review_returned .dev-notification-dot{background:#b77820}.dev-notification-item.event-review_approved .dev-notification-dot{background:#24724f}.dev-notification-meta{display:flex;align-items:center;justify-content:space-between;gap:10px}.dev-notification-meta strong{font-size:10px;color:#25354d}.dev-notification-meta span{font-size:8px;color:#8993a4;white-space:nowrap}.dev-notification-copy p{margin:4px 0 2px;color:#455268;font-size:10px;line-height:1.45}.dev-notification-copy small{color:#8993a4;font-size:8px}.dev-notification-read{border:1px solid #dce3ed;border-radius:9px;background:#fff;padding:7px 9px;color:#47546a;font-size:8px;font-weight:800;cursor:pointer}.dev-notification-read:hover{background:#f3f6fa}.dev-notification-read-state{font-size:8px;color:#98a2b3;font-weight:800}.dev-notifications-all-read{display:flex;justify-content:flex-end;margin-top:12px}.dev-notifications-empty{margin-top:14px;padding:13px;border:1px dashed #dce3ed;border-radius:11px;background:#fafbfd;color:#788599;font-size:10px;text-align:center}@media(max-width:650px){.dev-notifications-head{flex-direction:column}.dev-notifications-count{text-align:left}.dev-notification-item{grid-template-columns:10px minmax(0,1fr)}.dev-notification-item>form,.dev-notification-read-state{grid-column:2}.dev-notification-meta{align-items:flex-start;flex-direction:column}}
+.dev-structure-locked-note{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid #e3e8f0;border-radius:12px;background:#f8fafc;color:#667085;font-size:10px;line-height:1.5}
+.dev-structure-locked-note strong{color:#344054;white-space:nowrap}
+</style>
+
+<section class="project-work-summary" aria-label="Resumen general del proyecto">
+  <div class="project-work-summary-head">
+    <div>
+      <span class="eyebrow">Estado general</span>
+      <h3>Resumen del proyecto</h3>
+      <p>Progreso real de páginas, condados, servicios, ciudades y secciones internas.</p>
+      <div class="project-work-last-update">
+        <span>Última actualización:</span>
+        <strong>{{ sheet.updated_at|date:'d/m/Y H:i' }}</strong>
+        {% if sheet.updated_by %}<span>· {{ sheet.updated_by.display_name }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="project-work-progress">
+      <strong>{{ project_progress_percent }}%</strong>
+      <span>aprobado</span>
+    </div>
+  </div>
+
+  <div class="project-work-progressbar" aria-label="{{ project_progress_percent }}% aprobado">
+    <i style="width:{{ project_progress_percent }}%"></i>
+  </div>
+
+  <div class="project-work-stats">
+    <div><small>Total</small><b>{{ total_project_items }}</b></div>
+    <div><small>Sin iniciar</small><b>{{ project_not_started }}</b></div>
+    <div><small>En progreso</small><b>{{ project_in_progress }}</b></div>
+    <div class="review"><small>En revisión</small><b>{{ project_in_review }}</b></div>
+    <div class="changes"><small>Requiere cambios</small><b>{{ project_changes }}</b></div>
+    <div class="approved"><small>Aprobadas</small><b>{{ project_approved }}</b></div>
+    <div class="unassigned"><small>Sin responsable</small><b>{{ project_unassigned }}</b></div>
+  </div>
+</section>
+
+<section class="developer-work-summary" aria-label="Resumen por desarrollador">
+  <div class="developer-work-summary-head">
+    <div>
+      <span class="eyebrow">Estado del equipo</span>
+      <h3>Resumen por desarrollador</h3>
+      <p>Consulta la carga y el estado real de los elementos asignados dentro de este proyecto.</p>
+    </div>
+  </div>
+
+  <div class="developer-work-summary-grid">
+    {% for item in developer_summary_rows %}
+    <article class="developer-work-card">
+      <div class="developer-work-card-head">
+        <strong>{{ item.name }}</strong>
+        <span>{{ item.assigned }} asignada{{ item.assigned|pluralize:"s" }}</span>
+      </div>
+
+      <div class="developer-work-stats">
+        <div>
+          <small>Asignadas</small>
+          <b>{{ item.assigned }}</b>
+        </div>
+        <div>
+          <small>En progreso</small>
+          <b>{{ item.in_progress }}</b>
+        </div>
+        <div>
+          <small>En revisión</small>
+          <b>{{ item.in_review }}</b>
+        </div>
+        <div class="needs-changes">
+          <small>Requiere cambios</small>
+          <b>{{ item.changes }}</b>
+        </div>
+        <div class="approved">
+          <small>Aprobadas</small>
+          <b>{{ item.approved }}</b>
+        </div>
+      </div>
+    </article>
+    {% empty %}
+    <div class="developer-work-empty">Todavía no hay desarrolladores vinculados a la producción de este proyecto.</div>
+    {% endfor %}
+  </div>
+</section>
 
 <section class="team-metrics-card" aria-label="Puntaje por desarrollador">
   <div class="team-metrics-head">
@@ -45,42 +190,159 @@
   </div>
 </section>
 
+<section class="production-filters" aria-label="Filtros de producción">
+  <div class="production-filters-head">
+    <div>
+      <span class="eyebrow">Vista de trabajo</span>
+      <h3>Filtros de producción</h3>
+      <p>Filtra la ficha sin modificar ningún dato del proyecto.</p>
+    </div>
+    <div class="production-filter-result"><strong id="productionFilterCount">{{ total_project_items }}</strong><span>elementos visibles</span></div>
+  </div>
+
+  <div class="production-filter-grid">
+    <label>
+      <span>Responsable</span>
+      <select id="productionFilterResponsible">
+        <option value="">Todos</option>
+        <option value="__unassigned__">Sin responsable</option>
+        {% for dev in developers %}<option value="{{ dev.pk }}">{{ dev.display_name }}</option>{% endfor %}
+      </select>
+    </label>
+
+    <label>
+      <span>Revisor</span>
+      <select id="productionFilterReviewer">
+        <option value="">Todos</option>
+        <option value="__unassigned__">Sin revisor</option>
+        {% for u in reviewers %}<option value="{{ u.pk }}">{{ u.display_name }}</option>{% endfor %}
+      </select>
+    </label>
+
+    <label>
+      <span>Estado</span>
+      <select id="productionFilterStatus">
+        <option value="">Todos</option>
+        <option value="not_started">Sin iniciar</option>
+        <option value="in_progress">En progreso</option>
+        <option value="in_review">En revisión</option>
+        <option value="changes">Requiere cambios</option>
+        <option value="approved">Aprobada</option>
+      </select>
+    </label>
+
+    <label>
+      <span>Tipo</span>
+      <select id="productionFilterType">
+        <option value="">Todos</option>
+        <option value="page">Página</option>
+        <option value="county">County</option>
+        <option value="service">Servicio</option>
+        <option value="city">Ciudad</option>
+        <option value="internal_section">Sección interna</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="production-filter-actions">
+    <label class="production-filter-check"><input type="checkbox" id="productionFilterChanges"><span>Solo requiere cambios</span></label>
+    <label class="production-filter-check"><input type="checkbox" id="productionFilterUnassigned"><span>Solo sin responsable</span></label>
+    <button type="button" class="btn btn-secondary btn-sm" id="productionFilterReset">Limpiar filtros</button>
+  </div>
+</section>
+
+<details class="technical-bridge-card">
+  <summary>
+    <div>
+      <span class="eyebrow">Ficha Técnica → Producción</span>
+      <h3>Datos técnicos del proyecto</h3>
+      <p>Consulta aquí la información capturada en la Ficha Técnica. Este bloque es solo lectura y siempre muestra los datos actuales.</p>
+    </div>
+    <div class="technical-bridge-summary-meta">
+      {% if technical_questionnaire %}
+        <span class="technical-bridge-status ready">Conectada</span>
+      {% else %}
+        <span class="technical-bridge-status pending">Sin ficha técnica</span>
+      {% endif %}
+      <b class="technical-bridge-chevron">⌄</b>
+    </div>
+  </summary>
+
+  <div class="technical-bridge-content">
+    {% if technical_questionnaire %}
+      {% if can_manage_project %}
+        <div class="technical-sync-panel">
+          <div>
+            <strong>Sincronizar estructura desde la Ficha Técnica</strong>
+            <span>Agrega únicamente elementos faltantes. No borra ni sobrescribe páginas, counties, ciudades o servicios existentes.</span>
+            <small>Detectado: {{ technical_sync_counts.counties }} counties · {{ technical_sync_counts.cities }} ciudades · {{ technical_sync_counts.states }} estados · {{ technical_sync_counts.services }} servicios.</small>
+          </div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="sync_technical_structure">
+            <button class="btn btn-primary btn-sm" type="submit">Sincronizar estructura</button>
+          </form>
+        </div>
+      {% endif %}
+      <div class="technical-bridge-grid">
+        {% for item in technical_data_rows %}
+          <article class="technical-data-item {% if item.complete %}complete{% endif %}">
+            <div class="technical-data-head">
+              <span>{{ item.group }}</span>
+              {% if item.complete %}<b>Confirmado</b>{% else %}<b class="pending">Pendiente</b>{% endif %}
+            </div>
+            <h4>{{ item.label }}</h4>
+            <div class="technical-data-value">
+              {% if item.text %}{{ item.text|linebreaksbr }}{% else %}<span class="technical-data-empty">Sin información registrada.</span>{% endif %}
+            </div>
+            {% if item.updated_at %}
+              <small>Actualizado {{ item.updated_at|date:'d/m/Y H:i' }}{% if item.updated_by %} · {{ item.updated_by.display_name }}{% endif %}</small>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="technical-bridge-empty">
+        <strong>No hay una Ficha Técnica Web conectada a este proyecto.</strong>
+        <span>Cuando exista una ficha con la plantilla técnica del sitio, sus datos aparecerán aquí automáticamente.</span>
+      </div>
+    {% endif %}
+  </div>
+</details>
+
+<style>
+.technical-bridge-card{margin:0 0 18px;border:1px solid #e3e8f0;border-radius:16px;background:#fff;overflow:hidden}.technical-bridge-card>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:20px 22px;cursor:pointer}.technical-bridge-card>summary::-webkit-details-marker{display:none}.technical-bridge-card summary h3{margin:4px 0;font-size:18px}.technical-bridge-card summary p{margin:0;max-width:760px;color:#748096;font-size:10px}.technical-bridge-summary-meta{display:flex;align-items:center;gap:12px;flex-shrink:0}.technical-bridge-status{display:inline-flex;align-items:center;min-height:28px;padding:5px 9px;border-radius:999px;font-size:9px;font-weight:900}.technical-bridge-status.ready{background:#e8f7f0;color:#197252}.technical-bridge-status.pending{background:#fff1e3;color:#9a5d18}.technical-bridge-chevron{font-size:20px;transition:transform .2s}.technical-bridge-card[open] .technical-bridge-chevron{transform:rotate(180deg)}.technical-bridge-content{border-top:1px solid #edf0f5;padding:18px 20px;background:#fbfcfe}.technical-sync-panel{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:14px;padding:14px 16px;border:1px solid #dce5ef;border-radius:13px;background:#fff}.technical-sync-panel>div{min-width:0}.technical-sync-panel strong,.technical-sync-panel span,.technical-sync-panel small{display:block}.technical-sync-panel strong{color:#26364d;font-size:11px}.technical-sync-panel span{margin-top:4px;color:#6f7d91;font-size:9px;line-height:1.45}.technical-sync-panel small{margin-top:7px;color:#8a96a6;font-size:8px}.technical-sync-panel form{flex-shrink:0}.technical-bridge-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.technical-data-item{min-width:0;border:1px solid #e3e8ef;border-radius:13px;background:#fff;padding:14px}.technical-data-item.complete{border-color:#d8e9e1}.technical-data-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.technical-data-head span{color:#738096;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.technical-data-head b{padding:4px 6px;border-radius:999px;background:#e8f7f0;color:#197252;font-size:7px;font-weight:900}.technical-data-head b.pending{background:#f3f5f8;color:#7b8797}.technical-data-item h4{margin:0 0 8px;color:#26364d;font-size:11px}.technical-data-value{color:#4e5d72;font-size:10px;line-height:1.55;overflow-wrap:anywhere}.technical-data-empty{color:#9aa4b1;font-style:italic}.technical-data-item>small{display:block;margin-top:10px;padding-top:9px;border-top:1px solid #f0f2f5;color:#929dab;font-size:8px}.technical-bridge-empty{padding:18px;border:1px dashed #d6dee9;border-radius:12px;background:#fff}.technical-bridge-empty strong,.technical-bridge-empty span{display:block}.technical-bridge-empty strong{font-size:11px}.technical-bridge-empty span{margin-top:5px;color:#7b8798;font-size:9px}@media(max-width:1050px){.technical-bridge-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:680px){.technical-sync-panel{align-items:stretch;flex-direction:column}.technical-sync-panel form,.technical-sync-panel button{width:100%}.technical-bridge-card>summary{align-items:flex-start;flex-direction:column}.technical-bridge-summary-meta{width:100%;justify-content:space-between}.technical-bridge-grid{grid-template-columns:1fr}.technical-bridge-content{padding:12px}}
+</style>
+
 <div class="dev-sheet-accordion">
 
 <details class="dev-sheet-panel" open>
   <summary><span class="dev-sheet-index">01</span><span><strong>Ficha del proyecto</strong><small>Administra páginas, condados, servicios y ciudades.</small></span><b class="dev-sheet-chevron">⌄</b></summary>
   <div class="dev-sheet-content">
-    <div class="production-kpis production-kpis-v5">
-      <div class="stat-card"><span>Elementos del proyecto</span><strong>{{ total_rows }}</strong><small>Páginas, condados, servicios y ciudades</small></div>
-      <div class="stat-card"><span>Avance de producción</span><strong>{{ completed_items }}/{{ total_production_items }}</strong><div class="progress slim"><i style="width:{{ production_percent }}%"></i></div><small>{{ production_percent }}%</small></div>
-      <div class="stat-card"><span>Revisión</span><strong>{{ reviewed_rows }}/{{ total_rows }}</strong><div class="progress slim review-progress"><i style="width:{{ reviewed_percent }}%"></i></div><small>{{ reviewed_percent }}%</small></div>
-      <div class="stat-card"><span>Última edición</span><strong>{% if sheet.updated_by %}{{ sheet.updated_by.display_name }}{% else %}—{% endif %}</strong><small>{{ sheet.updated_at|date:'d/m/Y H:i' }}</small></div>
-    </div>
-
     <div class="card production-builder">
       <div class="card-head"><div><h3>Estructura del proyecto</h3><p>Completa la estructura del proyecto con la información disponible.</p></div><span class="strategy-chip {% if seo_strategy == 'client_services' %}client{% endif %}">{{ strategy_label }}</span></div>
-      <form method="post" class="production-generator">{% csrf_token %}<input type="hidden" name="action" value="generate_structure">{% for field in structure_form %}<div class="field"><label>{{ field.label }}</label>{{ field }}<small>{{ field.help_text }}</small></div>{% endfor %}<button class="btn btn-primary" type="submit">Completar estructura</button></form>
+      {% if can_manage_project %}<form method="post" class="production-generator">{% csrf_token %}<input type="hidden" name="action" value="generate_structure">{% for field in structure_form %}<div class="field"><label>{{ field.label }}</label>{{ field }}<small>{{ field.help_text }}</small></div>{% endfor %}<button class="btn btn-primary" type="submit">Completar estructura</button></form>{% else %}<div class="dev-structure-locked-note"><strong>Estructura administrada</strong><span>Solo el Responsable principal, Gerencia o Superuser puede modificar la estructura del proyecto.</span></div>{% endif %}
     </div>
 
     <div class="dev-table-block">
-      <div class="dev-table-head"><div><span class="eyebrow">Páginas</span><h3>Páginas principales y extras</h3></div><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_page"><button class="btn btn-secondary btn-sm" type="submit">＋ Agregar página</button></form></div>
-      <div class="production-table-wrap"><table class="production-table-v5 dev-production-table"><thead><tr><th>Página</th><th>Comp.</th><th>Keyword</th><th>Slug</th><th>Responsable</th><th>Lista</th><th>Revisión</th><th>Acciones</th></tr></thead><tbody>
-      {% for p in pages %}<tr data-work-category="production" data-work-points="{{ p.points }}"><td><strong>{{ p.name }}</strong></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="page"><input type="hidden" name="row_id" value="{{ p.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if p.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if p.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if p.complexity == 'C' %}selected{% endif %}>C</option></select></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="page"><input type="hidden" name="row_id" value="{{ p.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ p.keyword|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="page"><input type="hidden" name="row_id" value="{{ p.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ p.slug|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="page"><input type="hidden" name="row_id" value="{{ p.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if p.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form></td><td>{% include 'operations/partials/quick_status.html' with row=p row_type='page' field='state' %}</td><td>{% include 'operations/partials/quick_status.html' with row=p row_type='page' field='review_status' %}</td><td><div class="dev-row-actions"><button type="button" class="production-edit-btn" data-production-edit data-row-type="page" data-row-id="{{ p.pk }}" title="Editar completo">✎</button><form method="post" onsubmit="return confirm('¿Eliminar {{ p.name|escapejs }}?');">{% csrf_token %}<input type="hidden" name="action" value="delete_page"><input type="hidden" name="row_id" value="{{ p.pk }}"><button class="dev-delete-btn" type="submit" title="Eliminar">×</button></form></div></td></tr>{% empty %}<tr><td colspan="8">No hay páginas.</td></tr>{% endfor %}
+      <div class="dev-table-head"><div><span class="eyebrow">Páginas</span><h3>Páginas principales y extras</h3></div>{% if can_manage_project %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_page"><button class="btn btn-secondary btn-sm" type="submit">＋ Agregar página</button></form>{% endif %}</div>
+      <div class="production-table-wrap"><table class="production-table-v5 dev-production-table"><thead><tr><th>Página</th><th>Comp.</th><th>Keyword</th><th>Slug</th><th>Responsable</th><th>Estado</th><th>Resultado</th><th>Acciones</th></tr></thead><tbody>
+      {% for p in pages %}<tr data-work-category="production" data-work-points="{{ p.points }}" data-production-filter-row data-filter-type="page" data-filter-responsible="{{ p.responsible_id|default:'' }}" data-filter-reviewer="{{ p.reviewer_id|default:'' }}" data-filter-status="{% if p.review_label == 'Aprobada' %}approved{% elif p.review_label == 'Requiere cambios' %}changes{% elif p.workflow_status == 'in_review' %}in_review{% elif p.workflow_status == 'in_progress' %}in_progress{% else %}not_started{% endif %}"><td><strong>{{ p.name }}</strong></td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="page"><input type="hidden" name="row_id" value="{{ p.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if p.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if p.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if p.complexity == 'C' %}selected{% endif %}>C</option></select></form>{% else %}<span class="dev-structure-name-readonly">{{ p.complexity }}</span>{% endif %}</td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="page"><input type="hidden" name="row_id" value="{{ p.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ p.keyword|default:'' }}" {% if p.can_edit %}data-auto-save-text{% else %}readonly{% endif %}></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="page"><input type="hidden" name="row_id" value="{{ p.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ p.slug|default:'' }}" {% if p.can_edit %}data-auto-save-text{% else %}readonly{% endif %}></form></td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="page"><input type="hidden" name="row_id" value="{{ p.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if p.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form>{% else %}<span class="dev-assignment-readonly">{% if p.responsible %}{{ p.responsible.display_name }}{% else %}—{% endif %}</span>{% endif %}</td><td><span class="dev-review-result-field">{% if p.workflow_status == 'complete' %}Completo{% elif p.workflow_status == 'in_review' %}En revisión{% elif p.workflow_status == 'in_progress' %}En progreso{% else %}Sin iniciar{% endif %}</span></td><td>{% if p.can_review %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="page"><input type="hidden" name="row_id" value="{{ p.pk }}"><input type="hidden" name="field" value="review_status"><select name="value" data-auto-save><option value="incomplete" {% if p.review_status != 'complete' %}selected{% endif %}>Pendiente</option><option value="complete" {% if p.review_status == 'complete' %}selected{% endif %}>Aprobada</option></select></form>{% else %}<span class="dev-review-result-field dev-review-result-{{ p.review_tone }}">{{ p.review_label }}</span>{% endif %}</td><td><div class="dev-row-actions"><button type="button" class="production-edit-btn" data-production-edit data-row-type="page" data-row-id="{{ p.pk }}" title="Editar completo">✎</button>{% if can_manage_project %}<form method="post" onsubmit="return confirm('¿Eliminar {{ p.name|escapejs }}?');">{% csrf_token %}<input type="hidden" name="action" value="delete_page"><input type="hidden" name="row_id" value="{{ p.pk }}"><button class="dev-delete-btn" type="submit" title="Eliminar">×</button></form>{% endif %}</div></td></tr>{% empty %}<tr><td colspan="8">No hay páginas.</td></tr>{% endfor %}
       </tbody></table></div>
     </div>
 
     <div class="dev-table-block">
-      <div class="dev-table-head"><div><span class="eyebrow">Áreas</span><h3>Condados, servicios y ciudades</h3></div><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_county"><button class="btn btn-secondary btn-sm" type="submit">＋ Agregar condado</button></form></div>
+      <div class="dev-table-head"><div><span class="eyebrow">Áreas</span><h3>Condados, servicios y ciudades</h3></div>{% if can_manage_project %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_county"><button class="btn btn-secondary btn-sm" type="submit">＋ Agregar condado</button></form>{% endif %}</div>
       {% for c in counties %}
       <div class="county-workgroup">
-        <div class="county-workgroup-head"><div><strong>{{ c.name }}</strong><span>Complejidad {{ c.complexity }}</span></div><div class="actions"><button type="button" class="production-edit-btn" data-production-edit data-row-type="county" data-row-id="{{ c.pk }}">✎ Editar</button><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_service"><input type="hidden" name="county_id" value="{{ c.pk }}"><button class="btn btn-secondary btn-sm" type="submit">＋ Servicio</button></form><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_city"><input type="hidden" name="county_id" value="{{ c.pk }}"><button class="btn btn-secondary btn-sm" type="submit">＋ Ciudad</button></form><form method="post" onsubmit="return confirm('¿Eliminar el condado y sus servicios?');">{% csrf_token %}<input type="hidden" name="action" value="delete_county"><input type="hidden" name="row_id" value="{{ c.pk }}"><button class="btn btn-danger-soft btn-sm" type="submit">Eliminar</button></form></div></div>
-        <div class="production-table-wrap"><table class="production-table-v5 dev-production-table compact"><thead><tr><th>Tipo</th><th>Nombre</th><th>Comp.</th><th>Keyword</th><th>Slug</th><th>Responsable</th><th>Lista</th><th>Revisión</th><th>Acciones</th></tr></thead><tbody>
-          <tr class="county-parent-row" data-work-category="production" data-work-points="{{ c.points }}"><td>Condado</td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="name"><input name="value" value="{{ c.name|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if c.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if c.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if c.complexity == 'C' %}selected{% endif %}>C</option></select></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ c.keyword|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ c.slug|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if c.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form></td><td>{% include 'operations/partials/quick_status.html' with row=c row_type='county' field='state' %}</td><td>{% include 'operations/partials/quick_status.html' with row=c row_type='county' field='review_status' %}</td><td><button type="button" class="production-edit-btn" data-production-edit data-row-type="county" data-row-id="{{ c.pk }}">✎</button></td></tr>
-          {% for s in c.services.all %}<tr data-work-category="production" data-work-points="{{ s.points }}"><td>Servicio</td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="name"><input name="value" value="{{ s.name|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if s.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if s.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if s.complexity == 'C' %}selected{% endif %}>C</option></select></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ s.keyword|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ s.slug|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if s.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form></td><td>{% include 'operations/partials/quick_status.html' with row=s row_type='service' field='state' %}</td><td>{% include 'operations/partials/quick_status.html' with row=s row_type='service' field='review_status' %}</td><td><div class="dev-row-actions"><button type="button" class="production-edit-btn" data-production-edit data-row-type="service" data-row-id="{{ s.pk }}">✎</button><form method="post" onsubmit="return confirm('¿Eliminar este servicio?');">{% csrf_token %}<input type="hidden" name="action" value="delete_service"><input type="hidden" name="row_id" value="{{ s.pk }}"><button class="dev-delete-btn" type="submit">×</button></form></div></td></tr>{% endfor %}
-          {% for city in c.cities.all %}<tr data-work-category="production" data-work-points="{{ city.points }}"><td>Ciudad</td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="name"><input name="value" value="{{ city.name|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if city.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if city.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if city.complexity == 'C' %}selected{% endif %}>C</option></select></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ city.keyword|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ city.slug|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if city.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form></td><td>{% include 'operations/partials/quick_status.html' with row=city row_type='city' field='state' %}</td><td>{% include 'operations/partials/quick_status.html' with row=city row_type='city' field='review_status' %}</td><td><div class="dev-row-actions"><button type="button" class="production-edit-btn" data-production-edit data-row-type="city" data-row-id="{{ city.pk }}">✎</button><form method="post" onsubmit="return confirm('¿Eliminar esta ciudad?');">{% csrf_token %}<input type="hidden" name="action" value="delete_city"><input type="hidden" name="row_id" value="{{ city.pk }}"><button class="dev-delete-btn" type="submit">×</button></form></div></td></tr>{% endfor %}
+        <div class="county-workgroup-head"><div><strong>{{ c.name }}</strong><span>Complejidad {{ c.complexity }}</span></div><div class="actions"><button type="button" class="production-edit-btn" data-production-edit data-row-type="county" data-row-id="{{ c.pk }}">✎ Editar</button>{% if can_manage_project %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_service"><input type="hidden" name="county_id" value="{{ c.pk }}"><button class="btn btn-secondary btn-sm" type="submit">＋ Servicio</button></form><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_city"><input type="hidden" name="county_id" value="{{ c.pk }}"><button class="btn btn-secondary btn-sm" type="submit">＋ Ciudad</button></form><form method="post" onsubmit="return confirm('¿Eliminar el condado y sus servicios?');">{% csrf_token %}<input type="hidden" name="action" value="delete_county"><input type="hidden" name="row_id" value="{{ c.pk }}"><button class="btn btn-danger-soft btn-sm" type="submit">Eliminar</button></form>{% endif %}</div></div>
+        <div class="production-table-wrap"><table class="production-table-v5 dev-production-table compact"><thead><tr><th>Tipo</th><th>Nombre</th><th>Comp.</th><th>Keyword</th><th>Slug</th><th>Responsable</th><th>Estado</th><th>Resultado</th><th>Acciones</th></tr></thead><tbody>
+          <tr class="county-parent-row" data-work-category="production" data-work-points="{{ c.points }}" data-production-filter-row data-filter-type="county" data-filter-responsible="{{ c.responsible_id|default:'' }}" data-filter-reviewer="{{ c.reviewer_id|default:'' }}" data-filter-status="{% if c.review_label == 'Aprobada' %}approved{% elif c.review_label == 'Requiere cambios' %}changes{% elif c.workflow_status == 'in_review' %}in_review{% elif c.workflow_status == 'in_progress' %}in_progress{% else %}not_started{% endif %}"><td>Condado</td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="name"><input name="value" value="{{ c.name|default:'' }}" data-auto-save-text></form>{% else %}<span class="dev-structure-name-readonly">{{ c.name }}</span>{% endif %}</td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if c.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if c.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if c.complexity == 'C' %}selected{% endif %}>C</option></select></form>{% else %}<span class="dev-structure-name-readonly">{{ c.complexity }}</span>{% endif %}</td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ c.keyword|default:'' }}" {% if c.can_edit %}data-auto-save-text{% else %}readonly{% endif %}></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ c.slug|default:'' }}" {% if c.can_edit %}data-auto-save-text{% else %}readonly{% endif %}></form></td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if c.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form>{% else %}<span class="dev-assignment-readonly">{% if c.responsible %}{{ c.responsible.display_name }}{% else %}—{% endif %}</span>{% endif %}</td><td><span class="dev-review-result-field">{% if c.workflow_status == 'complete' %}Completo{% elif c.workflow_status == 'in_review' %}En revisión{% elif c.workflow_status == 'in_progress' %}En progreso{% else %}Sin iniciar{% endif %}</span></td><td>{% if c.can_review %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="county"><input type="hidden" name="row_id" value="{{ c.pk }}"><input type="hidden" name="field" value="review_status"><select name="value" data-auto-save><option value="incomplete" {% if c.review_status != 'complete' %}selected{% endif %}>Pendiente</option><option value="complete" {% if c.review_status == 'complete' %}selected{% endif %}>Aprobada</option></select></form>{% else %}<span class="dev-review-result-field dev-review-result-{{ c.review_tone }}">{{ c.review_label }}</span>{% endif %}</td><td><button type="button" class="production-edit-btn" data-production-edit data-row-type="county" data-row-id="{{ c.pk }}">✎</button></td></tr>
+          {% for s in c.services.all %}<tr data-work-category="production" data-work-points="{{ s.points }}" data-production-filter-row data-filter-type="service" data-filter-responsible="{{ s.responsible_id|default:'' }}" data-filter-reviewer="{{ s.reviewer_id|default:'' }}" data-filter-status="{% if s.review_label == 'Aprobada' %}approved{% elif s.review_label == 'Requiere cambios' %}changes{% elif s.workflow_status == 'in_review' %}in_review{% elif s.workflow_status == 'in_progress' %}in_progress{% else %}not_started{% endif %}"><td>Servicio</td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="name"><input name="value" value="{{ s.name|default:'' }}" data-auto-save-text></form>{% else %}<span class="dev-structure-name-readonly">{{ s.name }}</span>{% endif %}</td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if s.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if s.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if s.complexity == 'C' %}selected{% endif %}>C</option></select></form>{% else %}<span class="dev-structure-name-readonly">{{ s.complexity }}</span>{% endif %}</td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ s.keyword|default:'' }}" {% if s.can_edit %}data-auto-save-text{% else %}readonly{% endif %}></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ s.slug|default:'' }}" {% if s.can_edit %}data-auto-save-text{% else %}readonly{% endif %}></form></td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if s.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form>{% else %}<span class="dev-assignment-readonly">{% if s.responsible %}{{ s.responsible.display_name }}{% else %}—{% endif %}</span>{% endif %}</td><td><span class="dev-review-result-field">{% if s.workflow_status == 'complete' %}Completo{% elif s.workflow_status == 'in_review' %}En revisión{% elif s.workflow_status == 'in_progress' %}En progreso{% else %}Sin iniciar{% endif %}</span></td><td>{% if s.can_review %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="service"><input type="hidden" name="row_id" value="{{ s.pk }}"><input type="hidden" name="field" value="review_status"><select name="value" data-auto-save><option value="incomplete" {% if s.review_status != 'complete' %}selected{% endif %}>Pendiente</option><option value="complete" {% if s.review_status == 'complete' %}selected{% endif %}>Aprobada</option></select></form>{% else %}<span class="dev-review-result-field dev-review-result-{{ s.review_tone }}">{{ s.review_label }}</span>{% endif %}</td><td><div class="dev-row-actions"><button type="button" class="production-edit-btn" data-production-edit data-row-type="service" data-row-id="{{ s.pk }}">✎</button>{% if can_manage_project %}<form method="post" onsubmit="return confirm('¿Eliminar este servicio?');">{% csrf_token %}<input type="hidden" name="action" value="delete_service"><input type="hidden" name="row_id" value="{{ s.pk }}"><button class="dev-delete-btn" type="submit">×</button></form>{% endif %}</div></td></tr>{% endfor %}
+          {% for city in c.cities.all %}<tr data-work-category="production" data-work-points="{{ city.points }}" data-production-filter-row data-filter-type="city" data-filter-responsible="{{ city.responsible_id|default:'' }}" data-filter-reviewer="{{ city.reviewer_id|default:'' }}" data-filter-status="{% if city.review_label == 'Aprobada' %}approved{% elif city.review_label == 'Requiere cambios' %}changes{% elif city.workflow_status == 'in_review' %}in_review{% elif city.workflow_status == 'in_progress' %}in_progress{% else %}not_started{% endif %}"><td>Ciudad</td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="name"><input name="value" value="{{ city.name|default:'' }}" data-auto-save-text></form>{% else %}<span class="dev-structure-name-readonly">{{ city.name }}</span>{% endif %}</td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if city.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if city.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if city.complexity == 'C' %}selected{% endif %}>C</option></select></form>{% else %}<span class="dev-structure-name-readonly">{{ city.complexity }}</span>{% endif %}</td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ city.keyword|default:'' }}" {% if city.can_edit %}data-auto-save-text{% else %}readonly{% endif %}></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ city.slug|default:'' }}" {% if city.can_edit %}data-auto-save-text{% else %}readonly{% endif %}></form></td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if city.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form>{% else %}<span class="dev-assignment-readonly">{% if city.responsible %}{{ city.responsible.display_name }}{% else %}—{% endif %}</span>{% endif %}</td><td><span class="dev-review-result-field">{% if city.workflow_status == 'complete' %}Completo{% elif city.workflow_status == 'in_review' %}En revisión{% elif city.workflow_status == 'in_progress' %}En progreso{% else %}Sin iniciar{% endif %}</span></td><td>{% if city.can_review %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="review_status"><select name="value" data-auto-save><option value="incomplete" {% if city.review_status != 'complete' %}selected{% endif %}>Pendiente</option><option value="complete" {% if city.review_status == 'complete' %}selected{% endif %}>Aprobada</option></select></form>{% else %}<span class="dev-review-result-field dev-review-result-{{ city.review_tone }}">{{ city.review_label }}</span>{% endif %}</td><td><div class="dev-row-actions"><button type="button" class="production-edit-btn" data-production-edit data-row-type="city" data-row-id="{{ city.pk }}">✎</button>{% if can_manage_project %}<form method="post" onsubmit="return confirm('¿Eliminar esta ciudad?');">{% csrf_token %}<input type="hidden" name="action" value="delete_city"><input type="hidden" name="row_id" value="{{ city.pk }}"><button class="dev-delete-btn" type="submit">×</button></form>{% endif %}</div></td></tr>{% endfor %}
         </tbody></table></div>
       </div>{% empty %}<div class="notice-card">No hay condados todavía.</div>{% endfor %}
-      {% if unassigned_cities %}<div class="county-workgroup"><div class="county-workgroup-head"><strong>Ciudades sin condado</strong><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_city"><button class="btn btn-secondary btn-sm">＋ Ciudad libre</button></form></div><div class="production-table-wrap"><table class="production-table-v5 dev-production-table compact"><thead><tr><th>Tipo</th><th>Nombre</th><th>Comp.</th><th>Keyword</th><th>Slug</th><th>Responsable</th><th>Acciones</th></tr></thead><tbody>{% for city in unassigned_cities %}<tr data-work-category="production" data-work-points="{{ city.points }}"><td>Ciudad libre</td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="name"><input name="value" value="{{ city.name|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if city.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if city.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if city.complexity == 'C' %}selected{% endif %}>C</option></select></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ city.keyword|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ city.slug|default:'' }}" data-auto-save-text></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if city.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form></td><td><button type="button" class="production-edit-btn" data-production-edit data-row-type="city" data-row-id="{{ city.pk }}">✎ Editar</button></td></tr>{% endfor %}</tbody></table></div></div>{% endif %}
+      {% if unassigned_cities %}<div class="county-workgroup"><div class="county-workgroup-head"><div><strong>Ciudades sin condado</strong><span>Asigna cada ciudad al County correcto desde Editar.</span></div>{% if can_manage_project %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_city"><button class="btn btn-secondary btn-sm">＋ Ciudad libre</button></form>{% endif %}</div><div class="production-table-wrap"><table class="production-table-v5 dev-production-table compact"><thead><tr><th>Tipo</th><th>Nombre</th><th>Comp.</th><th>Keyword</th><th>Slug</th><th>Responsable</th><th>Estado</th><th>Resultado</th><th>Acciones</th></tr></thead><tbody>{% for city in unassigned_cities %}<tr data-work-category="production" data-work-points="{{ city.points }}" data-production-filter-row data-filter-type="city" data-filter-responsible="{{ city.responsible_id|default:'' }}" data-filter-reviewer="{{ city.reviewer_id|default:'' }}" data-filter-status="{% if city.review_label == 'Aprobada' %}approved{% elif city.review_label == 'Requiere cambios' %}changes{% elif city.workflow_status == 'in_review' %}in_review{% elif city.workflow_status == 'in_progress' %}in_progress{% else %}not_started{% endif %}"><td>Ciudad libre</td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="name"><input name="value" value="{{ city.name|default:'' }}" data-auto-save-text></form>{% else %}<span class="dev-structure-name-readonly">{{ city.name }}</span>{% endif %}</td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if city.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if city.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if city.complexity == 'C' %}selected{% endif %}>C</option></select></form>{% else %}<span class="dev-structure-name-readonly">{{ city.complexity }}</span>{% endif %}</td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="keyword"><input name="value" value="{{ city.keyword|default:'' }}" {% if city.can_edit %}data-auto-save-text{% else %}readonly{% endif %}></form></td><td><form method="post" class="dev-quick-form quick-text-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="slug"><input name="value" value="{{ city.slug|default:'' }}" {% if city.can_edit %}data-auto-save-text{% else %}readonly{% endif %}></form></td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if city.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form>{% else %}<span class="dev-assignment-readonly">{% if city.responsible %}{{ city.responsible.display_name }}{% else %}—{% endif %}</span>{% endif %}</td><td><span class="dev-review-result-field">{% if city.workflow_status == 'complete' %}Completo{% elif city.workflow_status == 'in_review' %}En revisión{% elif city.workflow_status == 'in_progress' %}En progreso{% else %}Sin iniciar{% endif %}</span></td><td>{% if city.can_review %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="city"><input type="hidden" name="row_id" value="{{ city.pk }}"><input type="hidden" name="field" value="review_status"><select name="value" data-auto-save><option value="incomplete" {% if city.review_status != 'complete' %}selected{% endif %}>Pendiente</option><option value="complete" {% if city.review_status == 'complete' %}selected{% endif %}>Aprobada</option></select></form>{% else %}<span class="dev-review-result-field dev-review-result-{{ city.review_tone }}">{{ city.review_label }}</span>{% endif %}</td><td><button type="button" class="production-edit-btn" data-production-edit data-row-type="city" data-row-id="{{ city.pk }}">✎ Editar</button></td></tr>{% endfor %}</tbody></table></div></div>{% endif %}
     </div>
 
   </div>
@@ -89,33 +351,13 @@
 <details class="dev-sheet-panel">
   <summary><span class="dev-sheet-index">02</span><span><strong>Secciones internas</strong><small>Asigna responsables y controla el estado de cada sección.</small></span><b class="dev-sheet-chevron">⌄</b></summary>
   <div class="dev-sheet-content">
-    <div class="dev-table-head"><div><h3>Secciones internas</h3><p>Organiza responsables, complejidad y estado de cada sección.</p></div><form method="post" class="inline-add-section">{% csrf_token %}<input name="section_name" placeholder="Nueva sección"><input type="hidden" name="action" value="add_internal_section"><button class="btn btn-secondary btn-sm" type="submit">＋ Agregar sección</button></form></div>
+    <div class="dev-table-head"><div><h3>Secciones internas</h3><p>Organiza responsables, complejidad y estado de cada sección.</p></div>{% if can_manage_project %}<form method="post" class="inline-add-section">{% csrf_token %}<input name="section_name" placeholder="Nueva sección"><input type="hidden" name="action" value="add_internal_section"><button class="btn btn-secondary btn-sm" type="submit">＋ Agregar sección</button></form>{% endif %}</div>
     <div class="production-table-wrap"><table class="production-table-v5 dev-production-table"><thead><tr><th>Sección</th><th>Comp.</th><th>Responsable</th><th>Creada</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
-    {% for section in internal_sections %}<tr data-work-category="internal" data-work-points="{{ section.points }}"><td><strong>{{ section.name }}</strong></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if section.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if section.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if section.complexity == 'C' %}selected{% endif %}>C</option></select></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if section.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><input type="hidden" name="field" value="created"><select name="value" data-auto-save><option value="no" {% if not section.created %}selected{% endif %}>No</option><option value="yes" {% if section.created %}selected{% endif %}>Sí</option></select></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><input type="hidden" name="field" value="workflow_status"><select name="value" data-auto-save><option value="not_started" {% if section.workflow_status == 'not_started' %}selected{% endif %}>Pendiente</option><option value="in_progress" {% if section.workflow_status == 'in_progress' %}selected{% endif %}>En progreso</option><option value="complete" {% if section.workflow_status == 'complete' %}selected{% endif %}>OK</option></select></form></td><td><div class="dev-row-actions">{% if 'form' in section.name|lower %}<button type="button" class="smtp-action-btn production-edit-btn" data-production-edit data-row-type="internal_section" data-row-id="{{ section.pk }}" title="Configurar SMTP">SMTP</button>{% endif %}<button type="button" class="production-edit-btn" data-production-edit data-row-type="internal_section" data-row-id="{{ section.pk }}" title="Editar sección">✎</button><form method="post" onsubmit="return confirm('¿Eliminar esta sección?');">{% csrf_token %}<input type="hidden" name="action" value="delete_internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><button class="dev-delete-btn" type="submit">×</button></form></div></td></tr>{% empty %}<tr><td colspan="6">No hay secciones internas.</td></tr>{% endfor %}
+    {% for section in internal_sections %}<tr data-work-category="internal" data-work-points="{{ section.points }}" data-production-filter-row data-filter-type="internal_section" data-filter-responsible="{{ section.responsible_id|default:'' }}" data-filter-reviewer="{{ section.reviewer_id|default:'' }}" data-filter-status="{% if section.review_label == 'Aprobada' %}approved{% elif section.review_label == 'Requiere cambios' %}changes{% elif section.workflow_status == 'in_review' %}in_review{% elif section.workflow_status == 'in_progress' %}in_progress{% else %}not_started{% endif %}"><td><strong>{{ section.name }}</strong></td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><input type="hidden" name="field" value="complexity"><select name="value" data-auto-save class="complexity-select"><option value="S" {% if section.complexity == 'S' %}selected{% endif %}>S</option><option value="M" {% if section.complexity == 'M' %}selected{% endif %}>M</option><option value="C" {% if section.complexity == 'C' %}selected{% endif %}>C</option></select></form>{% else %}<span class="dev-structure-name-readonly">{{ section.complexity }}</span>{% endif %}</td><td>{% if can_manage_project %}<form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><input type="hidden" name="field" value="responsible"><select name="value" data-auto-save><option value="">—</option>{% for dev in developers %}<option value="{{ dev.pk }}" {% if section.responsible_id == dev.pk %}selected{% endif %}>{{ dev.display_name }}</option>{% endfor %}</select></form>{% else %}<span class="dev-assignment-readonly">{% if section.responsible %}{{ section.responsible.display_name }}{% else %}—{% endif %}</span>{% endif %}</td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><input type="hidden" name="field" value="created"><select name="value" {% if section.can_edit %}data-auto-save{% else %}disabled{% endif %}><option value="no" {% if not section.created %}selected{% endif %}>No</option><option value="yes" {% if section.created %}selected{% endif %}>Sí</option></select></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><input type="hidden" name="field" value="workflow_status"><select name="value" {% if section.can_edit %}data-auto-save{% else %}disabled{% endif %}><option value="not_started" {% if section.workflow_status == 'not_started' %}selected{% endif %}>Sin iniciar</option><option value="in_progress" {% if section.workflow_status == 'in_progress' %}selected{% endif %}>En progreso</option><option value="in_review" {% if section.workflow_status == 'in_review' %}selected{% endif %}>En revisión</option><option value="complete" {% if section.workflow_status == 'complete' %}selected{% endif %} {% if not can_force_complete %}disabled{% endif %}>Completo</option></select></form></td><td><form method="post" class="dev-quick-form">{% csrf_token %}<input type="hidden" name="action" value="quick_update_row"><input type="hidden" name="row_type" value="internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><input type="hidden" name="field" value="review_status"><select name="value" data-auto-save><option value="incomplete" {% if section.review_status != 'complete' %}selected{% endif %}>Pendiente</option><option value="complete" {% if section.review_status == 'complete' %}selected{% endif %}>Aprobada</option></select></form></td><td><div class="dev-row-actions">{% if 'form' in section.name|lower %}<button type="button" class="smtp-action-btn production-edit-btn" data-production-edit data-row-type="internal_section" data-row-id="{{ section.pk }}" title="Configurar SMTP">SMTP</button>{% endif %}<button type="button" class="production-edit-btn" data-production-edit data-row-type="internal_section" data-row-id="{{ section.pk }}" title="Editar sección">✎</button>{% if can_manage_project %}<form method="post" onsubmit="return confirm('¿Eliminar esta sección?');">{% csrf_token %}<input type="hidden" name="action" value="delete_internal_section"><input type="hidden" name="row_id" value="{{ section.pk }}"><button class="dev-delete-btn" type="submit">×</button></form>{% endif %}</div></td></tr>{% empty %}<tr><td colspan="7">No hay secciones internas.</td></tr>{% endfor %}
     </tbody></table></div>
   </div>
 </details>
 
-<details class="dev-sheet-panel" id="project-styles">
-  <summary><span class="dev-sheet-index">03</span><span><strong>Estructura del header</strong><small>Organiza y edita los elementos de navegación del sitio.</small></span><b class="dev-sheet-chevron">⌄</b></summary>
-  <div class="dev-sheet-content">
-    <form method="post" class="header-structure-card header-builder-form">{% csrf_token %}<input type="hidden" name="action" value="save_general"><textarea name="header_structure" id="headerStructureValue" hidden>{{ sheet.header_structure }}</textarea>
-      <div class="header-builder-toolbar"><p>Arrastra los elementos para cambiar el orden o edita sus nombres directamente.</p><button type="button" class="btn btn-secondary btn-sm" id="header-default">Restaurar base</button></div>
-      <div id="headerBuilder" class="header-builder"></div>
-      <div class="header-add-row"><input id="headerNewItem" type="text" placeholder="Nueva opción, por ejemplo: Financing"><button type="button" class="btn btn-secondary" id="headerAddItem">＋ Agregar opción</button></div>
-      <div class="header-site-preview"><span>Vista previa</span><nav id="header-preview"></nav></div>
-      <div class="production-item-footer"><span>Los cambios se guardan para este proyecto.</span><button class="btn btn-primary" type="submit">Guardar header</button></div>
-    </form>
-  </div>
-</details>
-
-<details class="dev-sheet-panel">
-  <summary><span class="dev-sheet-index">04</span><span><strong>Estilo de botones</strong><small>Guarda y previsualiza los estilos de botones del proyecto.</small></span><b class="dev-sheet-chevron">⌄</b></summary>
-  <div class="dev-sheet-content">
-    <form method="post" id="buttonStyleForm" class="button-code-card" data-button-style-save>{% csrf_token %}<input type="hidden" name="action" value="save_button_style"><div class="button-code-grid"><div><label for="buttonStyleCode">Código de botones</label><textarea id="buttonStyleCode" name="button_style_code" rows="22" spellcheck="false" placeholder="Pega aquí tu <style> y el HTML de los botones...">{{ sheet.button_style_code }}</textarea><div class="actions"><button type="button" class="btn btn-secondary" id="buttonPreviewBtn">Previsualizar</button><button class="btn btn-primary" type="submit">Guardar código</button></div></div><div><label>Vista previa</label><iframe id="buttonStylePreview" class="button-style-preview" sandbox="allow-same-origin"></iframe></div></div></form>
-    {% if sheet.button_style_code %}<form method="post" class="button-delete-form" data-button-style-delete>{% csrf_token %}<input type="hidden" name="action" value="delete_button_style"><button class="btn btn-danger-soft" type="submit">Eliminar estilo guardado</button></form>{% endif %}
-  </div>
-</details>
 
 
 
@@ -123,10 +365,26 @@
 
 <style>
 .dev-sheet-accordion{display:grid;gap:14px}.dev-sheet-panel{border:1px solid #e3e8f0;border-radius:16px;background:#fff;overflow:hidden}.dev-sheet-panel>summary{list-style:none;display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:14px;padding:20px 22px;cursor:pointer}.dev-sheet-panel>summary::-webkit-details-marker{display:none}.dev-sheet-index{width:40px;height:40px;border-radius:12px;background:#eef3fb;display:grid;place-items:center;font-weight:900;color:#314f84}.dev-sheet-panel summary strong{display:block;font-size:16px}.dev-sheet-panel summary small{display:block;color:#748096;margin-top:4px}.dev-sheet-chevron{font-size:20px;transition:transform .2s}.dev-sheet-panel[open] .dev-sheet-chevron{transform:rotate(180deg)}.dev-sheet-content{border-top:1px solid #edf0f5;padding:20px}.dev-table-block{margin-top:20px;border:1px solid #e5eaf1;border-radius:14px;overflow:hidden}.dev-table-head,.county-workgroup-head,.header-builder-toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:16px 18px}.dev-table-head h3{margin:3px 0}.dev-production-table th,.dev-production-table td{vertical-align:middle}.work-chip{display:inline-grid;place-items:center;min-width:28px;height:28px;border-radius:8px;background:#eef3fb;font-weight:900}.dev-row-actions{display:flex;align-items:center;gap:7px}.dev-row-actions form{margin:0}.dev-delete-btn{width:32px;height:32px;border:1px solid #f0baba;border-radius:9px;background:#fff1f1;color:#b13939;font-size:18px;cursor:pointer}.county-workgroup{margin:14px;border:1px solid #e6eaf0;border-radius:12px;overflow:hidden}.county-workgroup-head{background:#f8fafc}.county-workgroup-head>div:first-child span{display:block;font-size:11px;color:#7c8799;margin-top:3px}.inline-add-section{display:flex;gap:8px}.inline-add-section input,.header-add-row input{min-width:240px;border:1px solid #dce2eb;border-radius:10px;padding:10px 12px}.smtp-ready{color:#176d57;background:#dcf4ea;padding:5px 9px;border-radius:999px;font-weight:800}.smtp-pending{color:#9d3636;background:#ffe8e8;padding:5px 9px;border-radius:999px;font-weight:800}.header-builder{display:flex;flex-wrap:wrap;gap:10px;padding:18px;border:1px dashed #cfd8e6;border-radius:14px;background:#f8fafc;min-height:74px}.header-builder-item{display:flex;align-items:center;gap:7px;padding:8px 9px;border:1px solid #dce3ed;border-radius:11px;background:#fff;cursor:grab}.header-builder-item.dragging{opacity:.45}.header-drag{color:#8b96a8;font-weight:900}.header-builder-item input{width:150px;border:0;outline:0;font-weight:800;background:transparent}.header-remove{border:0;background:#fff0f0;color:#b23d3d;border-radius:7px;width:26px;height:26px;cursor:pointer}.header-add-row{display:flex;gap:10px;margin-top:14px}.header-site-preview{margin-top:18px;padding:14px 16px;border-radius:12px;background:#f3f6fa}.header-site-preview>span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#7a8698;margin-bottom:10px}.header-site-preview nav{display:flex;flex-wrap:wrap;gap:18px;font-weight:800}.button-code-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.button-code-grid label{display:block;font-weight:800;margin-bottom:8px}.button-code-grid textarea{width:100%;font-family:Consolas,monospace;font-size:12px;border:1px solid #dce2eb;border-radius:12px;padding:14px;resize:vertical}.button-style-preview{width:100%;min-height:520px;border:1px solid #dce2eb;border-radius:12px;background:#fff}.button-delete-form{margin-top:12px}.points-balance>div{position:relative}.points-balance b{display:block;font-size:22px;color:#314f84;margin:4px 0}.production-table-v5.compact th,.production-table-v5.compact td{padding-top:9px;padding-bottom:9px}
-.dev-quick-form{margin:0;min-width:0}.dev-quick-form select,.dev-quick-form input[name="value"]{width:100%;min-width:92px;border:1px solid #dce2eb;border-radius:9px;background:#fff;padding:8px 9px;font:inherit}.dev-quick-form .complexity-select{min-width:58px;width:58px;font-weight:900}.quick-text-form input[name="value"]{min-width:155px}.dev-production-table td{min-width:90px}.dev-production-table td:nth-child(4),.dev-production-table td:nth-child(5){min-width:180px}.dev-async-busy{opacity:.72;pointer-events:none}
+.dev-assignment-readonly,.dev-structure-name-readonly,.dev-complexity-readonly{display:inline-block;font-weight:700;color:#475168;line-height:1.35}.dev-quick-form{margin:0;min-width:0}.dev-quick-form select,.dev-quick-form input[name="value"]{width:100%;min-width:92px;border:1px solid #dce2eb;border-radius:9px;background:#fff;padding:8px 9px;font:inherit}.dev-quick-form .complexity-select{min-width:58px;width:58px;font-weight:900}.quick-text-form input[name="value"]{min-width:155px}.dev-production-table td{min-width:90px}.dev-production-table td:nth-child(4),.dev-production-table td:nth-child(5){min-width:180px}.dev-async-busy{opacity:.72;pointer-events:none}
 .team-metrics-card{margin:0 0 18px;border:1px solid #e3e8f0;border-radius:16px;background:#fff;padding:20px}.team-metrics-head h3{margin:4px 0 3px;font-size:18px}.team-metrics-head p{margin:0;color:#748096}.team-metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:16px}.team-metric{border:1px solid #e4e9f1;border-radius:14px;background:#f9fbfd;padding:14px}.team-metric>strong{display:block;font-size:13px;margin-bottom:12px}.team-metric-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.team-metric-breakdown>span{display:block;border:1px solid #e6ebf2;border-radius:10px;background:#fff;padding:9px}.team-metric-breakdown small{display:block;font-size:10px;color:#748096;line-height:1.25}.team-metric-breakdown b{display:block;font-size:20px;color:#314f84;margin-top:4px}.team-metric-total{background:#eef3fb!important;border-color:#d9e3f3!important}.team-metric.warning-soft{background:#fff8e8;border-color:#f0d79b}.team-metric.warning-soft .team-metric-total{background:#fff1c9!important;border-color:#ecd28c!important}
 @media(max-width:900px){.dev-table-head,.county-workgroup-head,.header-builder-toolbar{align-items:flex-start;flex-direction:column}.button-code-grid{grid-template-columns:1fr}.inline-add-section,.header-add-row{width:100%;flex-direction:column}.inline-add-section input,.header-add-row input{min-width:0;width:100%}.dev-sheet-content{padding:12px}.production-table-wrap{overflow:auto}}
 </style>
+
+<style>
+.dev-permission-notice{margin:0 0 16px;padding:13px 15px;border:1px solid #dfe5ee;border-radius:14px;background:#f7f9fc;display:flex;gap:8px;align-items:flex-start;flex-direction:column}
+.dev-permission-notice strong{font-size:12px;color:#26364d}
+.dev-permission-notice span{font-size:10px;line-height:1.5;color:#6f7d91}
+.project-work-summary{margin:0 0 18px;border:1px solid #e3e8f0;border-radius:16px;background:#fff;padding:20px}.project-work-summary-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.project-work-summary-head h3{margin:4px 0 4px;font-size:18px}.project-work-summary-head p{margin:0;color:#748096;font-size:10px}.project-work-progress{text-align:right}.project-work-progress strong{display:block;font-size:30px;line-height:1;color:#314f84}.project-work-progress span{display:block;margin-top:5px;font-size:9px;color:#77849a;font-weight:800}.project-work-progressbar{height:8px;border-radius:999px;background:#edf1f6;overflow:hidden;margin:16px 0}.project-work-progressbar i{display:block;height:100%;border-radius:inherit;background:#314f84}.project-work-stats{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}.project-work-stats>div{border:1px solid #e5eaf1;border-radius:11px;background:#f9fbfd;padding:10px;min-width:0}.project-work-stats small{display:block;font-size:8px;line-height:1.25;color:#788599}.project-work-stats b{display:block;margin-top:6px;font-size:20px;color:#314f84}.project-work-stats .review{background:#f4f1ff;border-color:#ddd4f5}.project-work-stats .review b{color:#6654a8}.project-work-stats .changes{background:#fff8e8;border-color:#efdba8}.project-work-stats .changes b{color:#9a651a}.project-work-stats .approved{background:#edf8f2;border-color:#cfe8da}.project-work-stats .approved b{color:#24724f}.project-work-stats .unassigned{background:#fff2f2;border-color:#efcccc}.project-work-stats .unassigned b{color:#a34545}@media(max-width:1050px){.project-work-stats{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(max-width:650px){.project-work-summary-head{flex-direction:column}.project-work-progress{text-align:left}.project-work-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.project-work-stats>div:first-child{grid-column:1/-1}}
+.developer-work-summary{margin:0 0 18px;border:1px solid #e3e8f0;border-radius:16px;background:#fff;padding:20px}.developer-work-summary-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.developer-work-summary-head h3{margin:4px 0 4px;font-size:18px}.developer-work-summary-head p{margin:0;color:#748096;font-size:10px}.developer-work-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:16px}.developer-work-card{border:1px solid #e4e9f1;border-radius:14px;background:#f9fbfd;padding:14px}.developer-work-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.developer-work-card-head strong{font-size:13px;color:#23344d}.developer-work-card-head span{font-size:9px;font-weight:800;color:#65748a;background:#eef2f7;border-radius:999px;padding:5px 8px;white-space:nowrap}.developer-work-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}.developer-work-stats>div{border:1px solid #e5eaf1;border-radius:10px;background:#fff;padding:9px;min-width:0}.developer-work-stats small{display:block;font-size:8px;line-height:1.25;color:#788599}.developer-work-stats b{display:block;margin-top:5px;font-size:19px;color:#314f84}.developer-work-stats .needs-changes{background:#fff8e8;border-color:#efdba8}.developer-work-stats .needs-changes b{color:#9a651a}.developer-work-stats .approved{background:#edf8f2;border-color:#cfe8da}.developer-work-stats .approved b{color:#24724f}.developer-work-empty{grid-column:1/-1;border:1px dashed #d9e0ea;border-radius:12px;padding:16px;color:#718096;font-size:10px;text-align:center}@media(max-width:760px){.developer-work-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.developer-work-stats>div:first-child{grid-column:1/-1}}
+.dev-readonly-control{opacity:.58!important;cursor:not-allowed!important}
+.dev-readonly-row{background:#fafbfc!important}
+.dev-readonly-badge{display:inline-flex;align-items:center;gap:5px;margin-left:8px;padding:4px 7px;border-radius:999px;background:#eef1f5;color:#667386;font-size:8px;font-weight:800;white-space:nowrap}
+.dev-admin-only-hidden{display:none!important}
+
+.project-work-last-update{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:8px;color:#7b8497;font-size:10px;line-height:1.4}.project-work-last-update strong{color:#475168;font-size:10px;font-weight:800}.production-filters{margin:0 0 18px;border:1px solid #e3e8f0;border-radius:16px;background:#fff;padding:20px}.production-filters-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.production-filters-head h3{margin:4px 0;font-size:18px}.production-filters-head p{margin:0;color:#748096;font-size:10px}.production-filter-result{text-align:right}.production-filter-result strong{display:block;font-size:25px;line-height:1;color:#314f84}.production-filter-result span{display:block;margin-top:5px;color:#77849a;font-size:9px;font-weight:800}.production-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}.production-filter-grid label>span{display:block;margin-bottom:6px;color:#58667b;font-size:9px;font-weight:800}.production-filter-grid select{width:100%;min-height:40px;border:1px solid #dce3ed;border-radius:10px;background:#fff;padding:8px 10px;color:#25354d;font:inherit}.production-filter-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}.production-filter-check{display:inline-flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid #e1e6ed;border-radius:10px;background:#f9fbfd;color:#58667b;font-size:9px;font-weight:800;cursor:pointer}.production-filter-check input{margin:0}.production-filter-hidden{display:none!important}.production-filter-empty{margin:12px 0 0;padding:12px;border:1px dashed #d9e0ea;border-radius:12px;background:#fafbfd;color:#718096;font-size:10px;text-align:center}.production-filter-empty[hidden]{display:none!important}@media(max-width:950px){.production-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.production-filters-head{flex-direction:column}.production-filter-result{text-align:left}.production-filter-grid{grid-template-columns:1fr}.production-filter-actions{align-items:stretch;flex-direction:column}.production-filter-check,.production-filter-actions .btn{width:100%;justify-content:center}}
+</style>
+{{ editable_row_keys|json_script:"developmentEditableRows" }}
+<div id="developmentPermissionState" data-can-manage="{{ can_manage_project|yesno:'1,0' }}" hidden></div>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
   const hidden=document.getElementById('headerStructureValue'); const builder=document.getElementById('headerBuilder'); const preview=document.getElementById('header-preview');
@@ -162,7 +420,7 @@ document.addEventListener('DOMContentLoaded',function(){
       <div class="production-edit-grid">
         <div class="field">
           <label>Nombre</label>
-          <input name="p_{{ p.pk }}_name" value="{{ p.name }}">
+          <input name="p_{{ p.pk }}_name" value="{{ p.name }}" {% if not can_manage_project %}readonly{% endif %}>
         </div>
 
         <div class="field">
@@ -179,7 +437,7 @@ document.addEventListener('DOMContentLoaded',function(){
           <label>Revisor</label>
           <select name="p_{{ p.pk }}_reviewer">
             <option value="">Sin asignar</option>
-            {% for u in developers %}
+            {% for u in reviewers %}
               <option value="{{ u.pk }}" {% if p.reviewer_id == u.pk %}selected{% endif %}>{{ u.display_name }}</option>
             {% endfor %}
           </select>
@@ -197,7 +455,7 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field">
           <label>Keyword principal</label>
           <div>
-            <input id="p-kw-{{ p.pk }}" class="keyword-source" data-slug-target="p-slug-{{ p.pk }}" name="p_{{ p.pk }}_keyword" value="{{ p.keyword }}">
+            <input id="p-kw-{{ p.pk }}" class="keyword-source" data-slug-target="p-slug-{{ p.pk }}" name="p_{{ p.pk }}_keyword" value="{{ p.keyword }}" {% if not p.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="p-kw-{{ p.pk }}">Copiar</button>
           </div>
         </div>
@@ -205,7 +463,7 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field">
           <label>Slug</label>
           <div>
-            <input id="p-slug-{{ p.pk }}" class="slug-edit" name="p_{{ p.pk }}_slug" value="{{ p.slug }}">
+            <input id="p-slug-{{ p.pk }}" class="slug-edit" name="p_{{ p.pk }}_slug" value="{{ p.slug }}" {% if not p.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="p-slug-{{ p.pk }}">Copiar</button>
           </div>
           <small>Se genera desde la keyword mientras no lo edites manualmente.</small>
@@ -213,13 +471,13 @@ document.addEventListener('DOMContentLoaded',function(){
 
         <div class="field form-wide">
           <label>Keywords secundarias</label>
-          <textarea rows="3" name="p_{{ p.pk }}_secondary_keywords">{{ p.secondary_keywords }}</textarea>
+          <textarea rows="3" name="p_{{ p.pk }}_secondary_keywords" {% if not p.can_edit %}readonly{% endif %}>{{ p.secondary_keywords }}</textarea>
         </div>
 
         <div class="field copy-field form-wide">
           <label>Meta Title</label>
           <div>
-            <input id="p-title-{{ p.pk }}" name="p_{{ p.pk }}_meta_title" value="{{ p.meta_title }}">
+            <input id="p-title-{{ p.pk }}" name="p_{{ p.pk }}_meta_title" value="{{ p.meta_title }}" {% if not p.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="p-title-{{ p.pk }}">Copiar</button>
           </div>
         </div>
@@ -227,17 +485,14 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field form-wide">
           <label>Meta Description</label>
           <div>
-            <textarea id="p-desc-{{ p.pk }}" rows="3" name="p_{{ p.pk }}_meta_description">{{ p.meta_description }}</textarea>
+            <textarea id="p-desc-{{ p.pk }}" rows="3" name="p_{{ p.pk }}_meta_description" {% if not p.can_edit %}readonly{% endif %}>{{ p.meta_description }}</textarea>
             <button type="button" class="copy-mini" data-copy="p-desc-{{ p.pk }}">Copiar</button>
           </div>
         </div>
 
         <div class="field">
-          <label>Revisión realizada</label>
-          <select name="p_{{ p.pk }}_review_status">
-            <option value="incomplete" {% if p.review_status != 'complete' %}selected{% endif %}>No</option>
-            <option value="complete" {% if p.review_status == 'complete' %}selected{% endif %}>Sí</option>
-          </select>
+          <label>Resultado de revisión</label>
+          <div class="dev-review-result-field dev-review-result-{{ p.review_tone }}">{{ p.review_label }}</div>
         </div>
 
         <div class="field">
@@ -254,6 +509,7 @@ document.addEventListener('DOMContentLoaded',function(){
           <label>Notas</label>
           <textarea rows="3" name="p_{{ p.pk }}_notes">{{ p.notes }}</textarea>
         </div>
+        {% include 'operations/_production_history.html' with history_items=p.history_items %}
       </div>
 
       <div class="production-item-footer">
@@ -264,7 +520,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
         <div class="production-item-actions">
           <button class="btn btn-primary" type="submit">Guardar {{ p.name|default:'página' }}</button>
-          <button class="btn btn-danger-soft btn-sm" type="submit" onclick="if(!confirm('¿Eliminar esta página?')) return false; this.form.querySelector('[name=action]').value='delete_page';">Eliminar</button>
+          {% if can_manage_project %}<button class="btn btn-danger-soft btn-sm" type="submit" onclick="if(!confirm('¿Eliminar esta página?')) return false; this.form.querySelector('[name=action]').value='delete_page';">Eliminar</button>{% endif %}
         </div>
       </div>
     </form>
@@ -281,7 +537,7 @@ document.addEventListener('DOMContentLoaded',function(){
       <div class="production-edit-grid">
         <div class="field">
           <label>Nombre del condado</label>
-          <input class="county-name-input" data-county="{{ c.pk }}" name="c_{{ c.pk }}_name" value="{{ c.name }}">
+          <input class="county-name-input" data-county="{{ c.pk }}" name="c_{{ c.pk }}_name" value="{{ c.name }}" {% if not can_manage_project %}readonly{% endif %}>
         </div>
 
         <div class="field">
@@ -298,7 +554,7 @@ document.addEventListener('DOMContentLoaded',function(){
           <label>Revisor</label>
           <select name="c_{{ c.pk }}_reviewer">
             <option value="">Sin asignar</option>
-            {% for u in developers %}
+            {% for u in reviewers %}
               <option value="{{ u.pk }}" {% if c.reviewer_id == u.pk %}selected{% endif %}>{{ u.display_name }}</option>
             {% endfor %}
           </select>
@@ -316,7 +572,7 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field">
           <label>Keyword principal</label>
           <div>
-            <input id="c-kw-{{ c.pk }}" class="keyword-source" data-slug-target="c-slug-{{ c.pk }}" name="c_{{ c.pk }}_keyword" value="{{ c.keyword }}">
+            <input id="c-kw-{{ c.pk }}" class="keyword-source" data-slug-target="c-slug-{{ c.pk }}" name="c_{{ c.pk }}_keyword" value="{{ c.keyword }}" {% if not c.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="c-kw-{{ c.pk }}">Copiar</button>
           </div>
         </div>
@@ -324,20 +580,20 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field">
           <label>Slug</label>
           <div>
-            <input id="c-slug-{{ c.pk }}" class="slug-edit" name="c_{{ c.pk }}_slug" value="{{ c.slug }}">
+            <input id="c-slug-{{ c.pk }}" class="slug-edit" name="c_{{ c.pk }}_slug" value="{{ c.slug }}" {% if not c.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="c-slug-{{ c.pk }}">Copiar</button>
           </div>
         </div>
 
         <div class="field form-wide">
           <label>Keywords secundarias</label>
-          <textarea rows="3" name="c_{{ c.pk }}_secondary_keywords">{{ c.secondary_keywords }}</textarea>
+          <textarea rows="3" name="c_{{ c.pk }}_secondary_keywords" {% if not c.can_edit %}readonly{% endif %}>{{ c.secondary_keywords }}</textarea>
         </div>
 
         <div class="field copy-field form-wide">
           <label>Meta Title</label>
           <div>
-            <input id="c-title-{{ c.pk }}" name="c_{{ c.pk }}_meta_title" value="{{ c.meta_title }}">
+            <input id="c-title-{{ c.pk }}" name="c_{{ c.pk }}_meta_title" value="{{ c.meta_title }}" {% if not c.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="c-title-{{ c.pk }}">Copiar</button>
           </div>
         </div>
@@ -345,17 +601,14 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field form-wide">
           <label>Meta Description</label>
           <div>
-            <textarea id="c-desc-{{ c.pk }}" rows="3" name="c_{{ c.pk }}_meta_description">{{ c.meta_description }}</textarea>
+            <textarea id="c-desc-{{ c.pk }}" rows="3" name="c_{{ c.pk }}_meta_description" {% if not c.can_edit %}readonly{% endif %}>{{ c.meta_description }}</textarea>
             <button type="button" class="copy-mini" data-copy="c-desc-{{ c.pk }}">Copiar</button>
           </div>
         </div>
 
         <div class="field">
-          <label>Revisión realizada</label>
-          <select name="c_{{ c.pk }}_review_status">
-            <option value="incomplete" {% if c.review_status != 'complete' %}selected{% endif %}>No</option>
-            <option value="complete" {% if c.review_status == 'complete' %}selected{% endif %}>Sí</option>
-          </select>
+          <label>Resultado de revisión</label>
+          <div class="dev-review-result-field dev-review-result-{{ c.review_tone }}">{{ c.review_label }}</div>
         </div>
 
         <div class="field">
@@ -372,6 +625,7 @@ document.addEventListener('DOMContentLoaded',function(){
           <label>Notas</label>
           <textarea rows="3" name="c_{{ c.pk }}_notes">{{ c.notes }}</textarea>
         </div>
+        {% include 'operations/_production_history.html' with history_items=c.history_items %}
       </div>
 
       <div class="production-item-footer">
@@ -382,7 +636,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
         <div class="production-item-actions">
           <button class="btn btn-primary" type="submit">Guardar condado</button>
-          <button class="btn btn-danger-soft btn-sm" type="submit" onclick="if(!confirm('¿Eliminar este condado y sus servicios?')) return false; this.form.querySelector('[name=action]').value='delete_county';">Eliminar condado</button>
+          {% if can_manage_project %}<button class="btn btn-danger-soft btn-sm" type="submit" onclick="if(!confirm('¿Eliminar este condado y sus servicios?')) return false; this.form.querySelector('[name=action]').value='delete_county';">Eliminar condado</button>{% endif %}
         </div>
       </div>
     </form>
@@ -398,12 +652,12 @@ document.addEventListener('DOMContentLoaded',function(){
       <div class="production-edit-grid">
         <div class="field">
           <label>Servicio base</label>
-          <input list="service-catalog" class="service-selector" data-county="{{ c.pk }}" name="s_{{ s.pk }}_service_name" value="{{ s.service_name }}" placeholder="Roofing">
+          <input list="service-catalog" class="service-selector" data-county="{{ c.pk }}" name="s_{{ s.pk }}_service_name" value="{{ s.service_name }}" placeholder="Roofing" {% if not can_manage_project %}readonly{% endif %}>
         </div>
 
         <div class="field">
           <label>Nombre de página</label>
-          <input class="service-page-name" name="s_{{ s.pk }}_name" value="{{ s.name }}">
+          <input class="service-page-name" name="s_{{ s.pk }}_name" value="{{ s.name }}" {% if not can_manage_project %}readonly{% endif %}>
         </div>
 
         <div class="field">
@@ -420,7 +674,7 @@ document.addEventListener('DOMContentLoaded',function(){
           <label>Revisor</label>
           <select name="s_{{ s.pk }}_reviewer">
             <option value="">Sin asignar</option>
-            {% for u in developers %}
+            {% for u in reviewers %}
               <option value="{{ u.pk }}" {% if s.reviewer_id == u.pk %}selected{% endif %}>{{ u.display_name }}</option>
             {% endfor %}
           </select>
@@ -437,7 +691,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
         <div class="field">
           <label class="mini-choice">
-            <input type="checkbox" name="s_{{ s.pk }}_is_global" value="1" {% if s.is_global %}checked{% endif %}>
+            <input type="checkbox" name="s_{{ s.pk }}_is_global" value="1" {% if not can_manage_project %}disabled{% endif %} {% if s.is_global %}checked{% endif %}>
             Servicio global
           </label>
         </div>
@@ -445,7 +699,7 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field">
           <label>Keyword principal</label>
           <div>
-            <input id="s-kw-{{ s.pk }}" class="keyword-source" data-slug-target="s-slug-{{ s.pk }}" name="s_{{ s.pk }}_keyword" value="{{ s.keyword }}">
+            <input id="s-kw-{{ s.pk }}" class="keyword-source" data-slug-target="s-slug-{{ s.pk }}" name="s_{{ s.pk }}_keyword" value="{{ s.keyword }}" {% if not s.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="s-kw-{{ s.pk }}">Copiar</button>
           </div>
         </div>
@@ -453,20 +707,20 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field">
           <label>Slug</label>
           <div>
-            <input id="s-slug-{{ s.pk }}" class="slug-edit" name="s_{{ s.pk }}_slug" value="{{ s.slug }}">
+            <input id="s-slug-{{ s.pk }}" class="slug-edit" name="s_{{ s.pk }}_slug" value="{{ s.slug }}" {% if not s.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="s-slug-{{ s.pk }}">Copiar</button>
           </div>
         </div>
 
         <div class="field form-wide">
           <label>Keywords secundarias</label>
-          <textarea rows="3" name="s_{{ s.pk }}_secondary_keywords">{{ s.secondary_keywords }}</textarea>
+          <textarea rows="3" name="s_{{ s.pk }}_secondary_keywords" {% if not s.can_edit %}readonly{% endif %}>{{ s.secondary_keywords }}</textarea>
         </div>
 
         <div class="field copy-field form-wide">
           <label>Meta Title</label>
           <div>
-            <input id="s-title-{{ s.pk }}" name="s_{{ s.pk }}_meta_title" value="{{ s.meta_title }}">
+            <input id="s-title-{{ s.pk }}" name="s_{{ s.pk }}_meta_title" value="{{ s.meta_title }}" {% if not s.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="s-title-{{ s.pk }}">Copiar</button>
           </div>
         </div>
@@ -474,17 +728,14 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field form-wide">
           <label>Meta Description</label>
           <div>
-            <textarea id="s-desc-{{ s.pk }}" rows="3" name="s_{{ s.pk }}_meta_description">{{ s.meta_description }}</textarea>
+            <textarea id="s-desc-{{ s.pk }}" rows="3" name="s_{{ s.pk }}_meta_description" {% if not s.can_edit %}readonly{% endif %}>{{ s.meta_description }}</textarea>
             <button type="button" class="copy-mini" data-copy="s-desc-{{ s.pk }}">Copiar</button>
           </div>
         </div>
 
         <div class="field">
-          <label>Revisión realizada</label>
-          <select name="s_{{ s.pk }}_review_status">
-            <option value="incomplete" {% if s.review_status != 'complete' %}selected{% endif %}>No</option>
-            <option value="complete" {% if s.review_status == 'complete' %}selected{% endif %}>Sí</option>
-          </select>
+          <label>Resultado de revisión</label>
+          <div class="dev-review-result-field dev-review-result-{{ s.review_tone }}">{{ s.review_label }}</div>
         </div>
 
         <div class="field">
@@ -501,6 +752,7 @@ document.addEventListener('DOMContentLoaded',function(){
           <label>Notas</label>
           <textarea rows="3" name="s_{{ s.pk }}_notes">{{ s.notes }}</textarea>
         </div>
+        {% include 'operations/_production_history.html' with history_items=s.history_items %}
       </div>
 
       <div class="production-item-footer">
@@ -511,7 +763,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
         <div class="production-item-actions">
           <button class="btn btn-primary" type="submit">Guardar servicio</button>
-          <button class="btn btn-danger-soft btn-sm" type="submit" onclick="if(!confirm('¿Eliminar este servicio?')) return false; this.form.querySelector('[name=action]').value='delete_service';">Eliminar</button>
+          {% if can_manage_project %}<button class="btn btn-danger-soft btn-sm" type="submit" onclick="if(!confirm('¿Eliminar este servicio?')) return false; this.form.querySelector('[name=action]').value='delete_service';">Eliminar</button>{% endif %}
         </div>
       </div>
     </form>
@@ -528,17 +780,21 @@ document.addEventListener('DOMContentLoaded',function(){
       <div class="production-edit-grid">
         <div class="field">
           <label>Ciudad</label>
-          <input name="city_{{ city.pk }}_name" value="{{ city.name }}">
+          <input name="city_{{ city.pk }}_name" value="{{ city.name }}" {% if not can_manage_project %}readonly{% endif %}>
         </div>
 
         <div class="field">
           <label>Condado</label>
-          <select name="city_{{ city.pk }}_county">
-            <option value="">Sin condado</option>
-            {% for county_option in counties %}
-              <option value="{{ county_option.pk }}" {% if city.county_id == county_option.pk %}selected{% endif %}>{{ county_option.name }}</option>
-            {% endfor %}
-          </select>
+          {% if can_manage_project %}
+            <select name="city_{{ city.pk }}_county">
+              <option value="">Sin condado</option>
+              {% for county_option in counties %}
+                <option value="{{ county_option.pk }}" {% if city.county_id == county_option.pk %}selected{% endif %}>{{ county_option.name }}</option>
+              {% endfor %}
+            </select>
+          {% else %}
+            <input value="{% if city.county %}{{ city.county.name }}{% else %}Sin condado{% endif %}" readonly>
+          {% endif %}
         </div>
 
         <div class="field">
@@ -555,7 +811,7 @@ document.addEventListener('DOMContentLoaded',function(){
           <label>Revisor</label>
           <select name="city_{{ city.pk }}_reviewer">
             <option value="">Sin asignar</option>
-            {% for u in developers %}
+            {% for u in reviewers %}
               <option value="{{ u.pk }}" {% if city.reviewer_id == u.pk %}selected{% endif %}>{{ u.display_name }}</option>
             {% endfor %}
           </select>
@@ -573,7 +829,7 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field">
           <label>Keyword principal</label>
           <div>
-            <input id="city-kw-{{ city.pk }}" class="keyword-source" data-slug-target="city-slug-{{ city.pk }}" name="city_{{ city.pk }}_keyword" value="{{ city.keyword }}">
+            <input id="city-kw-{{ city.pk }}" class="keyword-source" data-slug-target="city-slug-{{ city.pk }}" name="city_{{ city.pk }}_keyword" value="{{ city.keyword }}" {% if not city.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="city-kw-{{ city.pk }}">Copiar</button>
           </div>
         </div>
@@ -581,20 +837,20 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field">
           <label>Slug</label>
           <div>
-            <input id="city-slug-{{ city.pk }}" class="slug-edit" name="city_{{ city.pk }}_slug" value="{{ city.slug }}">
+            <input id="city-slug-{{ city.pk }}" class="slug-edit" name="city_{{ city.pk }}_slug" value="{{ city.slug }}" {% if not city.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="city-slug-{{ city.pk }}">Copiar</button>
           </div>
         </div>
 
         <div class="field form-wide">
           <label>Keywords secundarias</label>
-          <textarea rows="3" name="city_{{ city.pk }}_secondary_keywords">{{ city.secondary_keywords }}</textarea>
+          <textarea rows="3" name="city_{{ city.pk }}_secondary_keywords" {% if not city.can_edit %}readonly{% endif %}>{{ city.secondary_keywords }}</textarea>
         </div>
 
         <div class="field copy-field form-wide">
           <label>Meta Title</label>
           <div>
-            <input id="city-title-{{ city.pk }}" name="city_{{ city.pk }}_meta_title" value="{{ city.meta_title }}">
+            <input id="city-title-{{ city.pk }}" name="city_{{ city.pk }}_meta_title" value="{{ city.meta_title }}" {% if not city.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="city-title-{{ city.pk }}">Copiar</button>
           </div>
         </div>
@@ -602,17 +858,14 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field form-wide">
           <label>Meta Description</label>
           <div>
-            <textarea id="city-desc-{{ city.pk }}" rows="3" name="city_{{ city.pk }}_meta_description">{{ city.meta_description }}</textarea>
+            <textarea id="city-desc-{{ city.pk }}" rows="3" name="city_{{ city.pk }}_meta_description" {% if not city.can_edit %}readonly{% endif %}>{{ city.meta_description }}</textarea>
             <button type="button" class="copy-mini" data-copy="city-desc-{{ city.pk }}">Copiar</button>
           </div>
         </div>
 
         <div class="field">
-          <label>Revisión realizada</label>
-          <select name="city_{{ city.pk }}_review_status">
-            <option value="incomplete" {% if city.review_status != 'complete' %}selected{% endif %}>No</option>
-            <option value="complete" {% if city.review_status == 'complete' %}selected{% endif %}>Sí</option>
-          </select>
+          <label>Resultado de revisión</label>
+          <div class="dev-review-result-field dev-review-result-{{ city.review_tone }}">{{ city.review_label }}</div>
         </div>
 
         <div class="field">
@@ -629,6 +882,7 @@ document.addEventListener('DOMContentLoaded',function(){
           <label>Notas</label>
           <textarea rows="3" name="city_{{ city.pk }}_notes">{{ city.notes }}</textarea>
         </div>
+        {% include 'operations/_production_history.html' with history_items=city.history_items %}
       </div>
 
       <div class="production-item-footer">
@@ -639,7 +893,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
         <div class="production-item-actions">
           <button class="btn btn-primary" type="submit">Guardar ciudad</button>
-          <button class="btn btn-danger-soft btn-sm" type="submit" onclick="if(!confirm('¿Eliminar esta ciudad?')) return false; this.form.querySelector('[name=action]').value='delete_city';">Eliminar</button>
+          {% if can_manage_project %}<button class="btn btn-danger-soft btn-sm" type="submit" onclick="if(!confirm('¿Eliminar esta ciudad?')) return false; this.form.querySelector('[name=action]').value='delete_city';">Eliminar</button>{% endif %}
         </div>
       </div>
     </form>
@@ -657,17 +911,21 @@ document.addEventListener('DOMContentLoaded',function(){
       <div class="production-edit-grid">
         <div class="field">
           <label>Ciudad</label>
-          <input name="city_{{ city.pk }}_name" value="{{ city.name }}">
+          <input name="city_{{ city.pk }}_name" value="{{ city.name }}" {% if not can_manage_project %}readonly{% endif %}>
         </div>
 
         <div class="field">
           <label>Condado</label>
-          <select name="city_{{ city.pk }}_county">
-            <option value="">Sin condado</option>
-            {% for c in counties %}
-              <option value="{{ c.pk }}">{{ c.name }}</option>
-            {% endfor %}
-          </select>
+          {% if can_manage_project %}
+            <select name="city_{{ city.pk }}_county">
+              <option value="">Sin condado</option>
+              {% for c in counties %}
+                <option value="{{ c.pk }}">{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          {% else %}
+            <input value="Sin condado" readonly>
+          {% endif %}
         </div>
 
         <div class="field">
@@ -684,7 +942,7 @@ document.addEventListener('DOMContentLoaded',function(){
           <label>Revisor</label>
           <select name="city_{{ city.pk }}_reviewer">
             <option value="">Sin asignar</option>
-            {% for u in developers %}
+            {% for u in reviewers %}
               <option value="{{ u.pk }}" {% if city.reviewer_id == u.pk %}selected{% endif %}>{{ u.display_name }}</option>
             {% endfor %}
           </select>
@@ -702,7 +960,7 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field">
           <label>Keyword principal</label>
           <div>
-            <input id="city-kw-u-{{ city.pk }}" class="keyword-source" data-slug-target="city-slug-u-{{ city.pk }}" name="city_{{ city.pk }}_keyword" value="{{ city.keyword }}">
+            <input id="city-kw-u-{{ city.pk }}" class="keyword-source" data-slug-target="city-slug-u-{{ city.pk }}" name="city_{{ city.pk }}_keyword" value="{{ city.keyword }}" {% if not city.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="city-kw-u-{{ city.pk }}">Copiar</button>
           </div>
         </div>
@@ -710,20 +968,20 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field">
           <label>Slug</label>
           <div>
-            <input id="city-slug-u-{{ city.pk }}" class="slug-edit" name="city_{{ city.pk }}_slug" value="{{ city.slug }}">
+            <input id="city-slug-u-{{ city.pk }}" class="slug-edit" name="city_{{ city.pk }}_slug" value="{{ city.slug }}" {% if not city.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="city-slug-u-{{ city.pk }}">Copiar</button>
           </div>
         </div>
 
         <div class="field form-wide">
           <label>Keywords secundarias</label>
-          <textarea rows="3" name="city_{{ city.pk }}_secondary_keywords">{{ city.secondary_keywords }}</textarea>
+          <textarea rows="3" name="city_{{ city.pk }}_secondary_keywords" {% if not city.can_edit %}readonly{% endif %}>{{ city.secondary_keywords }}</textarea>
         </div>
 
         <div class="field copy-field form-wide">
           <label>Meta Title</label>
           <div>
-            <input id="city-title-u-{{ city.pk }}" name="city_{{ city.pk }}_meta_title" value="{{ city.meta_title }}">
+            <input id="city-title-u-{{ city.pk }}" name="city_{{ city.pk }}_meta_title" value="{{ city.meta_title }}" {% if not city.can_edit %}readonly{% endif %}>
             <button type="button" class="copy-mini" data-copy="city-title-u-{{ city.pk }}">Copiar</button>
           </div>
         </div>
@@ -731,17 +989,14 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="field copy-field form-wide">
           <label>Meta Description</label>
           <div>
-            <textarea id="city-desc-u-{{ city.pk }}" rows="3" name="city_{{ city.pk }}_meta_description">{{ city.meta_description }}</textarea>
+            <textarea id="city-desc-u-{{ city.pk }}" rows="3" name="city_{{ city.pk }}_meta_description" {% if not city.can_edit %}readonly{% endif %}>{{ city.meta_description }}</textarea>
             <button type="button" class="copy-mini" data-copy="city-desc-u-{{ city.pk }}">Copiar</button>
           </div>
         </div>
 
         <div class="field">
-          <label>Revisión realizada</label>
-          <select name="city_{{ city.pk }}_review_status">
-            <option value="incomplete" {% if city.review_status != 'complete' %}selected{% endif %}>No</option>
-            <option value="complete" {% if city.review_status == 'complete' %}selected{% endif %}>Sí</option>
-          </select>
+          <label>Resultado de revisión</label>
+          <div class="dev-review-result-field dev-review-result-{{ city.review_tone }}">{{ city.review_label }}</div>
         </div>
 
         <div class="field">
@@ -758,6 +1013,7 @@ document.addEventListener('DOMContentLoaded',function(){
           <label>Notas</label>
           <textarea rows="3" name="city_{{ city.pk }}_notes">{{ city.notes }}</textarea>
         </div>
+        {% include 'operations/_production_history.html' with history_items=city.history_items %}
       </div>
 
       <div class="production-item-footer">
@@ -768,7 +1024,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
         <div class="production-item-actions">
           <button class="btn btn-primary" type="submit">Guardar ciudad</button>
-          <button class="btn btn-danger-soft btn-sm" type="submit" onclick="if(!confirm('¿Eliminar esta ciudad?')) return false; this.form.querySelector('[name=action]').value='delete_city';">Eliminar</button>
+          {% if can_manage_project %}<button class="btn btn-danger-soft btn-sm" type="submit" onclick="if(!confirm('¿Eliminar esta ciudad?')) return false; this.form.querySelector('[name=action]').value='delete_city';">Eliminar</button>{% endif %}
         </div>
       </div>
     </form>
@@ -785,12 +1041,12 @@ document.addEventListener('DOMContentLoaded',function(){
       <div class="production-edit-grid">
         <div class="field">
           <label>Nombre</label>
-          <input name="internal_{{ section.pk }}_name" value="{{ section.name }}">
+          <input name="internal_{{ section.pk }}_name" value="{{ section.name }}" {% if not can_manage_project %}readonly{% endif %}>
         </div>
 
         <div class="field">
           <label>Complejidad</label>
-          <select name="internal_{{ section.pk }}_complexity">
+          <select name="internal_{{ section.pk }}_complexity" {% if not can_manage_project %}disabled{% endif %}>
             <option value="S" {% if section.complexity == 'S' %}selected{% endif %}>S · Simple</option>
             <option value="M" {% if section.complexity == 'M' %}selected{% endif %}>M · Media</option>
             <option value="C" {% if section.complexity == 'C' %}selected{% endif %}>C · Compleja</option>
@@ -804,7 +1060,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
         <div class="field">
           <label>Responsable</label>
-          <select name="internal_{{ section.pk }}_responsible">
+          <select name="internal_{{ section.pk }}_responsible" {% if not can_manage_project %}disabled{% endif %}>
             <option value="">Sin asignar</option>
             {% for u in developers %}
               <option value="{{ u.pk }}" {% if section.responsible_id == u.pk %}selected{% endif %}>{{ u.display_name }}</option>
@@ -814,9 +1070,9 @@ document.addEventListener('DOMContentLoaded',function(){
 
         <div class="field">
           <label>Revisor</label>
-          <select name="internal_{{ section.pk }}_reviewer">
+          <select name="internal_{{ section.pk }}_reviewer" {% if not can_manage_project %}disabled{% endif %}>
             <option value="">Sin asignar</option>
-            {% for u in developers %}
+            {% for u in reviewers %}
               <option value="{{ u.pk }}" {% if section.reviewer_id == u.pk %}selected{% endif %}>{{ u.display_name }}</option>
             {% endfor %}
           </select>
@@ -824,7 +1080,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
         <div class="field">
           <label>Estado</label>
-          <select name="internal_{{ section.pk }}_workflow_status">
+          <select name="internal_{{ section.pk }}_workflow_status" {% if not section.can_edit %}disabled{% endif %}>
             {% for value, label in production_statuses %}
               <option value="{{ value }}" {% if section.workflow_status == value %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
@@ -833,7 +1089,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
         <div class="field form-wide">
           <label class="mini-choice">
-            <input type="checkbox" name="internal_{{ section.pk }}_created" value="1" {% if section.created %}checked{% endif %}>
+            <input type="checkbox" name="internal_{{ section.pk }}_created" value="1" {% if section.created %}checked{% endif %} {% if not section.can_edit %}disabled{% endif %}>
             Sección creada
           </label>
         </div>
@@ -851,19 +1107,20 @@ document.addEventListener('DOMContentLoaded',function(){
         {% if 'form' in section.name|lower %}
         <div class="field form-wide smtp-config-field">
           <label>SMTP Email</label>
-          <input type="email" name="internal_{{ section.pk }}_smtp_email" value="{{ section.smtp_email }}" autocomplete="off" placeholder="info@dominio.com">
+          <input type="email" name="internal_{{ section.pk }}_smtp_email" value="{{ section.smtp_email }}" autocomplete="off" placeholder="info@dominio.com" {% if not section.can_edit %}readonly{% endif %}>
         </div>
         <div class="field form-wide smtp-config-field">
           <label>SMTP Password</label>
-          <input type="password" name="internal_{{ section.pk }}_smtp_password" value="" autocomplete="new-password" placeholder="{% if section.smtp_password_encrypted %}Contraseña guardada · escribe solo para reemplazar{% else %}Contraseña SMTP{% endif %}">
-          {% if section.smtp_password_encrypted %}<label class="mini-choice"><input type="checkbox" name="internal_{{ section.pk }}_clear_smtp_password" value="1"> Eliminar contraseña SMTP guardada</label>{% endif %}
+          <input type="password" name="internal_{{ section.pk }}_smtp_password" value="" autocomplete="new-password" placeholder="{% if section.smtp_password_encrypted %}Contraseña guardada · escribe solo para reemplazar{% else %}Contraseña SMTP{% endif %}" {% if not section.can_edit %}disabled{% endif %}>
+          {% if section.smtp_password_encrypted %}<label class="mini-choice"><input type="checkbox" name="internal_{{ section.pk }}_clear_smtp_password" value="1" {% if not section.can_edit %}disabled{% endif %}> Eliminar contraseña SMTP guardada</label>{% endif %}
         </div>
         {% endif %}
 
         <div class="field form-wide">
           <label>Notas</label>
-          <textarea rows="3" name="internal_{{ section.pk }}_notes">{{ section.notes }}</textarea>
+          <textarea rows="3" name="internal_{{ section.pk }}_notes" {% if not section.can_edit %}readonly{% endif %}>{{ section.notes }}</textarea>
         </div>
+        {% include 'operations/_production_history.html' with history_items=section.history_items %}
       </div>
 
       <div class="production-item-footer">
@@ -873,8 +1130,8 @@ document.addEventListener('DOMContentLoaded',function(){
         </span>
 
         <div class="actions">
-          <button class="btn btn-primary" type="submit">Guardar sección</button>
-          <button class="btn btn-danger-soft btn-sm" type="submit" onclick="if(!confirm('¿Eliminar esta sección interna?')) return false; this.form.querySelector('[name=action]').value='delete_internal_section';">Eliminar</button>
+          {% if section.can_edit %}<button class="btn btn-primary" type="submit">Guardar sección</button>{% endif %}
+          {% if can_manage_project %}<button class="btn btn-danger-soft btn-sm" type="submit" onclick="if(!confirm('¿Eliminar esta sección interna?')) return false; this.form.querySelector('[name=action]').value='delete_internal_section';">Eliminar</button>{% endif %}
         </div>
       </div>
     </form>
@@ -1443,6 +1700,7 @@ document.addEventListener('DOMContentLoaded',function(){
   function initializeDynamic(){
     initializeHeaderBuilder();
     initializeButtonPreview();
+    window.applyDevelopmentPermissions?.();
   }
 
   async function refreshWorkspace(response, panels, scrollY){
@@ -1582,6 +1840,13 @@ document.addEventListener('DOMContentLoaded',function(){
           }
         }
         toast('Cambios guardados correctamente.');
+        if(
+          field === 'review_status'
+          || (field === 'workflow_status' && ['in_review','complete'].includes(payload.workflow_status || payload.value))
+        ){
+          window.location.reload();
+          return;
+        }
         return;
       }
 
@@ -1653,17 +1918,363 @@ document.addEventListener('DOMContentLoaded',function(){
 
 
 <script>
-(function(){
-  const params=new URLSearchParams(window.location.search);
-  if(params.get('section')==='styles'){
-    const styles=document.getElementById('project-styles');
-    if(styles){styles.open=true;}
+window.applyDevelopmentPermissions = function(){
+  const state = document.getElementById('developmentPermissionState');
+  const editableNode = document.getElementById('developmentEditableRows');
+  if(!state || !editableNode) return;
+
+  const canManage = state.dataset.canManage === '1';
+  let editable = [];
+  try{
+    editable = JSON.parse(editableNode.textContent || '[]');
+  }catch(e){
+    editable = [];
   }
-})();
+  const editableSet = new Set(editable);
+  const reviewResultMap = {
+    {% for p in pages %}'page:{{ p.pk }}': {label:'{{ p.review_label|escapejs }}', tone:'{{ p.review_tone|escapejs }}'},
+    {% endfor %}
+    {% for c in counties %}'county:{{ c.pk }}': {label:'{{ c.review_label|escapejs }}', tone:'{{ c.review_tone|escapejs }}'},
+      {% for s in c.services.all %}'service:{{ s.pk }}': {label:'{{ s.review_label|escapejs }}', tone:'{{ s.review_tone|escapejs }}'},
+      {% endfor %}
+      {% for city in c.cities.all %}'city:{{ city.pk }}': {label:'{{ city.review_label|escapejs }}', tone:'{{ city.review_tone|escapejs }}'},
+      {% endfor %}
+    {% endfor %}
+    {% for city in unassigned_cities %}'city:{{ city.pk }}': {label:'{{ city.review_label|escapejs }}', tone:'{{ city.review_tone|escapejs }}'},
+    {% endfor %}
+    {% for section in internal_sections %}'internal_section:{{ section.pk }}': {label:'{{ section.review_label|escapejs }}', tone:'{{ section.review_tone|escapejs }}'},
+    {% endfor %}
+  };
+
+  const reviewableSet = new Set([
+    {% for key in reviewable_row_keys %}
+      "{{ key|escapejs }}"{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]);
+
+  const adminOnlyActions = new Set([
+    'add_internal_section',
+    'delete_internal_section',
+    'save_button_style',
+    'delete_button_style',
+    'generate_structure',
+    'add_page',
+    'add_county',
+    'add_service',
+    'add_city',
+    'apply_global_service',
+    'delete_page',
+    'delete_county',
+    'delete_service',
+    'delete_city',
+    'save_general'
+  ]);
+
+  function disableControl(control){
+    if(!control) return;
+    if('disabled' in control) control.disabled = true;
+    control.classList.add('dev-readonly-control');
+  }
+
+  function disableForm(form){
+    form.querySelectorAll('input, select, textarea, button').forEach(function(control){
+      if(control.type === 'hidden') return;
+      disableControl(control);
+    });
+    form.classList.add('dev-readonly-form');
+  }
+
+  function rowKeyFromForm(form){
+    const type = form.querySelector('input[name="row_type"]')?.value;
+    const id = form.querySelector('input[name="row_id"]')?.value;
+    if(type && id) return `${type}:${id}`;
+    const source = form.closest('[data-popup-source]');
+    if(source?.dataset.rowType && source?.dataset.rowId){
+      return `${source.dataset.rowType}:${source.dataset.rowId}`;
+    }
+    return '';
+  }
+
+  document.querySelectorAll('form').forEach(function(form){
+    const action = form.querySelector('input[name="action"]')?.value || '';
+
+    if(!canManage && adminOnlyActions.has(action)){
+      disableForm(form);
+      form.classList.add('dev-admin-only-hidden');
+      return;
+    }
+
+    const key = rowKeyFromForm(form);
+    if(!key) return;
+
+    const field = form.querySelector('input[name="field"]')?.value || '';
+    const reviewerOnlyControl = field === 'review_status' && reviewableSet.has(key);
+
+    if(field === 'review_status'){
+      const result = reviewResultMap[key] || {label:'Sin revisión', tone:'none'};
+      let badge = form.querySelector('.dev-review-result-badge');
+      if(!badge){
+        badge = document.createElement('span');
+        badge.className = 'dev-review-result-badge';
+        const select = form.querySelector('select[name="value"]');
+        if(select){
+          select.hidden = true;
+          select.setAttribute('aria-hidden', 'true');
+          select.tabIndex = -1;
+          select.insertAdjacentElement('beforebegin', badge);
+        }else{
+          form.appendChild(badge);
+        }
+      }
+      badge.textContent = result.label;
+      badge.dataset.tone = result.tone;
+    }
+
+    if(field === 'review_status' && !reviewableSet.has(key)){
+      disableForm(form);
+      return;
+    }
+
+    if(!editableSet.has(key) && !reviewerOnlyControl){
+      disableForm(form);
+      const row = form.closest('tr');
+      if(row) row.classList.add('dev-readonly-row');
+      return;
+    }
+
+    if(!canManage){
+      if(field === 'responsible' || field === 'reviewer' || field === 'name'){
+        disableForm(form);
+      }
+
+      form.querySelectorAll('select[name$="_responsible"], select[name$="_reviewer"]').forEach(disableControl);
+
+      form.querySelectorAll('select[name$="_review_status"]').forEach(function(select){
+        if(!reviewableSet.has(key)) disableControl(select);
+      });
+
+      form.querySelectorAll('select[name$="_workflow_status"]').forEach(function(select){
+        const complete = select.querySelector('option[value="complete"]');
+        if(complete && !canForceComplete) complete.disabled = true;
+      });
+    }
+  });
+
+  document.querySelectorAll('[data-production-edit]').forEach(function(button){
+    const type = button.dataset.rowType;
+    const id = button.dataset.rowId;
+    if(!type || !id) return;
+    const key = `${type}:${id}`;
+    if(editableSet.has(key)) return;
+
+    disableControl(button);
+    button.title = 'Solo lectura · asignado a otro desarrollador';
+
+    const row = button.closest('tr');
+    if(row){
+      row.classList.add('dev-readonly-row');
+      const firstCell = row.querySelector('td');
+      if(firstCell && !firstCell.querySelector('.dev-readonly-badge')){
+        const badge = document.createElement('span');
+        badge.className = 'dev-readonly-badge';
+        badge.textContent = '🔒 Solo lectura';
+        firstCell.appendChild(badge);
+      }
+    }
+  });
+
+  document.querySelectorAll('[data-popup-source]').forEach(function(source){
+    const key = `${source.dataset.rowType}:${source.dataset.rowId}`;
+    source.querySelectorAll('select[name$="_review_status"]').forEach(function(select){
+      if(!reviewableSet.has(key)) disableControl(select);
+    });
+  });
+
+  if(!canManage){
+    document.querySelectorAll('[data-popup-source]').forEach(function(source){
+      const key = `${source.dataset.rowType}:${source.dataset.rowId}`;
+      if(!editableSet.has(key)) return;
+
+      source.querySelectorAll('select[name$="_responsible"], select[name$="_reviewer"]').forEach(disableControl);
+      source.querySelectorAll('select[name$="_review_status"]').forEach(function(select){
+        if(!reviewableSet.has(key)) disableControl(select);
+      });
+      source.querySelectorAll('select[name$="_workflow_status"] option[value="complete"]').forEach(function(option){
+        if(!canForceComplete) option.disabled = true;
+      });
+    });
+  }
+
+  if(!canManage){
+    document.querySelectorAll('form').forEach(function(form){
+      const field = form.querySelector('input[name="field"]')?.value || '';
+      if(field !== 'review_status') return;
+
+      const key = rowKeyFromForm(form);
+      if(!key || !reviewableSet.has(key)) return;
+      if(form.dataset.reviewDecisionReady === '1') return;
+
+      const select = form.querySelector('select[name="value"]');
+      if(!select || select.disabled) return;
+
+      form.dataset.reviewDecisionReady = '1';
+      select.style.display = 'none';
+
+      const actions = document.createElement('div');
+      actions.className = 'dev-review-actions';
+
+      const returnBtn = document.createElement('button');
+      returnBtn.type = 'button';
+      returnBtn.className = 'dev-review-return';
+      returnBtn.textContent = 'Devolver';
+      returnBtn.title = 'Devolver a corrección';
+
+      const approveBtn = document.createElement('button');
+      approveBtn.type = 'button';
+      approveBtn.className = 'dev-review-approve';
+      approveBtn.textContent = 'Aprobar';
+      approveBtn.title = 'Aprobar y completar';
+
+      returnBtn.addEventListener('click', function(){
+        const note = window.prompt('Observación para devolver a corrección:');
+        if(note === null) return;
+        if(!note.trim()){
+          window.alert('Debes escribir una observación para devolver el elemento.');
+          return;
+        }
+        let noteInput = form.querySelector('input[name="review_note"]');
+        if(!noteInput){
+          noteInput = document.createElement('input');
+          noteInput.type = 'hidden';
+          noteInput.name = 'review_note';
+          form.appendChild(noteInput);
+        }
+        noteInput.value = note.trim();
+        select.value = 'incomplete';
+        form.requestSubmit();
+      });
+
+      approveBtn.addEventListener('click', function(){
+        const noteInput = form.querySelector('input[name="review_note"]');
+        if(noteInput) noteInput.remove();
+        select.value = 'complete';
+        form.requestSubmit();
+      });
+
+      actions.appendChild(returnBtn);
+      actions.appendChild(approveBtn);
+      select.insertAdjacentElement('afterend', actions);
+    });
+  }
+};
+window.applyDevelopmentPermissions();
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  const responsible=document.getElementById('productionFilterResponsible');
+  const reviewer=document.getElementById('productionFilterReviewer');
+  const status=document.getElementById('productionFilterStatus');
+  const type=document.getElementById('productionFilterType');
+  const onlyChanges=document.getElementById('productionFilterChanges');
+  const onlyUnassigned=document.getElementById('productionFilterUnassigned');
+  const reset=document.getElementById('productionFilterReset');
+  const count=document.getElementById('productionFilterCount');
+  const rows=Array.from(document.querySelectorAll('[data-production-filter-row]'));
+  if(!responsible||!reviewer||!status||!type||!rows.length)return;
+
+  function matchAssignment(actual,selected){
+    if(!selected)return true;
+    if(selected==='__unassigned__')return !actual;
+    return String(actual)===String(selected);
+  }
+
+  function applyFilters(){
+    let visible=0;
+    rows.forEach(function(row){
+      const rowResponsible=row.dataset.filterResponsible||'';
+      const rowReviewer=row.dataset.filterReviewer||'';
+      const rowStatus=row.dataset.filterStatus||'';
+      const rowType=row.dataset.filterType||'';
+      let show=true;
+      show=show&&matchAssignment(rowResponsible,responsible.value);
+      show=show&&matchAssignment(rowReviewer,reviewer.value);
+      if(status.value)show=show&&rowStatus===status.value;
+      if(type.value)show=show&&rowType===type.value;
+      if(onlyChanges.checked)show=show&&rowStatus==='changes';
+      if(onlyUnassigned.checked)show=show&&!rowResponsible;
+      row.classList.toggle('production-filter-hidden',!show);
+      if(show)visible+=1;
+    });
+
+    document.querySelectorAll('.county-workgroup').forEach(function(group){
+      const groupRows=Array.from(group.querySelectorAll('[data-production-filter-row]'));
+      if(!groupRows.length)return;
+      group.classList.toggle('production-filter-hidden',!groupRows.some(function(row){return !row.classList.contains('production-filter-hidden');}));
+    });
+
+    document.querySelectorAll('.dev-table-block').forEach(function(block){
+      const blockRows=Array.from(block.querySelectorAll('[data-production-filter-row]'));
+      if(!blockRows.length)return;
+      block.classList.toggle('production-filter-hidden',!blockRows.some(function(row){return !row.classList.contains('production-filter-hidden');}));
+    });
+
+    if(count)count.textContent=visible;
+  }
+
+  [responsible,reviewer,status,type,onlyChanges,onlyUnassigned].forEach(function(control){
+    control.addEventListener('change',applyFilters);
+  });
+
+  reset.addEventListener('click',function(){
+    responsible.value='';
+    reviewer.value='';
+    status.value='';
+    type.value='';
+    onlyChanges.checked=false;
+    onlyUnassigned.checked=false;
+    applyFilters();
+  });
+
+  applyFilters();
+});
 </script>
 {% endblock %}
 <style>
 .smtp-action-btn{width:auto!important;min-width:58px;height:34px;padding:0 11px!important;border:1px solid #c9d8ff!important;border-radius:9px!important;background:#eef4ff!important;color:#2458c6!important;font-size:11px!important;font-weight:900!important;letter-spacing:.04em}
 .smtp-action-btn:hover{background:#dfeaff!important}
 .dev-production-table td:nth-child(2) .quick-text-form input[name="value"]{min-width:150px;font-weight:700}
+
+.dev-review-result-field{min-height:46px;display:flex;align-items:center;padding:0 14px;border:1px solid #dfe5ee;border-radius:12px;background:#f7f9fc;font-size:11px;font-weight:800;color:#536078}
+.dev-review-result-approved,.dev-review-result-badge[data-tone="approved"]{background:#eaf8ef;color:#177245;border-color:#cdebd7}
+.dev-review-result-changes,.dev-review-result-badge[data-tone="changes"]{background:#fff4e6;color:#9a5d18;border-color:#f0dcc0}
+.dev-review-result-pending,.dev-review-result-badge[data-tone="pending"]{background:#f2efff;color:#6253a5;border-color:#ddd6ff}
+.dev-review-result-none,.dev-review-result-badge[data-tone="none"]{background:#f4f6f8;color:#7a8596;border-color:#e1e6ed}
+.dev-review-result-badge{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:7px 10px;border:1px solid #e1e6ed;border-radius:10px;font-size:10px;font-weight:900;line-height:1.1;text-align:center;white-space:normal}
+.dev-review-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.dev-review-actions button{border:0;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:800;cursor:pointer}
+.dev-review-return{background:#fff1f1;color:#b42318}
+.dev-review-approve{background:#eaf8ef;color:#177245}
+.dev-review-actions button:hover{filter:brightness(.97)}
+
+.dev-history{margin-top:4px;border:1px solid #e1e7ef;border-radius:14px;background:#fbfcfe;overflow:hidden}
+.dev-history-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1px solid #e8edf3;background:#fff}
+.dev-history-head span{display:block;font-size:11px;font-weight:900;color:#1e293b}
+.dev-history-head small{display:block;margin-top:3px;font-size:9px;color:#7b8798}
+.dev-history-head b{display:grid;place-items:center;min-width:28px;height:28px;padding:0 8px;border-radius:999px;background:#eef3ff;color:#2458c6;font-size:10px}
+.dev-history-list{max-height:280px;overflow:auto;padding:4px 14px 8px}
+.dev-history-item{position:relative;display:grid;grid-template-columns:16px 1fr;gap:8px;padding:11px 0;border-bottom:1px solid #edf1f5}
+.dev-history-item:last-child{border-bottom:0}
+.dev-history-dot{width:9px;height:9px;margin-top:4px;border-radius:999px;background:#94a3b8;box-shadow:0 0 0 3px #eef2f7}
+.dev-history-sent_to_review .dev-history-dot{background:#6b5fc7;box-shadow:0 0 0 3px #eeeaff}
+.dev-history-review_returned .dev-history-dot{background:#c97a23;box-shadow:0 0 0 3px #fff0df}
+.dev-history-review_approved .dev-history-dot{background:#21865f;box-shadow:0 0 0 3px #e7f7ef}
+.dev-history-title{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dev-history-title strong{font-size:10px;color:#253248}
+.dev-history-title time{font-size:8px;color:#8b96a7;white-space:nowrap}
+.dev-history-meta{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:9px;color:#657286}
+.dev-history-meta i{font-style:normal;color:#b2bac6}
+.dev-history-body p{margin:6px 0 0;padding:8px 10px;border-radius:9px;background:#fff7eb;color:#7c541c;font-size:9px;line-height:1.45}
+.dev-history-empty{padding:14px 15px;color:#8a95a5;font-size:9px}
 </style>

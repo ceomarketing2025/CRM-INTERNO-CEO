@@ -12,9 +12,33 @@
     <span>04</span><div><strong>Publicidad</strong><small>Meta, Google y TikTok</small></div>
   </a>
 </div>
+
 <div class="marketing-context-reminder" style="display:flex;justify-content:flex-end;margin-top:10px;">
   <a
     class="btn btn-secondary"
     href="{% url 'reminders:create' %}?source=marketing&amp;client={{ project.client_id }}&amp;project={{ project.pk }}&amp;area=marketing&amp;return_to=marketing_calendar"
   >⏰ Crear recordatorio</a>
 </div>
+
+<script>
+(function () {
+  function goToMarketingMenu(event) {
+    var link = event.target.closest('a[href="#marketing-flow-top"]');
+    if (!link) return;
+
+    event.preventDefault();
+
+    /*
+      El menú de Marketing es el primer bloque dentro del contenido.
+      Subimos al inicio real de la página para evitar que el header sticky
+      tape el menú cuando se usa un ancla normal.
+    */
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }
+
+  document.addEventListener('click', goToMarketingMenu);
+})();
+</script>

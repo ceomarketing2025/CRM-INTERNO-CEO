@@ -187,6 +187,9 @@
           >
             <span>02</span>
             <b>Tareas</b>
+            {% if development_task_unread_count %}
+              <em style="margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#e5484d;color:#fff;font-style:normal;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;">{{ development_task_unread_count }}</em>
+            {% endif %}
           </a>
 
           <a

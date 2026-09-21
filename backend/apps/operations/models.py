@@ -1795,3 +1795,52 @@ class WebProductionNotification(models.Model):
 
     def __str__(self):
         return f"{self.recipient} · {self.row_label or self.row_type} · {self.event}"
+
+
+class DevelopmentTaskNotification(models.Model):
+    EVENT_CHOICES = [
+        ("task_assigned", "Nueva tarea asignada"),
+        ("task_reassigned", "Tarea reasignada"),
+    ]
+
+    task = models.ForeignKey(
+        DevelopmentTask,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="development_task_notifications",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="development_task_notifications_sent",
+    )
+    event = models.CharField(
+        max_length=32,
+        choices=EVENT_CHOICES,
+        default="task_assigned",
+    )
+    message = models.TextField(blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(
+                fields=["recipient", "is_read", "created_at"],
+                name="devtasknotif_rec_read_idx",
+            ),
+            models.Index(
+                fields=["task", "created_at"],
+                name="devtasknotif_task_created_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.recipient} · {self.get_event_display()} · {self.task.title}"

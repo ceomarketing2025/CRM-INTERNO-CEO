@@ -4,6 +4,7 @@ from collections import defaultdict
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.core.mail import send_mail
 from django.db.models import Q
 from django.http import JsonResponse
 from django.urls import reverse
@@ -38,6 +39,7 @@ from .models import (
     WebProductionSheet,
     WebProductionHistory,
     WebProductionNotification,
+    DevelopmentTaskNotification,
 )
 from .services import (
     apply_seo_automation,
@@ -3575,6 +3577,24 @@ def development_tasks(request):
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
 
+        if action == "mark_task_notification_read":
+            notification = get_object_or_404(
+                DevelopmentTaskNotification,
+                pk=request.POST.get("notification_id"),
+                recipient=request.user,
+            )
+            if not notification.is_read:
+                notification.is_read = True
+                notification.save(update_fields=["is_read"])
+            return redirect("operations:development_tasks")
+
+        if action == "mark_all_task_notifications_read":
+            DevelopmentTaskNotification.objects.filter(
+                recipient=request.user,
+                is_read=False,
+            ).update(is_read=True)
+            return redirect("operations:development_tasks")
+
         if action == "create":
             if not can_assign:
                 raise PermissionDenied("No tienes permiso para asignar tareas.")
@@ -3618,6 +3638,78 @@ def development_tasks(request):
                 updated_by=request.user,
             )
             log_activity(request.user, "operations", "development_task_create", task)
+
+            if assigned_to.pk != request.user.pk:
+                project_label = (
+                    f"Proyecto: {project.project_code} · {project.name}. "
+                    if project
+                    else "Actividad general. "
+                )
+                due_label = (
+                    f"Fecha objetivo: {task.due_date.strftime('%d/%m/%Y')}. "
+                    if task.due_date
+                    else ""
+                )
+                DevelopmentTaskNotification.objects.create(
+                    task=task,
+                    recipient=assigned_to,
+                    actor=request.user,
+                    event="task_assigned",
+                    message=(
+                        f"Te asignaron la tarea ‘{task.title}’. "
+                        f"{project_label}{due_label}"
+                        f"Prioridad: {task.get_priority_display()}."
+                    ),
+                )
+
+                # Correo al desarrollador asignado. La tarea nunca falla si el SMTP
+                # no está configurado o el proveedor de correo no responde.
+                recipient_email = (assigned_to.email or "").strip()
+                if recipient_email:
+                    task_url = request.build_absolute_uri(
+                        reverse("operations:development_tasks")
+                    )
+                    actor_name = (
+                        request.user.get_full_name().strip()
+                        or request.user.email
+                        or "Gerencia"
+                    )
+                    project_name = (
+                        f"{project.project_code} · {project.name}"
+                        if project
+                        else "Actividad general"
+                    )
+                    due_text = (
+                        task.due_date.strftime("%d/%m/%Y")
+                        if task.due_date
+                        else "Sin fecha objetivo"
+                    )
+                    email_body = "\n".join([
+                        f"Hola {assigned_to.get_full_name().strip() or assigned_to.email},",
+                        "",
+                        "Se te ha asignado una nueva tarea en el CRM de CEO Marketing.",
+                        "",
+                        f"Tarea: {task.title}",
+                        f"Proyecto: {project_name}",
+                        f"Prioridad: {task.get_priority_display()}",
+                        f"Fecha de asignación: {task.assigned_date.strftime('%d/%m/%Y')}",
+                        f"Fecha objetivo: {due_text}",
+                        f"Asignado por: {actor_name}",
+                        f"Descripción: {task.description or 'Sin descripción adicional'}",
+                        f"Nota de asignación: {task.assignment_note or 'Sin nota adicional'}",
+                        "",
+                        "Puedes revisar la tarea aquí:",
+                        task_url,
+                        "",
+                        "CRM CEO Interno",
+                    ])
+                    send_mail(
+                        subject=f"Nueva tarea asignada: {task.title}",
+                        message=email_body,
+                        from_email=None,
+                        recipient_list=[recipient_email],
+                        fail_silently=True,
+                    )
 
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
                 return JsonResponse({"ok": True, "task_id": task.pk})
@@ -3676,6 +3768,18 @@ def development_tasks(request):
     developers = UserAccount.objects.filter(role="developer", is_active=True).order_by("first_name", "last_name", "email") if can_assign else UserAccount.objects.none()
     projects = Project.objects.order_by("-created_at")[:300] if can_assign else Project.objects.filter(assignments__user=request.user).distinct().order_by("-created_at")[:300]
 
+    task_notifications = list(
+        DevelopmentTaskNotification.objects
+        .filter(recipient=request.user)
+        .select_related("task", "task__project", "actor")
+        .order_by("-created_at", "-id")[:20]
+    )
+    task_notification_unread_count = (
+        DevelopmentTaskNotification.objects
+        .filter(recipient=request.user, is_read=False)
+        .count()
+    )
+
     return render(request, "operations/development_tasks.html", {
         "tasks": qs[:300],
         "stats": stats,
@@ -3685,6 +3789,8 @@ def development_tasks(request):
         "projects": projects,
         "can_assign": can_assign,
         "today": today,
+        "task_notifications": task_notifications,
+        "task_notification_unread_count": task_notification_unread_count,
         "active_nav_group": "development",
         "current_page_label": "Tareas",
     })

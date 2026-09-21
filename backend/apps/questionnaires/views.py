@@ -13,7 +13,7 @@ from apps.core.decorators import role_required
 from apps.operations.models import WebProductionSheet
 from apps.projects.models import Project
 from apps.projects.selectors import can_access_project, projects_for_area
-from apps.projects.services import sync_project_area_records
+from apps.projects.services import sync_project_area_records, _development_template_for_project
 from .forms import ProjectQuestionnaireCreateForm
 from .models import Answer, ProjectQuestionnaire, QuestionnaireTemplate
 from .models.choices import AnswerState, QuestionnaireStatus
@@ -25,6 +25,8 @@ from openpyxl import load_workbook
 
 from apps.reminders.models import Reminder
 
+
+from .client_outputs import build_development_outputs
 
 from .services import (
     WEBSITE_TEMPLATE_CODE,
@@ -1162,10 +1164,16 @@ def development_information(request):
                 ),
             }
 
+        outputs = build_development_outputs(
+            project,
+            questionnaire,
+        )
+
         rows.append({
             "project": project,
             "questionnaire": questionnaire,
             "progress": progress,
+            **outputs,
         })
 
     return render(
@@ -2027,17 +2035,37 @@ def create_for_project(request, project_pk):
         raise PermissionDenied("Este proyecto no está asignado a Desarrollo.")
 
     if request.method == "GET" and request.GET.get("auto") == "1":
-        template = QuestionnaireTemplate.objects.filter(project_type=project.project_type, is_active=True).order_by("id").first()
-        if not template and project.project_type == "seo":
-            template = QuestionnaireTemplate.objects.filter(project_type="website", is_active=True).order_by("id").first()
-        if template:
-            obj, _ = ProjectQuestionnaire.objects.get_or_create(
-                project=project,
-                template=template,
-                defaults={"created_by": request.user, "status": QuestionnaireStatus.DRAFT},
+        # Desarrollo no debe pedir al usuario elegir una plantilla manualmente.
+        # Resolvemos la ficha según el tipo/planes reales del proyecto.
+        template = _development_template_for_project(project)
+
+        # Fallback defensivo para proyectos antiguos o personalizados.
+        if not template:
+            template = QuestionnaireTemplate.objects.filter(
+                code=WEBSITE_TEMPLATE_CODE,
+                is_active=True,
+            ).first()
+        if not template:
+            template = QuestionnaireTemplate.objects.filter(
+                project_type="website",
+                is_active=True,
+            ).order_by("id").first()
+
+        if not template:
+            messages.error(
+                request,
+                "No existe una plantilla técnica activa para Desarrollo. Revisa la configuración de plantillas.",
             )
+            return redirect("questionnaires:development_information")
+
+        obj, created = ProjectQuestionnaire.objects.get_or_create(
+            project=project,
+            template=template,
+            defaults={"created_by": request.user, "status": QuestionnaireStatus.DRAFT},
+        )
+        if created:
             log_activity(request.user, "questionnaires", "create", obj)
-            return redirect("questionnaires:fill", pk=obj.pk)
+        return redirect("questionnaires:fill", pk=obj.pk)
 
     form = ProjectQuestionnaireCreateForm(request.POST or None, project=project)
     if request.method == "POST" and form.is_valid():

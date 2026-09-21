@@ -161,6 +161,15 @@ def global_ui(request):
         "PROJECT_NAME": settings.PROJECT_NAME,
         "current_role": role,
     }
+    if user and getattr(user, "is_authenticated", False):
+        from apps.operations.models import DevelopmentTaskNotification
+        context["development_task_unread_count"] = (
+            DevelopmentTaskNotification.objects
+            .filter(recipient=user, is_read=False)
+            .count()
+        )
+    else:
+        context["development_task_unread_count"] = 0
     context.update(nav_context)
     context.update(_management_area_context(request, nav_context))
     return context

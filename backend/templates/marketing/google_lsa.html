@@ -1,7 +1,9 @@
 {% extends 'base.html' %}
 {% block page_heading %}Google LSA · {{ project.client.business_name }}{% endblock %}
 {% block content %}
-{% with marketing_section='lsa' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
+<div id="marketing-flow-top">
+  {% with marketing_section='lsa' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
+</div>
 
 <div class="page-intro marketing-page-intro">
   <div>
@@ -164,6 +166,21 @@
       </div>
     </div>
     {% include 'marketing/_checks.html' with checks=checks %}
+  </div>
+</div>
+
+<div class="card marketing-section-card" style="margin-top:18px;">
+  <div class="card-head" style="align-items:center;">
+    <div>
+      <span class="eyebrow">Continuar</span>
+      <h3>¿Qué sigue después de Google LSA?</h3>
+      <p>Regresa a Google Business, vuelve al menú superior o continúa con Publicidad Digital.</p>
+    </div>
+    <div class="actions">
+      <a class="btn btn-secondary" href="{% url 'marketing:google_business' project.pk %}">← Google Business</a>
+      <a class="btn btn-secondary" href="#marketing-flow-top">↑ Menú de Marketing</a>
+      <a class="btn btn-primary" href="{% url 'marketing:digital_ads' project.pk %}">Publicidad Digital →</a>
+    </div>
   </div>
 </div>
 

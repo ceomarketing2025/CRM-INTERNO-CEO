@@ -1,7 +1,9 @@
 {% extends 'base.html' %}
 {% block page_heading %}Google Business · {{ project.client.business_name }}{% endblock %}
 {% block content %}
-{% with marketing_section='business' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
+<div id="marketing-flow-top">
+  {% with marketing_section='business' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
+</div>
 
 <style>
 .semantic-pill.is-verification{background:#eaf2ff;color:#245fc6;border:1px solid #bfd4ff;}
@@ -100,12 +102,12 @@
           <p>Escanear este QR abre exactamente:</p>
           <p><a class="text-link" href="{{ workspace.review_link }}" target="_blank" rel="noopener">{{ workspace.review_link }}</a></p>
           <div class="actions">
-            <button type="button" class="btn btn-primary" id="copy-review-card" data-url="{% url 'marketing:review_qr' project.pk %}">Copiar QR + mensaje</button>
-            <button type="button" class="btn btn-secondary" id="copy-review-qr" data-url="{% url 'marketing:review_qr' project.pk %}">Copiar QR</button>
+            <button type="button" class="btn btn-primary" id="copy-review-card" data-url="{% url 'marketing:review_qr' project.pk %}" disabled>Copiar QR + mensaje</button>
+            <button type="button" class="btn btn-secondary" id="copy-review-qr" data-url="{% url 'marketing:review_qr' project.pk %}" disabled>Copiar QR</button>
             <a class="btn btn-secondary" href="{% url 'marketing:review_qr' project.pk %}?download=1">Descargar QR</a>
-            <button type="button" class="btn btn-secondary" id="download-review-card" data-url="{% url 'marketing:review_qr' project.pk %}">Descargar QR + mensaje</button>
+            <button type="button" class="btn btn-secondary" id="download-review-card" data-url="{% url 'marketing:review_qr' project.pk %}" disabled>Descargar QR + mensaje</button>
           </div>
-          <small id="copy-review-help">“Copiar QR + mensaje” genera una sola imagen lista para pegar en WhatsApp. Si el navegador bloquea el portapapeles de imágenes, se abrirá una vista manual para copiar.</small>
+          <small id="copy-review-help">“Copiar QR + mensaje” genera una sola imagen lista para pegar en WhatsApp. Los botones se habilitan cuando el QR está listo.</small>
           <div id="copy-review-status" class="semantic-banner compact" style="display:none; margin-top:10px;"></div>
         </div>
       </div>
@@ -173,12 +175,28 @@
   </div>
 </div>
 
+<div class="card marketing-section-card" style="margin-top:18px;">
+  <div class="card-head" style="align-items:center;">
+    <div>
+      <span class="eyebrow">Continuar</span>
+      <h3>¿Qué sigue después de Google Business?</h3>
+      <p>Continúa con la siguiente etapa o vuelve al menú superior de Marketing.</p>
+    </div>
+    <div class="actions">
+      <a class="btn btn-secondary" href="{% url 'marketing:workspace' project.pk %}">← Reunión</a>
+      <a class="btn btn-secondary" href="#marketing-flow-top">↑ Menú de Marketing</a>
+      <a class="btn btn-primary" href="{% url 'marketing:google_lsa' project.pk %}">Google LSA →</a>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   var reviewLink = document.getElementById('id_review_link');
   var reviewMessage = document.getElementById('id_review_message');
   var companyName = '{{ project.client.business_name|escapejs }}';
   var qrEndpoint = '{% url 'marketing:review_qr' project.pk %}';
+  var qrBlobPromise = null;
 
   function buildMessage(link) {
     return [
@@ -249,10 +267,29 @@
     if (modal) modal.style.display = 'none';
   }
 
+  function fetchQrBlob() {
+    if (!qrBlobPromise) {
+      qrBlobPromise = fetch(
+        qrEndpoint + '?v=' + Date.now(),
+        { cache: 'no-store', credentials: 'same-origin' }
+      ).then(function (response) {
+        if (!response.ok) throw new Error('QR_NOT_AVAILABLE');
+        return response.blob();
+      }).then(function (blob) {
+        if (blob.type === 'image/png') return blob;
+        return blob.arrayBuffer().then(function (buffer) {
+          return new Blob([buffer], { type: 'image/png' });
+        });
+      }).catch(function (error) {
+        qrBlobPromise = null;
+        throw error;
+      });
+    }
+    return qrBlobPromise;
+  }
+
   async function fetchQrImage() {
-    var response = await fetch(qrEndpoint + '?v=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' });
-    if (!response.ok) throw new Error('QR_NOT_AVAILABLE');
-    var blob = await response.blob();
+    var blob = await fetchQrBlob();
     return new Promise(function (resolve, reject) {
       var img = new Image();
       var objectUrl = URL.createObjectURL(blob);
@@ -392,7 +429,7 @@
   var copyCard = document.getElementById('copy-review-card');
   if (copyCard) {
     copyCard.addEventListener('click', async function () {
-      var originalText = copyCard.textContent;
+      var originalText = 'Copiar QR + mensaje';
       copyCard.disabled = true;
       copyCard.textContent = 'Copiando…';
       try {
@@ -421,18 +458,18 @@
   var downloadCard = document.getElementById('download-review-card');
   if (downloadCard) {
     downloadCard.addEventListener('click', async function () {
-      var blob = await buildReviewCardBlob();
-      triggerDownload(blob, 'review-card.png');
+      downloadCard.disabled = true;
+      try {
+        var blob = await buildReviewCardBlob();
+        triggerDownload(blob, 'review-card.png');
+      } finally {
+        downloadCard.disabled = false;
+      }
     });
   }
 
   async function copyQrImage() {
-    var response = await fetch(qrEndpoint + '?v=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' });
-    if (!response.ok) throw new Error('QR_NOT_AVAILABLE');
-    var originalBlob = await response.blob();
-    var pngBlob = originalBlob.type === 'image/png'
-      ? originalBlob
-      : new Blob([await originalBlob.arrayBuffer()], { type: 'image/png' });
+    var pngBlob = await fetchQrBlob();
     await writeBlobToClipboard(pngBlob);
   }
 
@@ -478,6 +515,18 @@
   if (modalCopyMessage) {
     modalCopyMessage.addEventListener('click', function () {
       if (copyMessage) copyMessage.click();
+    });
+  }
+
+  var qrActionButtons = [copyCard, copyQr, downloadCard].filter(Boolean);
+  if (qrActionButtons.length) {
+    qrActionButtons.forEach(function (button) { button.disabled = true; });
+    fetchQrBlob().then(function () {
+      qrActionButtons.forEach(function (button) { button.disabled = false; });
+      setCopyStatus('QR listo para copiar o descargar.', 'success');
+    }).catch(function () {
+      qrActionButtons.forEach(function (button) { button.disabled = false; });
+      setCopyStatus('No se pudo precargar el QR. Guarda el link y vuelve a intentarlo.', 'danger');
     });
   }
 

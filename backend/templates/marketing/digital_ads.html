@@ -1,7 +1,10 @@
 {% extends 'base.html' %}
 {% block page_heading %}Publicidad Digital · {{ project.client.business_name }}{% endblock %}
 {% block content %}
-{% with marketing_section='ads' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
+<div id="marketing-flow-top">
+  {% with marketing_section='ads' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
+</div>
+
 <div class="page-intro marketing-page-intro">
   <div><span class="eyebrow">Publicidad Digital</span><h2>Publicidad tradicional + plataformas</h2><p>Publicidad tradicional funciona como control de este flujo. Selecciona Sí y guarda para habilitar Meta Ads, Google Ads y TikTok Ads. Si seleccionas No, no se muestra ninguna configuración adicional.</p></div>
   <div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:campaign_list' %}">Todas las campañas</a><a class="btn btn-secondary" href="{% url 'marketing:social_plans' %}">Social Media</a></div>
@@ -106,6 +109,21 @@
 <div class="card social-bridge-card">
   <div><span class="eyebrow">Social Media</span><h3>Seguimiento y publicaciones</h3><p>Este acceso se mantiene independiente de Publicidad Digital. “Planes y publicaciones” conserva la relación del proyecto con el trabajo de contenido en Diseño.</p></div>
   <div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:social_tracking' %}">Seguimiento</a><a class="btn btn-primary" href="{% url 'marketing:social_plans' %}">Planes y publicaciones</a></div>
+</div>
+
+<div class="card marketing-section-card" style="margin-top:18px;">
+  <div class="card-head" style="align-items:center;">
+    <div>
+      <span class="eyebrow">Continuar</span>
+      <h3>¿Qué sigue después de Publicidad Digital?</h3>
+      <p>Regresa a Google LSA, vuelve al menú superior o revisa todas las campañas del módulo.</p>
+    </div>
+    <div class="actions">
+      <a class="btn btn-secondary" href="{% url 'marketing:google_lsa' project.pk %}">← Google LSA</a>
+      <a class="btn btn-secondary" href="#marketing-flow-top">↑ Menú de Marketing</a>
+      <a class="btn btn-primary" href="{% url 'marketing:campaign_list' %}">Todas las campañas →</a>
+    </div>
+  </div>
 </div>
 
 <script>

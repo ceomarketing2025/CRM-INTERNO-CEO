@@ -88,10 +88,60 @@ class MarketingIntakeForm(forms.ModelForm):
         self.fields["assigned_to"].queryset = UserAccount.objects.filter(
             role__in=[UserAccount.Role.MARKETING, UserAccount.Role.MANAGER], is_active=True
         )
+
+        project = None
+        if getattr(self.instance, "project_id", None):
+            project = self.instance.project
+
+        if project:
+            marketing_assignment = (
+                project.assignments.select_related("user")
+                .filter(
+                    area="marketing",
+                    status__in=["assigned", "active"],
+                    user__is_active=True,
+                )
+                .order_by("-updated_at", "-created_at", "-pk")
+                .first()
+            )
+
+            if marketing_assignment:
+                self.instance.assigned_to = marketing_assignment.user
+                self.initial["assigned_to"] = marketing_assignment.user_id
+                self.fields["assigned_to"].disabled = True
+                self.fields["assigned_to"].help_text = (
+                    "Responsable heredado de la asignación del proyecto."
+                )
+            else:
+                self.fields["assigned_to"].help_text = (
+                    "El proyecto no tiene responsable de Marketing; puedes elegirlo aquí."
+                )
+
+            if not (self.instance.owner_name or "").strip():
+                inherited_owner = (project.client.full_name or "").strip()
+                if inherited_owner:
+                    self.initial["owner_name"] = inherited_owner
+
+        self.fields["meeting_summary"].label = "Notas de la reunión"
+        self.fields["meeting_summary"].required = False
+        self.fields["meeting_summary"].help_text = (
+            "Opcional. Registra únicamente observaciones útiles de la reunión."
+        )
+        self.fields["owner_name"].required = False
+        self.fields["owner_name"].help_text = (
+            "Se precarga desde el cliente cuando existe y puedes editarlo."
+        )
         self.fields["gmail_email"].label = "Correo / Gmail utilizado"
         self.fields["notes"].label = "Notas generales"
         self.fields["founding_date"].help_text = "Campo libre: puedes registrar una fecha, un año o una referencia indicada por el cliente."
-        self.fields["email_account_mode"].help_text = "Indica si el correo ya existe o si Marketing lo crea. No se solicitan contraseñas aquí."
+        self.fields["email_account_mode"].help_text = (
+            "Si ya existe, registra el correo. Si lo crea CEO Marketing, puedes continuar sin ingresar una dirección."
+        )
+        self.fields["email_account_mode"].choices = [
+            ("existing", "Ya existe"),
+            ("create", "Lo crea CEO Marketing"),
+            ("pending", "Pendiente de definir"),
+        ]
         self.fields["lsa_documents_available"].help_text = "Selecciona Sí o No. La respuesta condiciona los campos documentales dentro de Google LSA."
 
     def clean(self):
@@ -99,19 +149,13 @@ class MarketingIntakeForm(forms.ModelForm):
         email_mode = cleaned.get("email_account_mode")
         gmail_email = (cleaned.get("gmail_email") or "").strip()
         contact_email = (cleaned.get("contact_email") or "").strip()
-        # El estado de Información inicial ya no se selecciona manualmente.
-        # Se calcula automáticamente en services.sync_workspace_checks() usando
-        # los mismos cinco checks visibles en la pantalla.
 
-        # El correo operativo puede venir del campo Correo electrónico o del
-        # campo Correo/Gmail utilizado. Si se define como existente/creado, sí
-        # necesitamos una dirección válida para guardar esa decisión.
-        if email_mode in {"existing", "create"}:
+        if email_mode == "existing":
             operational_email = gmail_email or contact_email
             if not operational_email:
                 self.add_error(
                     "contact_email",
-                    "Registra el correo electrónico que ya existe o que Marketing creó.",
+                    "Registra el correo electrónico existente.",
                 )
                 self.add_error(
                     "gmail_email",
@@ -119,7 +163,7 @@ class MarketingIntakeForm(forms.ModelForm):
                 )
             elif not gmail_email:
                 cleaned["gmail_email"] = operational_email
-        elif email_mode == "pending":
+        elif email_mode in {"create", "pending"}:
             cleaned["gmail_email"] = ""
 
         return cleaned
@@ -169,8 +213,6 @@ class GoogleBusinessForm(forms.ModelForm):
         cleaned = super().clean()
         status = cleaned.get("business_profile_status")
 
-        # Cuando el perfil entra a verificación o queda aprobado, sus datos base
-        # ya deben estar registrados. Esto evita estados verdes con campos vacíos.
         if status in {"verification", "approved"}:
             required = {
                 "business_profile_link": "Registra el link del perfil de Google Business.",
@@ -182,7 +224,6 @@ class GoogleBusinessForm(forms.ModelForm):
                 if not value or (isinstance(value, str) and not value.strip()):
                     self.add_error(field, message)
 
-        # El QR es parte del cierre del perfil aprobado.
         if status == "approved" and not cleaned.get("review_link"):
             self.add_error("review_link", "Para aprobar Google Business registra el link directo de reviews.")
 
@@ -246,38 +287,30 @@ class GoogleLSAForm(forms.ModelForm):
         has_social = cleaned.get("has_social_media")
         verification = cleaned.get("verification_status")
 
-        # Documentos dependientes de la respuesta de la reunión.
         if docs_expected:
             if not cleaned.get("documents_drive_url"):
                 self.add_error("documents_drive_url", "Registra el link del Drive donde están los documentos.")
             if cleaned.get("driver_license_ready") not in {"yes", "no"}:
                 self.add_error("driver_license_ready", "Selecciona Sí o No para la licencia de conducir.")
         else:
-            # Si en la reunión se indicó que no hay documentos, los campos quedan
-            # deshabilitados en UI y se limpian también en backend.
             cleaned["documents_drive_url"] = ""
             cleaned["driver_license_ready"] = ""
 
-        # El año de fundación pertenece a LSA independientemente de los documentos.
         if not cleaned.get("founding_year"):
             self.add_error("founding_year", "Registra el año de fundación de la empresa.")
 
-        # Cuando LSA se marca completo, las métricas de control también deben existir.
         if verification == "complete":
             if cleaned.get("weekly_cost") is None:
                 self.add_error("weekly_cost", "Registra el costo por semana para completar la validación LSA.")
             if cleaned.get("leads_last_7_days") is None:
                 self.add_error("leads_last_7_days", "Registra la cantidad de leads de los últimos 7 días.")
 
-        # Social Media controla directamente el tipo de seguimiento.
         if has_social == "yes":
             cleaned["followup_mode"] = "weekly"
             cleaned["custom_followup_date"] = None
             if not cleaned.get("followup_start_date"):
                 self.add_error("followup_start_date", "Selecciona la primera fecha de revisión semanal.")
         elif has_social == "no":
-            # Si no tiene Social Media no se solicita ninguna fecha adicional.
-            # El seguimiento LSA queda explícitamente sin recordatorio semanal.
             cleaned["followup_mode"] = "none"
             cleaned["followup_start_date"] = None
             cleaned["custom_followup_date"] = None
@@ -287,7 +320,6 @@ class GoogleLSAForm(forms.ModelForm):
             cleaned["custom_followup_date"] = None
             self.add_error("has_social_media", "Selecciona Sí o No para Social Media.")
 
-        # Fotos LSA cada 15 días.
         photo_enabled = cleaned.get("photo_reminder_enabled")
         if photo_enabled == "yes":
             if not cleaned.get("photo_reminder_start_date"):
@@ -393,7 +425,6 @@ class AdvertisingAccountForm(forms.ModelForm):
             return cleaned
 
         if enabled == "no":
-            # Cuando la plataforma no se trabaja, todo lo dependiente queda limpio y cerrado.
             for field in self.DEPENDENT_FIELDS:
                 cleaned[field] = ""
             return cleaned
@@ -413,13 +444,11 @@ class AdvertisingAccountForm(forms.ModelForm):
                 self.add_error("portfolio_id", "Si el portafolio está creado, registra su ID.")
             if cleaned.get("ad_account_created") == "yes" and not (cleaned.get("account_id") or "").strip():
                 self.add_error("account_id", "Si la cuenta publicitaria está creada, registra su ID.")
-            # Meta no usa el check de Términos en este flujo.
             cleaned["terms_accepted"] = ""
         elif self.platform in {"google", "tiktok"}:
             self._require_choice(cleaned, "terms_accepted")
             if not (cleaned.get("account_id") or "").strip():
                 self.add_error("account_id", "Registra el ID de la cuenta.")
-            # Campos exclusivos de Meta no deben quedar activos en Google/TikTok.
             for field in ["portfolio_created", "portfolio_id", "ad_account_created", "fanpage_connected"]:
                 cleaned[field] = ""
 

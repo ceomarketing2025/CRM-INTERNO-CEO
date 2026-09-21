@@ -15,11 +15,9 @@ from .models import (
 
 
 CHECKLIST_TEMPLATE = [
-    ("intake", "v4_meeting_loaded", "Información de la reunión cargada", 10),
-    ("intake", "v4_meeting_document", "Documento de la reunión cargado / referenciado", 20),
-    ("intake", "v4_email_defined", "Correo definido: existente o creado por Marketing", 30),
-    ("intake", "v4_business_presence", "Situación de Google Business definida", 40),
-    ("intake", "v4_lsa_documents", "Disponibilidad de documentos para LSA definida", 50),
+    ("intake", "v4_email_defined", "Estado del correo definido", 10),
+    ("intake", "v4_business_presence", "Situación de Google Business definida", 20),
+    ("intake", "v4_lsa_documents", "Disponibilidad de documentos para LSA definida", 30),
     ("google_profile", "v4_gbp_link", "Link del perfil registrado", 10),
     ("google_profile", "v4_gbp_id", "ID del perfil registrado", 20),
     ("google_profile", "v4_gbp_social", "Links de redes sociales registrados", 30),
@@ -122,27 +120,36 @@ def _set_check(workspace, key, complete, detail=""):
 
 
 def sync_workspace_checks(workspace):
-    docs = workspace.documents.all()
-    _set_check(workspace, "v4_meeting_loaded", bool(workspace.meeting_summary.strip()))
-    _set_check(workspace, "v4_meeting_document", docs.exists())
+    # Si el correo ya existe, sí necesitamos una dirección. Si CEO Marketing
+    # quedó encargado de crearlo, todavía no existe un correo que exigir.
+    email_ready = (
+        workspace.email_account_mode == "create"
+        or (
+            workspace.email_account_mode == "existing"
+            and bool(workspace.gmail_email or workspace.contact_email)
+        )
+    )
+    email_detail = ""
+    if workspace.email_account_mode == "create":
+        email_detail = "Lo crea CEO Marketing"
+    elif workspace.email_account_mode:
+        email_detail = workspace.get_email_account_mode_display()
+
     _set_check(
         workspace,
         "v4_email_defined",
-        workspace.email_account_mode in {"existing", "create"} and bool(workspace.gmail_email or workspace.contact_email),
-        workspace.get_email_account_mode_display() if workspace.email_account_mode else "",
+        email_ready,
+        email_detail,
     )
+
     business_presence_ready = workspace.business_profile_mode in {"existing", "create", "no"}
     lsa_documents_ready = workspace.lsa_documents_available in {"yes", "no"}
     _set_check(workspace, "v4_business_presence", business_presence_ready)
     _set_check(workspace, "v4_lsa_documents", lsa_documents_ready)
 
-    # Información inicial es 100% automática. No depende de un selector manual:
-    # usa exactamente los cinco checks visibles en la pantalla.
+    # Las notas de reunión y documentos adjuntos son opcionales.
     intake_complete = (
-        bool(workspace.meeting_summary.strip())
-        and docs.exists()
-        and workspace.email_account_mode in {"existing", "create"}
-        and bool(workspace.gmail_email or workspace.contact_email)
+        email_ready
         and business_presence_ready
         and lsa_documents_ready
     )
@@ -263,7 +270,24 @@ def marketing_flow_statuses(workspace):
 def ensure_workspace(project):
     workspace, _ = MarketingWorkspace.objects.get_or_create(project=project)
 
-    # Los checks históricos no se borran: se ocultan del flujo V4.
+    # La asignación del proyecto es la fuente de verdad cuando existe.
+    # Si Administración/Gerencia no asignó Marketing, la ficha conserva la
+    # posibilidad de elegir un responsable manualmente.
+    marketing_assignment = (
+        project.assignments.select_related("user")
+        .filter(
+            area="marketing",
+            status__in=["assigned", "active"],
+            user__is_active=True,
+        )
+        .order_by("-updated_at", "-created_at", "-pk")
+        .first()
+    )
+    if marketing_assignment and workspace.assigned_to_id != marketing_assignment.user_id:
+        workspace.assigned_to = marketing_assignment.user
+        workspace.save(update_fields=["assigned_to", "updated_at"])
+
+    # Los checks históricos no se borran: se ocultan del flujo actual.
     workspace.checklist_items.exclude(key__in=ACTIVE_CHECK_KEYS).filter(active=True).update(active=False)
     for area, key, label, order in CHECKLIST_TEMPLATE:
         item, _ = MarketingChecklistItem.objects.get_or_create(

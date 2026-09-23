@@ -155,26 +155,346 @@
 <div class="devTasks__toast" id="taskToast"></div>
 <script>
 (function(){
- const modal=document.getElementById('taskModal'), open=document.getElementById('openTaskModal');
- const close=()=>{if(modal){modal.classList.remove('is-open');modal.setAttribute('aria-hidden','true')}};
- if(open&&modal)open.addEventListener('click',()=>{modal.classList.add('is-open');modal.setAttribute('aria-hidden','false')});
- ['closeTaskModal','cancelTaskModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',close)});
- if(modal)modal.addEventListener('click',e=>{if(e.target===modal)close()});
- const toast=(msg)=>{const t=document.getElementById('taskToast');t.textContent=msg;t.classList.add('is-show');setTimeout(()=>t.classList.remove('is-show'),2200)};
- document.querySelectorAll('.devTaskStatus').forEach(sel=>sel.addEventListener('change',function(){
-   const article=this.closest('.devTask'), issue=article.querySelector('.devTask__issue'), reason=issue.querySelector('[name="issue_reason"]');
-   issue.classList.toggle('is-visible',this.value==='issue'); if(this.value==='issue') reason.setAttribute('required','required'); else reason.removeAttribute('required');
-   article.querySelector('.mirrorStatus').value=this.value;
- }));
- document.querySelectorAll('.devTask__issue textarea').forEach(el=>el.addEventListener('input',function(){this.closest('.devTask').querySelector('.mirrorIssue').value=this.value}));
- document.querySelectorAll('.devTaskUpdate').forEach(form=>form.addEventListener('submit',async function(e){
-   e.preventDefault(); const article=this.closest('.devTask'); const status=article.querySelector('.devTaskStatus').value; const issue=article.querySelector('.devTask__issue textarea').value.trim();
-   if(status==='issue'&&!issue){toast('Debes registrar el motivo del inconveniente.');article.querySelector('.devTask__issue').classList.add('is-visible');return;}
-   const data=new FormData(this); data.set('status',status); data.set('issue_reason',issue);
-   const r=await fetch(this.getAttribute('action'),{method:'POST',body:data,headers:{'X-Requested-With':'XMLHttpRequest'}}); const j=await r.json().catch(()=>({ok:false,message:'No se pudo guardar.'}));
-   if(!r.ok||!j.ok){toast(j.message||'No se pudo guardar.');return;} toast('Cambios guardados.'); setTimeout(()=>location.reload(),350);
- }));
- const cf=document.getElementById('createTaskForm'); if(cf)cf.addEventListener('submit',async function(e){e.preventDefault();const r=await fetch(this.getAttribute('action'),{method:'POST',body:new FormData(this),headers:{'X-Requested-With':'XMLHttpRequest'}});const j=await r.json().catch(()=>({ok:false,message:'No se pudo crear la tarea.'}));if(!r.ok||!j.ok){toast(j.message||'No se pudo crear la tarea.');return;}close();toast('Tarea asignada.');setTimeout(()=>location.reload(),350)});
+
+  const modal = document.getElementById('taskModal');
+  const open = document.getElementById('openTaskModal');
+  const toastElement = document.getElementById('taskToast');
+
+  const close = () => {
+    if (!modal) return;
+
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+  };
+
+  const showToast = (msg) => {
+    if (!toastElement) return;
+
+    toastElement.textContent = msg;
+    toastElement.classList.add('is-show');
+
+    window.clearTimeout(showToast.timer);
+
+    showToast.timer = window.setTimeout(() => {
+      toastElement.classList.remove('is-show');
+    }, 3000);
+  };
+
+  if (open && modal) {
+    open.addEventListener('click', () => {
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+    });
+  }
+
+  ['closeTaskModal', 'cancelTaskModal'].forEach(id => {
+    const el = document.getElementById(id);
+
+    if (el) {
+      el.addEventListener('click', close);
+    }
+  });
+
+  if (modal) {
+    modal.addEventListener('click', e => {
+      if (e.target === modal) {
+        close();
+      }
+    });
+  }
+
+  document.querySelectorAll('.devTaskStatus').forEach(sel => {
+    sel.addEventListener('change', function(){
+
+      const article = this.closest('.devTask');
+      const issue = article.querySelector('.devTask__issue');
+      const reason = issue.querySelector('[name="issue_reason"]');
+
+      issue.classList.toggle(
+        'is-visible',
+        this.value === 'issue'
+      );
+
+      if (this.value === 'issue') {
+        reason.setAttribute('required', 'required');
+      } else {
+        reason.removeAttribute('required');
+      }
+
+      article.querySelector('.mirrorStatus').value = this.value;
+    });
+  });
+
+  document
+    .querySelectorAll('.devTask__issue textarea')
+    .forEach(el => {
+
+      el.addEventListener('input', function(){
+
+        this
+          .closest('.devTask')
+          .querySelector('.mirrorIssue')
+          .value = this.value;
+
+      });
+
+    });
+
+  document
+    .querySelectorAll('.devTaskUpdate')
+    .forEach(form => {
+
+      form.addEventListener('submit', async function(e){
+
+        e.preventDefault();
+
+        const article = this.closest('.devTask');
+
+        const status =
+          article.querySelector('.devTaskStatus').value;
+
+        const issue =
+          article
+            .querySelector('.devTask__issue textarea')
+            .value
+            .trim();
+
+        if (status === 'issue' && !issue) {
+
+          showToast(
+            'Debes registrar el motivo del inconveniente.'
+          );
+
+          article
+            .querySelector('.devTask__issue')
+            .classList
+            .add('is-visible');
+
+          return;
+        }
+
+        const data = new FormData(this);
+
+        data.set('status', status);
+        data.set('issue_reason', issue);
+
+        const submitButton =
+          this.querySelector('button[type="submit"]');
+
+        if (submitButton) {
+          submitButton.disabled = true;
+        }
+
+        try {
+
+          const r = await fetch(
+            this.getAttribute('action'),
+            {
+              method: 'POST',
+              body: data,
+              headers: {
+                'X-Requested-With':
+                  'XMLHttpRequest'
+              }
+            }
+          );
+
+          const j = await r
+            .json()
+            .catch(() => ({
+              ok: false,
+              message:
+                'No se pudo guardar.'
+            }));
+
+          if (!r.ok || !j.ok) {
+            throw new Error(
+              j.message ||
+              'No se pudo guardar.'
+            );
+          }
+
+          showToast('Cambios guardados.');
+
+          window.setTimeout(() => {
+            location.reload();
+          }, 900);
+
+        } catch (error) {
+
+          showToast(
+            error.message ||
+            'No se pudo guardar.'
+          );
+
+          if (submitButton) {
+            submitButton.disabled = false;
+          }
+        }
+
+      });
+
+    });
+
+
+  /* =====================================================
+     CREAR / ASIGNAR TAREA
+     ===================================================== */
+
+  const createTaskForm =
+    document.getElementById('createTaskForm');
+
+  let creatingTask = false;
+
+  if (createTaskForm) {
+
+    createTaskForm.addEventListener(
+      'submit',
+      async function(e){
+
+        e.preventDefault();
+
+        /*
+         * Evita dobles clics y múltiples POST.
+         */
+        if (creatingTask) {
+          return;
+        }
+
+        if (!this.checkValidity()) {
+          this.reportValidity();
+          return;
+        }
+
+        creatingTask = true;
+
+        const submitButton =
+          this.querySelector(
+            'button[type="submit"]'
+          );
+
+        const originalButtonText =
+          submitButton
+            ? submitButton.textContent
+            : '';
+
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent =
+            'Asignando...';
+        }
+
+        try {
+
+          const response = await fetch(
+            this.getAttribute('action'),
+            {
+              method: 'POST',
+              body: new FormData(this),
+              headers: {
+                'X-Requested-With':
+                  'XMLHttpRequest'
+              }
+            }
+          );
+
+          const data = await response
+            .json()
+            .catch(() => ({
+              ok: false,
+              message:
+                'El servidor devolvió una respuesta inválida.'
+            }));
+
+          if (
+            !response.ok ||
+            !data.ok
+          ) {
+            throw new Error(
+              data.message ||
+              'No se pudo crear la tarea.'
+            );
+          }
+
+          /*
+           * La tarea YA fue creada correctamente.
+           * Cerramos inmediatamente el modal.
+           */
+          close();
+
+          /*
+           * Limpiamos el formulario después del éxito.
+           */
+          createTaskForm.reset();
+
+          /*
+           * Restauramos fecha de asignación a hoy
+           * después del reset.
+           */
+          const assignedDate =
+            createTaskForm.querySelector(
+              '[name="assigned_date"]'
+            );
+
+          if (assignedDate) {
+            const today =
+              new Date();
+
+            const year =
+              today.getFullYear();
+
+            const month =
+              String(
+                today.getMonth() + 1
+              ).padStart(2, '0');
+
+            const day =
+              String(
+                today.getDate()
+              ).padStart(2, '0');
+
+            assignedDate.value =
+              `${year}-${month}-${day}`;
+          }
+
+          /*
+           * Mensaje claramente visible.
+           */
+          showToast(
+            data.message ||
+            'Tarea asignada correctamente.'
+          );
+
+          /*
+           * Damos tiempo suficiente para ver el mensaje
+           * y luego actualizamos KPIs/listado.
+           */
+          window.setTimeout(() => {
+            window.location.reload();
+          }, 1400);
+
+        } catch (error) {
+
+          creatingTask = false;
+
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent =
+              originalButtonText ||
+              'Asignar tarea';
+          }
+
+          showToast(
+            error.message ||
+            'No se pudo crear la tarea.'
+          );
+        }
+
+      }
+    );
+
+  }
+
 })();
 </script>
 {% endblock %}

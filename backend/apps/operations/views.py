@@ -20,6 +20,7 @@ from apps.projects.models import Project
 from apps.projects.selectors import can_access_project
 from apps.questionnaires.models import ProjectQuestionnaire
 from apps.questionnaires.services import WEBSITE_TEMPLATE_CODE, website_answer_payload
+from .tasks import send_development_task_email
 from .forms import DomainHostingRecordForm, ProductionRecordForm, ProjectCredentialForm, WebProductionStructureForm
 from .models import (
     CompleteStatus,
@@ -3637,7 +3638,17 @@ def development_tasks(request):
                 assignment_note=(request.POST.get("assignment_note") or "").strip(),
                 updated_by=request.user,
             )
-            log_activity(request.user, "operations", "development_task_create", task)
+
+            # Recargar desde PostgreSQL para convertir DateField
+            # de string a datetime.date antes de usar strftime().
+            task.refresh_from_db()
+
+            log_activity(
+                request.user,
+                "operations",
+                "development_task_create",
+                task,
+            )
 
             if assigned_to.pk != request.user.pk:
                 project_label = (
@@ -3703,16 +3714,18 @@ def development_tasks(request):
                         "",
                         "CRM CEO Interno",
                     ])
-                    send_mail(
-                        subject=f"Nueva tarea asignada: {task.title}",
-                        message=email_body,
-                        from_email=None,
-                        recipient_list=[recipient_email],
-                        fail_silently=True,
+                    send_development_task_email.delay(
+                        f"Nueva tarea asignada: {task.title}",
+                        email_body,
+                        recipient_email,
                     )
 
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                return JsonResponse({"ok": True, "task_id": task.pk})
+                return JsonResponse({
+                    "ok": True,
+                    "task_id": task.pk,
+                    "message": "Tarea asignada correctamente.",
+                })
             messages.success(request, "Tarea asignada.")
             return redirect("operations:development_tasks")
 

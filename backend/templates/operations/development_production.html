@@ -9,7 +9,19 @@
     <h2>{{ project.client.business_name }}</h2>
     <p>Gestiona la estructura del proyecto, responsables, secciones y configuración del sitio.</p>
   </div>
-  <div class="actions">
+  <div class="actions production-mail-actions">
+    {% if can_manage_project %}
+    <form method="post" onsubmit="return confirm('¿Enviar a cada responsable un correo con todas sus asignaciones actuales de este proyecto?');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="send_production_assignments">
+      <button class="btn btn-secondary" type="submit">Enviar asignaciones</button>
+    </form>
+    <form method="post" onsubmit="return confirm('¿Enviar a cada revisor un correo con todos los elementos que tiene asignados para revisar?');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="send_production_reviewers">
+      <button class="btn btn-secondary" type="submit">Enviar revisores</button>
+    </form>
+    {% endif %}
     <a class="btn btn-secondary" href="{% url 'questionnaires:development_dashboard' %}">Desarrollo</a>
     {% if questionnaire %}<a class="btn btn-secondary" href="{% url 'questionnaires:fill' questionnaire.pk %}">Ficha técnica</a>{% endif %}
     <a class="btn btn-primary" href="{% url 'handoff:summary' project.pk %}">Resumen</a>
@@ -78,6 +90,7 @@
   {% endif %}
 </section>
 <style>
+.production-mail-actions form{margin:0;display:inline-flex}.production-mail-actions{flex-wrap:wrap}
 .dev-notifications{margin:0 0 18px;border:1px solid #e3e8f0;border-radius:16px;background:#fff;padding:20px}.dev-notifications-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.dev-notifications-head h3{margin:4px 0;font-size:18px}.dev-notifications-head p{margin:0;color:#748096;font-size:10px}.dev-notifications-count{text-align:right}.dev-notifications-count strong{display:block;font-size:27px;line-height:1;color:#314f84}.dev-notifications-count span{display:block;margin-top:5px;color:#77849a;font-size:9px;font-weight:800}.dev-notifications-list{display:grid;gap:8px;margin-top:16px}.dev-notification-item{display:grid;grid-template-columns:10px minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 13px;border:1px solid #e7ebf1;border-radius:12px;background:#fafbfd}.dev-notification-item.is-unread{background:#f7f9ff;border-color:#d8e0f5}.dev-notification-dot{width:8px;height:8px;border-radius:999px;background:#a7b0bf}.dev-notification-item.event-sent_to_review .dev-notification-dot{background:#6654a8}.dev-notification-item.event-review_returned .dev-notification-dot{background:#b77820}.dev-notification-item.event-review_approved .dev-notification-dot{background:#24724f}.dev-notification-meta{display:flex;align-items:center;justify-content:space-between;gap:10px}.dev-notification-meta strong{font-size:10px;color:#25354d}.dev-notification-meta span{font-size:8px;color:#8993a4;white-space:nowrap}.dev-notification-copy p{margin:4px 0 2px;color:#455268;font-size:10px;line-height:1.45}.dev-notification-copy small{color:#8993a4;font-size:8px}.dev-notification-read{border:1px solid #dce3ed;border-radius:9px;background:#fff;padding:7px 9px;color:#47546a;font-size:8px;font-weight:800;cursor:pointer}.dev-notification-read:hover{background:#f3f6fa}.dev-notification-read-state{font-size:8px;color:#98a2b3;font-weight:800}.dev-notifications-all-read{display:flex;justify-content:flex-end;margin-top:12px}.dev-notifications-empty{margin-top:14px;padding:13px;border:1px dashed #dce3ed;border-radius:11px;background:#fafbfd;color:#788599;font-size:10px;text-align:center}@media(max-width:650px){.dev-notifications-head{flex-direction:column}.dev-notifications-count{text-align:left}.dev-notification-item{grid-template-columns:10px minmax(0,1fr)}.dev-notification-item>form,.dev-notification-read-state{grid-column:2}.dev-notification-meta{align-items:flex-start;flex-direction:column}}
 .dev-structure-locked-note{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid #e3e8f0;border-radius:12px;background:#f8fafc;color:#667085;font-size:10px;line-height:1.5}
 .dev-structure-locked-note strong{color:#344054;white-space:nowrap}
@@ -1918,6 +1931,11 @@ document.addEventListener('DOMContentLoaded',function(){
 
 
 <script>
+document.querySelectorAll('.dev-delete-btn').forEach(function(button){
+  button.setAttribute('title', 'Eliminar');
+  button.setAttribute('aria-label', 'Eliminar');
+});
+
 window.applyDevelopmentPermissions = function(){
   const state = document.getElementById('developmentPermissionState');
   const editableNode = document.getElementById('developmentEditableRows');
@@ -1971,6 +1989,7 @@ window.applyDevelopmentPermissions = function(){
   ]);
 
   function disableControl(control){
+    if(canManage) return;
     if(!control) return;
     if('disabled' in control) control.disabled = true;
     control.classList.add('dev-readonly-control');
@@ -2035,7 +2054,7 @@ window.applyDevelopmentPermissions = function(){
       return;
     }
 
-    if(!editableSet.has(key) && !reviewerOnlyControl){
+    if(!canManage && !editableSet.has(key) && !reviewerOnlyControl){
       disableForm(form);
       const row = form.closest('tr');
       if(row) row.classList.add('dev-readonly-row');
@@ -2065,7 +2084,7 @@ window.applyDevelopmentPermissions = function(){
     const id = button.dataset.rowId;
     if(!type || !id) return;
     const key = `${type}:${id}`;
-    if(editableSet.has(key)) return;
+    if(canManage || editableSet.has(key)) return;
 
     disableControl(button);
     button.title = 'Solo lectura · asignado a otro desarrollador';

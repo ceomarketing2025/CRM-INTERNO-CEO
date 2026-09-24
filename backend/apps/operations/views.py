@@ -46,6 +46,7 @@ from .services import (
     apply_seo_automation,
     auto_workload,
     create_custom_project_credential,
+    ensure_default_internal_sections,
     ensure_web_production_structure,
     save_domain_hosting_record,
     save_production_record,
@@ -577,12 +578,10 @@ def _can_edit_production_row(user, obj, can_manage_project=False):
     user_id = getattr(user, "pk", None)
     responsible_id = getattr(obj, "responsible_id", None)
 
-    if getattr(user, "is_superuser", False) or getattr(user, "is_manager", False):
+    if can_manage_project:
         return True
 
-    # El responsable principal mantiene acceso total sobre filas ajenas, pero si
-    # también es el responsable de esta fila debe respetar el bloqueo de revisión.
-    if can_manage_project and responsible_id != user_id:
+    if getattr(user, "is_superuser", False) or getattr(user, "is_manager", False):
         return True
 
     if responsible_id != user_id:
@@ -1291,6 +1290,125 @@ def development_project_styles(request, project_pk):
     )
 
 
+def _production_email_item_data(row_type, obj):
+    type_labels = {
+        "page": "Página",
+        "county": "Condado",
+        "service": "Servicio por condado",
+        "city": "Ciudad",
+        "internal_section": "Sección interna",
+    }
+    name = (getattr(obj, "name", "") or "Sin nombre").strip()
+    if row_type == "service":
+        county_name = (getattr(getattr(obj, "county", None), "name", "") or "").strip()
+        if county_name and county_name.lower() not in name.lower():
+            name = f"{name} · {county_name}"
+
+    data = {
+        "type": type_labels[row_type],
+        "name": name,
+        "status": obj.get_workflow_status_display(),
+        "complexity": obj.get_complexity_display(),
+        "points": obj.points or 0,
+        "notes": (getattr(obj, "notes", "") or "").strip(),
+        "responsible": getattr(obj, "responsible", None),
+    }
+    if row_type != "internal_section":
+        data.update({
+            "keyword": (getattr(obj, "keyword", "") or "").strip(),
+            "slug": (getattr(obj, "slug", "") or "").strip(),
+            "secondary_keywords": (getattr(obj, "secondary_keywords", "") or "").strip(),
+            "meta_title": (getattr(obj, "meta_title", "") or "").strip(),
+            "meta_description": (getattr(obj, "meta_description", "") or "").strip(),
+        })
+    else:
+        data.update({
+            "smtp_email": (getattr(obj, "smtp_email", "") or "").strip(),
+            "created": bool(getattr(obj, "created", False)),
+        })
+    return data
+
+
+def _production_grouped_email_assignments(sheet, assignment_field):
+    grouped = defaultdict(list)
+    row_sets = (
+        ("page", sheet.pages.select_related("responsible", "reviewer").all()),
+        ("county", sheet.counties.select_related("responsible", "reviewer").all()),
+        (
+            "service",
+            WebProductionCountyService.objects.filter(county__sheet=sheet)
+            .select_related("county", "responsible", "reviewer"),
+        ),
+        ("city", sheet.cities.select_related("county", "responsible", "reviewer").all()),
+        ("internal_section", sheet.internal_sections.select_related("responsible", "reviewer").all()),
+    )
+    for row_type, rows in row_sets:
+        for obj in rows:
+            user = getattr(obj, assignment_field, None)
+            if user is not None:
+                grouped[user.pk].append(_production_email_item_data(row_type, obj))
+    users = {user.pk: user for user in UserAccount.objects.filter(pk__in=grouped.keys(), is_active=True)}
+    return [(users[user_id], items) for user_id, items in grouped.items() if user_id in users]
+
+
+def _production_assignment_email_body(project, user, items, sheet_url, actor):
+    lines = [
+        f"Hola {user.display_name},", "",
+        "Tienes asignaciones de producción en el CRM de CEO Marketing.", "",
+        f"Proyecto: {project.project_code} · {project.name}",
+        f"Cliente: {project.client.business_name}",
+        f"Asignaciones enviadas por: {actor.display_name}",
+        f"Total de elementos asignados: {len(items)}", "",
+        "DETALLE DE ASIGNACIONES", "=======================",
+    ]
+    for index, item in enumerate(items, start=1):
+        lines.extend([
+            "", f"{index}. {item['type']}: {item['name']}",
+            f"   Estado: {item['status']}",
+            f"   Complejidad: {item['complexity']} · {item['points']} punto(s)",
+        ])
+        if "keyword" in item:
+            lines.extend([
+                f"   Keyword principal: {item['keyword'] or 'Pendiente'}",
+                f"   Slug: {item['slug'] or 'Pendiente'}",
+                f"   Keywords secundarias: {item['secondary_keywords'] or 'Pendiente'}",
+                f"   Meta title: {item['meta_title'] or 'Pendiente'}",
+                f"   Meta description: {item['meta_description'] or 'Pendiente'}",
+            ])
+        else:
+            lines.extend([
+                f"   Creada: {'Sí' if item['created'] else 'No'}",
+                f"   Correo SMTP: {item['smtp_email'] or 'No definido'}",
+            ])
+        lines.append(f"   Notas: {item['notes'] or 'Sin notas adicionales'}")
+    lines.extend(["", "Revisa y actualiza tus asignaciones directamente en la hoja de producción:", sheet_url, "", "CRM CEO Interno"])
+    return "\n".join(lines)
+
+
+def _production_reviewer_email_body(project, user, items, sheet_url, actor):
+    lines = [
+        f"Hola {user.display_name},", "",
+        "Has sido asignado/a como revisor/a de elementos de producción en el CRM de CEO Marketing.", "",
+        f"Proyecto: {project.project_code} · {project.name}",
+        f"Cliente: {project.client.business_name}",
+        f"Aviso enviado por: {actor.display_name}",
+        f"Total de elementos para revisar: {len(items)}", "",
+        "ELEMENTOS ASIGNADOS PARA REVISIÓN", "=================================",
+    ]
+    for index, item in enumerate(items, start=1):
+        responsible = item.get("responsible")
+        responsible_name = responsible.display_name if responsible else "Sin responsable"
+        lines.extend([
+            "", f"{index}. {item['type']}: {item['name']}",
+            f"   Responsable: {responsible_name}",
+            f"   Estado actual: {item['status']}",
+            f"   Complejidad: {item['complexity']} · {item['points']} punto(s)",
+            f"   Notas: {item['notes'] or 'Sin notas adicionales'}",
+        ])
+    lines.extend(["", "Revisa tus elementos asignados desde la hoja de producción:", sheet_url, "", "CRM CEO Interno"])
+    return "\n".join(lines)
+
+
 @role_required("developer")
 def web_production_sheet(
     request,
@@ -1341,6 +1459,11 @@ def web_production_sheet(
             cities_per_county_target=0,
             user=request.user,
         )
+
+    ensure_default_internal_sections(
+        sheet=sheet,
+        user=request.user,
+    )
 
     (
         questionnaire,
@@ -1513,12 +1636,50 @@ def web_production_sheet(
             "delete_service",
             "delete_city",
             "save_general",
+            "send_production_assignments",
+            "send_production_reviewers",
         }
 
         if action in admin_only_actions:
             _require_project_production_admin(
                 can_manage_project
             )
+
+        if action in {"send_production_assignments", "send_production_reviewers"}:
+            assignment_field = "responsible" if action == "send_production_assignments" else "reviewer"
+            grouped_assignments = _production_grouped_email_assignments(sheet, assignment_field)
+            sheet_url = request.build_absolute_uri(
+                reverse("operations:web_production_sheet", kwargs={"project_pk": project.pk})
+            )
+            queued = 0
+            missing_email = []
+            for recipient, items in grouped_assignments:
+                recipient_email = (recipient.email or "").strip()
+                if not recipient_email:
+                    missing_email.append(recipient.display_name)
+                    continue
+                if action == "send_production_assignments":
+                    subject = f"Asignaciones de producción · {project.project_code} · {project.client.business_name}"
+                    body = _production_assignment_email_body(project, recipient, items, sheet_url, request.user)
+                else:
+                    subject = f"Asignación como revisor · {project.project_code} · {project.client.business_name}"
+                    body = _production_reviewer_email_body(project, recipient, items, sheet_url, request.user)
+                send_development_task_email.delay(subject, body, recipient_email)
+                queued += 1
+
+            activity_action = "production_assignments_email" if action == "send_production_assignments" else "production_reviewers_email"
+            log_activity(
+                request.user, "development", activity_action, sheet,
+                description=f"{queued} correo(s) encolado(s)",
+            )
+            label = "responsables" if assignment_field == "responsible" else "revisores"
+            if queued:
+                messages.success(request, f"Se encolaron {queued} correo(s) para {label} del proyecto.")
+            else:
+                messages.warning(request, f"No hay {label} asignados con elementos para notificar.")
+            if missing_email:
+                messages.warning(request, "No se pudo enviar a usuarios sin correo: " + ", ".join(missing_email))
+            return redirect("operations:web_production_sheet", project_pk=project.pk)
 
         if action == "quick_update_row":
             row_type = request.POST.get("row_type", "").strip()

@@ -13,6 +13,7 @@ from .models import (
     WebProductionCity,
     WebProductionCounty,
     WebProductionCountyService,
+    WebProductionInternalSection,
     WebProductionPage,
 )
 
@@ -29,6 +30,51 @@ DEFAULT_MAIN_PAGES = [
 ]
 
 DEFAULT_HEADER = "Home | About | Services | Areas We Service | Gallery | Contact | Free Estimate"
+
+DEFAULT_INTERNAL_SECTIONS = [
+    "FAQ",
+    "SITE KITS",
+    "PHP",
+    "CTA",
+    "Form/Reseñas",
+    "Header",
+    "Footer",
+    "Plantilla Condado",
+    "Plantilla City",
+    "Hero",
+    "Hero Secundario",
+    "Carrusel o Galería",
+    "Configuración de Rank Math e indexación",
+]
+
+
+def ensure_default_internal_sections(*, sheet, user):
+    """Agrega las secciones internas predeterminadas que falten sin borrar datos existentes."""
+    existing_names = {
+        (name or "").strip().casefold()
+        for name in sheet.internal_sections.values_list("name", flat=True)
+    }
+    next_order = (
+        sheet.internal_sections.order_by("-order").values_list("order", flat=True).first()
+        or 0
+    )
+    created = 0
+    for name in DEFAULT_INTERNAL_SECTIONS:
+        key = name.casefold()
+        if key in existing_names:
+            continue
+        next_order += 1
+        WebProductionInternalSection.objects.create(
+            sheet=sheet,
+            name=name,
+            complexity=SeoComplexity.SIMPLE,
+            points=1,
+            order=next_order,
+            updated_by=user,
+        )
+        existing_names.add(key)
+        created += 1
+    return created
 
 
 def _sync_hosting_credentials(record, user):

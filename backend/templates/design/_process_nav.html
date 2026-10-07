@@ -1,0 +1,26 @@
+<nav class="design-process-nav" aria-label="Proceso de Diseño">
+  <a class="design-process-step {% if design_current_step == 'brief' %}current{% endif %} {% if design_process.brief_done %}done{% else %}pending{% endif %}" href="{% url 'design:brief_edit' project.pk %}">
+    <span class="design-process-index">01</span>
+    <span class="design-process-copy"><strong>Ficha</strong><small>{% if design_process.brief_done %}Completa{% else %}Pendiente{% endif %}</small></span>
+    <span class="design-process-dot"></span>
+  </a>
+  <a class="design-process-step {% if design_current_step == 'resources' %}current{% endif %} {% if design_process.resources_ready %}done{% else %}pending{% endif %}" href="{% url 'resources:project' project.pk %}">
+    <span class="design-process-index">02</span>
+    <span class="design-process-copy"><strong>Recursos</strong><small>{% if design_process.resources_ready %}Listos{% else %}Pendientes{% endif %}</small></span>
+    <span class="design-process-dot"></span>
+  </a>
+  {% if design_process.palette %}
+  <a class="design-process-step {% if design_current_step == 'palette' %}current{% endif %} {% if design_process.palette_done %}done{% else %}pending{% endif %}" href="{% url 'design:palette_detail' design_process.palette.pk %}">
+  {% else %}
+  <a class="design-process-step {% if design_current_step == 'palette' %}current{% endif %} pending" href="{% url 'design:palette_create' project.pk %}">
+  {% endif %}
+    <span class="design-process-index">03</span>
+    <span class="design-process-copy"><strong>Paleta</strong><small>{% if design_process.palette_done %}Completa{% else %}Pendiente{% endif %}</small></span>
+    <span class="design-process-dot"></span>
+  </a>
+  <a class="design-process-step summary {% if design_process.summary_ready %}done{% else %}pending{% endif %}" href="{% url 'design:summary' project.pk %}">
+    <span class="design-process-index">04</span>
+    <span class="design-process-copy"><strong>Resumen</strong><small>{% if design_process.summary_ready %}Listo{% else %}En construcción{% endif %}</small></span>
+    <span class="design-process-dot"></span>
+  </a>
+</nav>

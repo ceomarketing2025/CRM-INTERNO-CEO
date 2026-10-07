@@ -1,0 +1,9 @@
+<div class="marketing-check-list">
+  {% for item in checks %}
+    <div class="marketing-check-row {% if item.status == 'complete' %}is-ok{% else %}is-pending{% endif %}">
+      <span class="marketing-check-icon">{% if item.status == 'complete' %}✓{% else %}•{% endif %}</span>
+      <div><strong>{{ item.label }}</strong>{% if item.detail %}<small>{{ item.detail }}</small>{% endif %}</div>
+      <span class="semantic-pill {% if item.status == 'complete' %}is-success{% else %}is-danger{% endif %}">{{ item.get_status_display }}</span>
+    </div>
+  {% empty %}<div class="empty">Sin checks para esta sección.</div>{% endfor %}
+</div>

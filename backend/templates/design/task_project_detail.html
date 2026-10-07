@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block page_heading %}Bitácora de Diseño{% endblock %}
+{% block content %}
+<style>
+.dp-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px}.dp-head h2{margin:4px 0}.dp-head p{margin:0;opacity:.68}.dp-summary{display:grid;grid-template-columns:minmax(220px,1fr) 150px 180px;gap:12px;align-items:center;padding:16px;margin-bottom:16px}.dp-progress strong{font-size:26px}.dp-bar{height:8px;border-radius:999px;background:rgba(127,127,127,.12);overflow:hidden;margin-top:6px}.dp-bar i{display:block;height:100%}.dp-bar.red i{background:#d94b4b}.dp-bar.yellow i{background:#d8a125}.dp-bar.blue i{background:#4f7e9f}.service-card{padding:0;overflow:hidden;margin-bottom:14px}.service-head{display:grid;grid-template-columns:minmax(240px,1fr) 150px auto;gap:14px;align-items:center;padding:16px 18px;border-bottom:1px solid rgba(127,127,127,.11)}.service-head h3{margin:2px 0 3px}.service-head small{opacity:.65}.service-state{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800}.service-state i{width:10px;height:10px;border-radius:50%;background:#d94b4b}.service-state.yellow i{background:#d8a125}.service-state.blue i{background:#4f7e9f}.task-row{padding:14px 18px;border-bottom:1px solid rgba(127,127,127,.09)}.task-row:last-child{border-bottom:0}.task-top{display:grid;grid-template-columns:minmax(260px,1.35fr) 145px minmax(190px,.75fr) minmax(300px,.9fr);gap:14px;align-items:center}.task-title strong{display:block}.task-title small{display:block;margin-top:4px;opacity:.64}.task-status{display:inline-flex;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800;width:max-content}.task-status.red{background:rgba(217,75,75,.11);color:#a53a3a}.task-status.yellow{background:rgba(216,161,37,.13);color:#86620a}.task-status.paused{background:#f0f2f5;color:#657080}.task-status.review{background:#f1edff;color:#6253a5}.task-status.changes{background:#fff0df;color:#9a5d18}.task-status.blue{background:#e9f2fb;color:#356b9b}.task-meta{font-size:11px;opacity:.68;line-height:1.45}.lock-note{margin-top:10px;border-radius:11px;padding:10px 12px;font-size:11px;background:#edf5fb;border:1px solid #d5e4f1;color:#416782}.empty-task{padding:18px;opacity:.65}
+@media(max-width:1050px){.dp-summary,.service-head,.task-top{grid-template-columns:1fr 1fr}.task-flow-actions{justify-content:flex-start}}@media(max-width:640px){.dp-summary,.service-head,.task-top{grid-template-columns:1fr}}
+</style>
+
+<div class="dp-head">
+  <div><span class="eyebrow">Diseño · {{ project.project_code }}</span><h2>{{ project.client.business_name }}</h2><p>{{ project.name }} · Actividades únicas del área.</p></div>
+  <div class="actions"><a class="btn btn-secondary btn-sm" href="{% url 'design:tasks' %}">Volver</a><a class="btn btn-secondary btn-sm" href="{% url 'design:service_manage' project.pk %}">Servicios</a><a class="btn btn-primary btn-sm" href="{% url 'design:task_create' %}">Nueva tarea</a></div>
+</div>
+
+<div class="card dp-summary">
+  <div><span class="eyebrow">Resumen</span><strong>{{ services|length }} servicio{{ services|length|pluralize }} de Diseño</strong></div>
+  <div class="dp-progress"><strong>{{ project_progress }}%</strong><div class="dp-bar {{ project_state }}"><i style="width:{{ project_progress }}%"></i></div></div>
+  <div><small style="opacity:.62">Orden</small><strong style="display:block">Abiertas primero</strong><small style="opacity:.62">Cerradas al final</small></div>
+</div>
+
+{% for service in services %}
+<section class="card service-card">
+  <div class="service-head">
+    <div><span class="eyebrow">Servicio contratado</span><h3>{{ service.plan.name }}</h3><small>{{ service.plan.get_service_type_display }}</small></div>
+    <div><span class="service-state {{ service.state }}"><i></i>{% if service.progress == 100 %}Cerrado{% elif service.progress > 0 %}En proceso{% else %}Pendiente{% endif %}</span></div>
+    <div><strong>{{ service.progress }}%</strong><small style="display:block;opacity:.62">avance actual</small></div>
+  </div>
+
+  {% for item in service.tasks %}
+  <div class="task-row">
+    <div class="task-top">
+      <div class="task-title"><strong>{{ item.task.title }}</strong>{% if item.task.description %}<small>{{ item.task.description }}</small>{% endif %}{% if item.task.status_note %}<div class="task-status-note {{ item.task.status }}"><strong>{% if item.task.status == 'paused' %}Motivo de pausa{% else %}Novedad de Auditoría{% endif %}</strong>{{ item.task.status_note }}</div>{% endif %}</div>
+      <div><span class="task-status {{ item.state.state }}">{{ item.state.progress }}% · {{ item.state.label }}</span></div>
+      <div class="task-meta">Asignada {{ item.task.created_at|date:'d/m/Y H:i' }}<br><strong>{{ item.task.assigned_to.display_name|default:'Sin responsable' }}</strong>{% if item.task.due_date %}<br>Entrega: {{ item.task.due_date|date:'d/m/Y' }}{% endif %}</div>
+      <div>
+        <div class="task-flow-actions">
+          {% if item.locked or item.task.status == 'done' %}
+            <span class="task-state-pill done">Cerrada por Auditoría</span>
+          {% elif item.task.status == 'todo' %}
+            <form method="post" action="{% url 'design:task_status' item.task.pk %}">{% csrf_token %}<input type="hidden" name="action" value="start"><button class="btn btn-primary btn-sm" type="submit">Iniciar</button></form>
+          {% elif item.task.status == 'doing' %}
+            <button class="btn btn-secondary btn-sm" type="button" data-pause-trigger="design-pause-{{ item.task.pk }}" aria-expanded="false">Pausar</button>
+            <form method="post" action="{% url 'design:task_status' item.task.pk %}">{% csrf_token %}<input type="hidden" name="action" value="review"><button class="btn btn-primary btn-sm" type="submit">Enviar a revisión</button></form>
+          {% elif item.task.status == 'paused' or item.task.status == 'changes' %}
+            <form method="post" action="{% url 'design:task_status' item.task.pk %}">{% csrf_token %}<input type="hidden" name="action" value="resume"><button class="btn btn-primary btn-sm" type="submit">Reanudar</button></form>
+          {% elif item.task.status == 'review' %}
+            <span class="task-state-pill review">Esperando Auditoría</span>
+            <button class="btn btn-secondary btn-sm" type="button" data-pause-trigger="design-pause-{{ item.task.pk }}" aria-expanded="false">Pausar</button>
+          {% endif %}
+          {% if not item.locked %}<a class="btn btn-secondary btn-sm icon-only" title="Editar actividad" aria-label="Editar actividad" href="{% url 'design:task_edit' item.task.pk %}">Editar</a>{% endif %}
+        </div>
+        {% if item.task.status == 'doing' or item.task.status == 'review' %}<div class="task-pause-panel" id="design-pause-{{ item.task.pk }}" hidden><form method="post" action="{% url 'design:task_status' item.task.pk %}">{% csrf_token %}<input type="hidden" name="action" value="pause"><textarea name="note" required placeholder="Motivo de la pausa…"></textarea><button class="btn btn-secondary btn-sm" type="submit">Confirmar pausa</button></form></div>{% endif %}
+      </div>
+    </div>
+    {% if item.locked %}<div class="lock-note"><strong>Registro protegido.</strong> Auditoría aprobó esta actividad; queda cerrada y se conserva como historial.</div>{% endif %}
+  </div>
+  {% empty %}<div class="empty-task">No hay tareas para este servicio.</div>{% endfor %}
+</section>
+{% empty %}<div class="card empty-task">Este proyecto todavía no tiene servicios de Diseño activos.</div>{% endfor %}
+{% endblock %}

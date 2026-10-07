@@ -1,0 +1,44 @@
+<div class="marketing-flow-nav" aria-label="Flujo de Marketing">
+  <a class="marketing-flow-step flow-{{ flow_statuses.intake|default:'danger' }} {% if marketing_section == 'intake' %}active{% endif %}" href="{% url 'marketing:workspace' project.pk %}">
+    <span>01</span><div><strong>Reunión</strong><small>Información inicial</small></div>
+  </a>
+  <a class="marketing-flow-step flow-{{ flow_statuses.business|default:'danger' }} {% if marketing_section == 'business' %}active{% endif %} {% if not workspace.intake_ready %}locked-soft{% endif %}" href="{% url 'marketing:google_business' project.pk %}">
+    <span>02</span><div><strong>Google Business</strong><small>Perfil, reviews y QR</small></div>
+  </a>
+  <a class="marketing-flow-step flow-{{ flow_statuses.lsa|default:'danger' }} {% if marketing_section == 'lsa' %}active{% endif %} {% if not workspace.intake_ready %}locked-soft{% endif %}" href="{% url 'marketing:google_lsa' project.pk %}">
+    <span>03</span><div><strong>Google LSA</strong><small>Validación y seguimiento</small></div>
+  </a>
+  <a class="marketing-flow-step flow-{{ flow_statuses.ads|default:'danger' }} {% if marketing_section == 'ads' %}active{% endif %} {% if not workspace.intake_ready %}locked-soft{% endif %}" href="{% url 'marketing:digital_ads' project.pk %}">
+    <span>04</span><div><strong>Publicidad</strong><small>Meta, Google y TikTok</small></div>
+  </a>
+</div>
+
+<div class="marketing-context-reminder" style="display:flex;justify-content:flex-end;margin-top:10px;">
+  <a
+    class="btn btn-secondary"
+    href="{% url 'reminders:create' %}?source=marketing&amp;client={{ project.client_id }}&amp;project={{ project.pk }}&amp;area=marketing&amp;return_to=marketing_calendar"
+  >⏰ Crear recordatorio</a>
+</div>
+
+<script>
+(function () {
+  function goToMarketingMenu(event) {
+    var link = event.target.closest('a[href="#marketing-flow-top"]');
+    if (!link) return;
+
+    event.preventDefault();
+
+    /*
+      El menú de Marketing es el primer bloque dentro del contenido.
+      Subimos al inicio real de la página para evitar que el header sticky
+      tape el menú cuando se usa un ancla normal.
+    */
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }
+
+  document.addEventListener('click', goToMarketingMenu);
+})();
+</script>

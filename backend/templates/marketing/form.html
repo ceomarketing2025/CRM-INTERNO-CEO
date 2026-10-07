@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} · {{ PROJECT_NAME }}{% endblock %}
+{% block page_heading %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-intro marketing-page-intro">
+  <div>
+    <span class="eyebrow">Marketing</span>
+    <h2>{{ title }}</h2>
+    {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
+  </div>
+  <button class="btn btn-secondary" type="button" onclick="history.back()">← Volver</button>
+</div>
+
+<div class="card form-card marketing-section-card marketing-generic-form">
+  <form method="post" enctype="multipart/form-data" class="form-grid">
+    {% csrf_token %}
+    {% for field in form %}
+      {% if field.is_hidden %}
+        {{ field }}
+      {% else %}
+        <div class="field {% if field.field.widget.input_type == 'checkbox' %}field-checkbox{% endif %}">
+          <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<em>*</em>{% endif %}</label>
+          {{ field }}
+          {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+          {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+    {% if form.non_field_errors %}<div class="semantic-banner is-danger form-wide">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="form-actions form-wide">
+      <button class="btn btn-primary" type="submit">Guardar</button>
+      <button class="btn btn-secondary" type="button" onclick="history.back()">Cancelar</button>
+    </div>
+  </form>
+</div>
+{% include 'marketing/_custom_dropdowns.html' %}
+{% endblock %}

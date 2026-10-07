@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block page_heading %}Social Media{% endblock %}
+{% block content %}
+<style>
+.sm-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:18px}.sm-head h2{margin:4px 0 5px;font-size:27px}.sm-head p{margin:0;max-width:790px;opacity:.68}.sm-kpis{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:12px;margin-bottom:15px}.sm-kpi{padding:16px 17px}.sm-kpi span{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;opacity:.58}.sm-kpi strong{display:block;font-size:27px;margin:4px 0 1px}.sm-kpi small{opacity:.6}.sm-filter{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:12px;margin-bottom:15px}.sm-filter input{flex:1;min-width:230px}.sm-filter input,.sm-filter select{min-height:42px}.sm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.sm-card{padding:18px;position:relative;overflow:hidden}.sm-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#c8ced8}.sm-card.status-design:before{background:#8f63d8}.sm-card.status-marketing:before{background:#e2a52f}.sm-card.status-complete:before{background:#2b9c66}.sm-card-top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}.sm-card-title .project-code{font-size:10px;letter-spacing:.08em;text-transform:uppercase;opacity:.55}.sm-card-title h3{margin:5px 0 2px;font-size:19px}.sm-card-title p{margin:0;font-size:12px;opacity:.62}.sm-renewal{font-size:11px;padding:7px 9px;border-radius:999px;background:rgba(127,127,127,.08);white-space:nowrap}.sm-stage-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:17px}.sm-stage{border:1px solid rgba(127,127,127,.13);border-radius:14px;padding:12px}.sm-stage-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.sm-stage-head span{font-size:11px;font-weight:800}.sm-stage-head b{font-size:15px}.sm-stage small{display:block;margin-top:7px;opacity:.58}.sm-stage.design{background:rgba(119,82,180,.035)}.sm-stage.marketing{background:rgba(222,157,36,.04)}.sm-stage .progress{height:7px}.sm-stage.design .progress i{background:#7d59bd}.sm-stage.marketing .progress i{background:#d89c2e}.sm-card-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid rgba(127,127,127,.1);margin-top:15px;padding-top:13px}.sm-card-foot .meta{font-size:11px;opacity:.62}.sm-card-foot .actions{display:flex;gap:7px}.sm-flow{display:flex;align-items:center;gap:7px;font-size:10px;margin-top:12px}.sm-flow span{padding:5px 8px;border-radius:999px;background:rgba(127,127,127,.08);font-weight:700}.sm-flow i{opacity:.4}.sm-empty{grid-column:1/-1;padding:32px;text-align:center}.sm-role-note{display:flex;gap:8px;align-items:center;margin:0 0 14px;padding:10px 12px;border-radius:12px;background:rgba(45,102,175,.06);font-size:11px}.sm-role-note b{font-weight:800}
+@media(max-width:1050px){.sm-kpis{grid-template-columns:repeat(3,1fr)}.sm-grid{grid-template-columns:1fr}}@media(max-width:650px){.sm-kpis{grid-template-columns:repeat(2,1fr)}.sm-stage-grid{grid-template-columns:1fr}.sm-card-foot{align-items:flex-start;flex-direction:column}.sm-head{align-items:flex-start}}
+</style>
+
+<div class="sm-head">
+  <div><span class="eyebrow">Flujo compartido · Diseño + Marketing</span><h2>Social Media</h2><p>Cada suscripción tiene dos etapas sobre las mismas piezas: Diseño elabora el contenido y Marketing confirma la publicación. El plan se distribuye automáticamente por semanas.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'socialmedia:create' %}">＋ Nueva suscripción</a></div>
+</div>
+
+<div class="sm-role-note">
+  {% if request.user.is_manager %}<b>Gerencia:</b><span>puedes controlar las dos etapas.</span>{% elif current_role == 'design' %}<b>Diseño:</b><span>marca las piezas elaboradas. Marketing completa la publicación.</span>{% else %}<b>Marketing:</b><span>publica únicamente las piezas que Diseño ya dejó listas.</span>{% endif %}
+</div>
+
+<div class="sm-kpis">
+  <div class="card sm-kpi"><span>Suscripciones</span><strong>{{ totals.subscriptions }}</strong><small>visibles</small></div>
+  <div class="card sm-kpi"><span>Piezas del ciclo</span><strong>{{ totals.content }}</strong><small>posts + videos</small></div>
+  <div class="card sm-kpi"><span>Falta Diseño</span><strong>{{ totals.design_pending }}</strong><small>por elaborar</small></div>
+  <div class="card sm-kpi"><span>Falta Marketing</span><strong>{{ totals.marketing_pending }}</strong><small>por publicar</small></div>
+  <div class="card sm-kpi"><span>Publicadas</span><strong>{{ totals.complete }}</strong><small>completadas</small></div>
+</div>
+
+<form method="get" class="card sm-filter">
+  <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar cliente, proyecto o plan…">
+  <select name="status">
+    <option value="all" {% if selected_status == 'all' %}selected{% endif %}>Todos los estados</option>
+    <option value="design" {% if selected_status == 'design' %}selected{% endif %}>Falta Diseño</option>
+    <option value="marketing" {% if selected_status == 'marketing' %}selected{% endif %}>Listo para publicar</option>
+    <option value="complete" {% if selected_status == 'complete' %}selected{% endif %}>Completados</option>
+  </select>
+  <button class="btn btn-secondary" type="submit">Filtrar</button>
+  {% if search_query or selected_status != 'all' %}<a class="btn btn-ghost" href="{% url 'socialmedia:dashboard' %}">Limpiar</a>{% endif %}
+</form>
+
+<div class="sm-grid">
+{% for row in rows %}
+  <article class="card sm-card status-{{ row.status }}">
+    <div class="sm-card-top">
+      <div class="sm-card-title"><span class="project-code">{% if row.project %}{{ row.project.project_code }}{% else %}Sin proyecto vinculado{% endif %}</span><h3>{{ row.assignment.client.business_name }}</h3><p>{{ row.assignment.plan.name }} · {{ row.assignment.plan.content_goal_label }}</p></div>
+      <span class="sm-renewal">{{ row.urgency.label }}</span>
+    </div>
+    <div class="sm-flow"><span>1 · Diseño</span><i>→</i><span>2 · Marketing</span><i>→</i><span>Completo</span></div>
+    <div class="sm-stage-grid">
+      <div class="sm-stage design"><div class="sm-stage-head"><span>DISEÑO · Elaboración</span><b>{{ row.summary.design_percent }}%</b></div><div class="progress"><i style="width:{{ row.summary.design_percent }}%"></i></div><small>{{ row.summary.design_done }} de {{ row.summary.total }} piezas listas</small></div>
+      <div class="sm-stage marketing"><div class="sm-stage-head"><span>MARKETING · Publicación</span><b>{{ row.summary.marketing_percent }}%</b></div><div class="progress"><i style="width:{{ row.summary.marketing_percent }}%"></i></div><small>{{ row.summary.marketing_done }} de {{ row.summary.total }} publicadas</small></div>
+    </div>
+    <div class="sm-card-foot"><div class="meta">{% if row.project %}{{ row.project.name }} · {% endif %}Inicio {{ row.assignment.start_date|date:'d/m/Y'|default:'—' }} · Renovación {{ row.assignment.renewal_date|date:'d/m/Y'|default:'—' }}</div><div class="actions"><a class="btn btn-secondary" href="{% url 'socialmedia:edit' row.assignment.pk %}">Editar</a><a class="btn btn-primary" href="{% url 'socialmedia:detail' row.assignment.pk %}">Abrir control</a></div></div>
+  </article>
+{% empty %}
+  <div class="card sm-empty">No hay suscripciones de Social Media que coincidan con el filtro.</div>
+{% endfor %}
+</div>
+{% endblock %}

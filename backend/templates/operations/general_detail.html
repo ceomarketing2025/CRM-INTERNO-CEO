@@ -1,0 +1,17 @@
+{% extends 'base.html' %}{% block page_heading %}Dominio y Hosting{% endblock %}{% block content %}
+<div class="page-intro"><div><span class="eyebrow">{{ record.project.project_code }}</span><h2>{{ record.domain_name|default:record.project.name }}</h2><p>{{ record.client.full_name|default:'Sin nombre' }} · {{ record.client.business_name }} · {{ record.get_operation_type_display }}</p></div><div class="actions"><a class="btn btn-secondary" href="{% url 'operations:general_list' %}">Volver</a><a class="btn btn-primary" href="{% url 'operations:general_edit' record.pk %}">Editar</a></div></div>
+<div class="card detail-grid">
+  <div><span>Cliente</span><strong>{{ record.client.full_name|default:'Sin nombre' }}</strong><small>{{ record.client.business_name }}</small></div>
+  <div><span>Proyecto</span><strong>{{ record.project.name }}</strong></div>
+  <div><span>Estado</span><strong><span class="badge {{ record.status_badge_class }}">{{ record.project_domain_label }}</span></strong></div>
+  <div><span>Proveedor Hosting</span><strong>{{ record.provider_label }}</strong></div>
+  <div><span>Inicio</span><strong>{{ record.start_date|date:'d/m/Y' }}</strong></div>
+  <div><span>Caducidad dominio</span><strong>{{ record.domain_expiry_date|date:'d/m/Y'|default:'—' }}</strong></div>
+  <div><span>Costo dominio</span><strong>${{ record.domain_cost }} {{ record.currency }}</strong></div>
+  <div><span>Costo hosting</span><strong>${{ record.server_cost }} {{ record.currency }}</strong></div>
+  <div class="detail-wide"><span>Recibo dominio</span>{% if record.domain_receipt_drive_url %}<a class="text-link" target="_blank" href="{{ record.domain_receipt_drive_url }}">Abrir recibo dominio ↗</a>{% else %}<strong>—</strong>{% endif %}</div>
+  <div class="detail-wide"><span>Recibo hosting</span>{% if record.server_receipt_drive_url %}<a class="text-link" target="_blank" href="{{ record.server_receipt_drive_url }}">Abrir recibo hosting ↗</a>{% elif record.receipt_drive_url %}<a class="text-link" target="_blank" href="{{ record.receipt_drive_url }}">Abrir recibo legado ↗</a>{% else %}<strong>—</strong>{% endif %}</div>
+  <div><span>Última edición</span><strong>{{ record.updated_by.display_name|default:'Sistema' }}</strong><small>{{ record.updated_at|date:'d/m/Y H:i' }}</small></div>
+  <div class="detail-wide"><span>Notas</span><p>{{ record.notes|default:'Sin notas'|linebreaksbr }}</p></div>
+</div>
+{% endblock %}

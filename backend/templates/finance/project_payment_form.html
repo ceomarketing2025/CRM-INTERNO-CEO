@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block page_heading %}Pago del proyecto{% endblock %}
+{% block content %}
+<div class="page-intro"><div><span class="eyebrow">{{ project.project_code }}</span><h2>{{ project.client.business_name }} · {{ project.name }}</h2><p>Registra un abono del pago único. El total se calcula automáticamente con todos los productos no recurrentes contratados en el proyecto.</p></div><div class="actions"><a class="btn btn-secondary" href="{% url 'projects:detail' project.pk %}">← Proyecto</a></div></div>
+<div class="payment-summary-v12">
+  <div><span>Total proyecto</span><strong>${{ summary.total|floatformat:2 }}</strong></div>
+  <div><span>Pagado</span><strong>${{ summary.paid|floatformat:2 }}</strong></div>
+  <div><span>Pendiente</span><strong>${{ summary.pending|floatformat:2 }}</strong></div>
+  <div><span>Estado</span><strong>{{ summary.status_label }}</strong></div>
+</div>
+<div class="card form-card"><form method="post" class="standard-form">{% csrf_token %}{{ form.as_p }}<div class="form-actions"><button class="btn btn-primary" type="submit">Guardar pago</button></div></form></div>
+{% endblock %}

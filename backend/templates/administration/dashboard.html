@@ -1,0 +1,6 @@
+{% extends 'base.html' %}
+{% block page_heading %}Administración{% endblock %}
+{% block content %}
+<div class="page-intro"><div><span class="eyebrow">Control administrativo</span><h2>Clientes y proyectos separados</h2><p>Primero registras al cliente. Después creas el proyecto y seleccionas todos los productos contratados por área.</p></div><div class="actions"><a class="btn btn-secondary" href="{% url 'operations:general_list' %}">Credenciales</a><a class="btn btn-secondary" href="{% url 'operations:production_list' %}">Producción</a><a class="btn btn-secondary" href="{% url 'clients:create' %}">+ Nuevo cliente</a><a class="btn btn-primary" href="{% url 'projects:create' %}">+ Nuevo proyecto</a></div></div>
+<div class="card"><div class="card-head"><div><h3>Proyectos recientes</h3><p>Control de los proyectos creados y sus productos contratados.</p></div></div><div class="list-stack">{% for p in recent_projects %}<a class="list-row" href="{% url 'projects:detail' p.pk %}"><div><strong>{{ p.name }}</strong><span>{{ p.client.business_name }} · {{ p.project_code }}</span></div><span class="badge">{{ p.get_status_display }}</span></a>{% empty %}<div class="empty">Aún no hay proyectos.</div>{% endfor %}</div></div>
+{% endblock %}

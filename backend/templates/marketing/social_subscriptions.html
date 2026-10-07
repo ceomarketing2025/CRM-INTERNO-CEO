@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block page_heading %}Social Media · Suscripciones{% endblock %}
+{% block content %}
+<style>
+.sms-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}.sms-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.sms-card{padding:18px}.sms-card h3{margin:4px 0}.sms-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}.sms-meta div{padding:10px;border-radius:12px;background:rgba(127,127,127,.06)}.sms-meta span{display:block;font-size:10px;opacity:.62}.sms-meta strong{font-size:13px}.sms-photo{padding:10px 12px;border-radius:12px;margin-top:10px}.sms-photo.wait{background:rgba(224,112,55,.09);color:#9d4b22}.sms-photo.done{background:rgba(38,151,94,.09);color:#19733a}.sms-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.sms-progress{margin-top:12px;padding:12px;border-radius:14px;background:rgba(127,127,127,.055)}.sms-progress-top{display:flex;justify-content:space-between;gap:10px;align-items:center}.sms-progress-top strong{font-size:13px}.sms-progress-top span{font-size:11px;opacity:.68}.sms-track{height:8px;border-radius:999px;background:rgba(127,127,127,.14);overflow:hidden;margin:9px 0}.sms-fill{height:100%;width:var(--progress);background:currentColor}.sms-progress.success{color:#19733a}.sms-progress.wait{color:#b86a22}.sms-progress.danger{color:#b43838}.sms-progress.neutral{color:#5f6878}.sms-counts{display:flex;gap:10px;flex-wrap:wrap;font-size:11px}.sms-counts b{font-size:12px}@media(max-width:850px){.sms-grid{grid-template-columns:1fr}}@media(max-width:560px){.sms-meta{grid-template-columns:1fr}}
+</style>
+<div class="sms-head"><div><span class="eyebrow">Social Media · Suscripciones</span><h2>Empresas con plan asignado</h2><p>Aquí empieza el seguimiento real: fechas, redes, fotos, publicaciones e historial de contenido.</p></div><div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:social_plans' %}">← Social Media</a><a class="btn btn-primary" href="{% url 'marketing:social_subscription_create' %}">＋ Nueva suscripción</a></div></div>
+<div class="sms-grid">
+{% for row in rows %}
+  <article class="card sms-card">
+    <div class="card-head"><div><span class="eyebrow">{{ row.subscription.plan.name }}</span><h3>{{ row.subscription.client.business_name }}</h3><p>{% if row.profile.project %}{{ row.profile.project.project_code }} · {{ row.profile.project.name }}{% else %}Sin proyecto vinculado{% endif %}</p></div><span class="badge">{% if row.subscription.is_active %}Activa{% else %}Inactiva{% endif %}</span></div>
+    <div class="sms-meta"><div><span>Desde</span><strong>{{ row.subscription.start_date|date:'d/m/Y'|default:'—' }}</strong></div><div><span>Hasta</span><strong>{{ row.subscription.end_date|date:'d/m/Y'|default:'Sin fecha' }}</strong></div><div><span>Redes</span><strong>{{ row.subscription.social_networks_label }}</strong></div><div><span>Responsable Marketing</span><strong>{{ row.profile.assigned_to.display_name|default:'Sin asignar' }}</strong></div></div>
+
+    <div class="sms-progress {{ row.compliance.state }}" style="--progress:{{ row.compliance.percent }}%;">
+      <div class="sms-progress-top"><strong>Cumplimiento del ciclo</strong><span>{{ row.compliance.cycle_start|date:'d/m' }} – {{ row.compliance.cycle_end|date:'d/m' }} · {{ row.compliance.cycle_days }} días</span></div>
+      <div class="sms-track"><div class="sms-fill"></div></div>
+      <div class="sms-counts">
+        <span><b>{{ row.compliance.created }}</b> creados</span>
+        <span><b>{{ row.compliance.published }}</b> publicados</span>
+        <span><b>{{ row.compliance.pending }}</b> pendientes</span>
+        <span>Meta: {{ row.compliance.target_posts }} posts{% if row.compliance.target_videos %} + {{ row.compliance.target_videos }} videos{% endif %}</span>
+      </div>
+    </div>
+
+    {% if row.profile.needs_photos == 'yes' %}<div class="sms-photo {% if row.profile.photo_request_status == 'complete' %}done{% else %}wait{% endif %}"><strong>Fotos del cliente:</strong> {{ row.profile.get_photo_request_status_display }}{% if row.profile.photo_request_notes %} · {{ row.profile.photo_request_notes|truncatechars:90 }}{% endif %}</div>{% else %}<div class="sms-photo done"><strong>Fotos:</strong> no se requieren por ahora.</div>{% endif %}
+    <div class="sms-actions">{% if row.profile %}<a class="btn btn-primary" href="{% url 'marketing:social_subscription_detail' row.profile.pk %}">Abrir seguimiento</a><a class="btn btn-secondary" href="{% url 'marketing:social_subscription_edit' row.profile.pk %}">Editar</a>{% else %}<a class="btn btn-primary" href="{% url 'marketing:social_subscription_create' %}">Completar vínculo</a>{% endif %}</div>
+  </article>
+{% empty %}<div class="card empty">No hay suscripciones Social Media todavía.</div>{% endfor %}
+</div>
+{% endblock %}

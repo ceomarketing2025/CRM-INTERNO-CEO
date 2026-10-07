@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% block page_heading %}Usuarios{% endblock %}{% block content %}
+<div class="page-intro"><div><h2>Usuarios y roles</h2><p>Gerencia crea cada acceso con correo, contraseña y rol.</p></div><a class="btn btn-primary" href="{% url 'accounts:user_create' %}">+ Crear usuario</a></div>
+<div class="card"><div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Cargo</th><th>Estado</th><th>Último acceso</th><th></th></tr></thead><tbody>{% for u in users %}<tr><td><strong>{{ u.display_name }}</strong><span class="table-sub">{{ u.email }}</span></td><td><span class="badge">{{ u.get_role_display }}</span></td><td>{{ u.job_title|default:'—' }}</td><td>{% if u.is_active %}Activo{% else %}Inactivo{% endif %}</td><td>{{ u.last_login|date:'d/m/Y H:i'|default:'—' }}</td><td><a class="text-link" href="{% url 'accounts:user_edit' u.pk %}">Editar</a></td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

@@ -1,0 +1,28 @@
+<section class="plan-category {{ tone }}">
+  <div class="plan-category-head">
+    <div><h3>{{ title }}</h3><p>{{ subtitle }}</p></div>
+    <span>{{ plans|length }} plan{{ plans|length|pluralize:"es" }}</span>
+  </div>
+  <div class="plan-grid plan-grid-v7">
+    {% for plan in plans %}
+      <div class="plan-card plan-card-v7">
+        <div class="plan-type">{{ plan.get_service_type_display }}</div>
+        <h3>{{ plan.name }}</h3>
+        <p>{{ plan.description|default:'Plan listo para parametrizar.' }}</p>
+        {% if plan.service_type == 'social_media' %}
+          <div class="weekly-plan-goal">
+            <div><strong>{{ plan.weekly_posts }}</strong><span>posts / semana</span></div>
+            <div><strong>{{ plan.weekly_videos }}</strong><span>videos / semana</span></div>
+          </div>
+        {% endif %}
+        <div class="plan-price">{% if plan.base_price %}${{ plan.base_price }}{% else %}Por definir{% endif %}<span>{{ plan.get_billing_cycle_display }}</span></div>
+        <div class="plan-card-actions">
+          {% if current_role == 'administration' or request.user.is_manager %}<a href="{% url 'plans:edit' plan.pk %}" class="text-link">Editar plan →</a>{% endif %}
+          {% if not plan.is_active %}<span class="badge">Inactivo</span>{% endif %}
+        </div>
+      </div>
+    {% empty %}
+      <div class="empty plan-empty">No hay planes creados en esta categoría.</div>
+    {% endfor %}
+  </div>
+</section>

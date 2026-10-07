@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block page_heading %}Nuevo lead{% endblock %}
+{% block content %}
+<div class="page-intro"><div><span class="sales-kicker">NUEVA OPORTUNIDAD</span><h2>Registrar lead</h2><p>Guarda la información una sola vez. El historial comercial crecerá desde este registro.</p></div><a class="btn btn-secondary" href="{% url 'sales:lead_list' %}">Cancelar</a></div>
+<form method="post" class="sales-form-layout">{% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert error">{{ form.non_field_errors }}</div>{% endif %}
+  <section class="card sales-form-card"><div class="sales-form-heading"><span>01</span><div><h3>Datos personales</h3><p>Información básica para identificar y contactar al lead.</p></div></div><div class="form-grid">{% for field in form %}{% if field.name in 'first_name,last_name,phone,email,city,state_region,zip_code,country' %}<label class="field"><span>{{ field.label }}</span>{{ field }}{{ field.errors }}</label>{% endif %}{% endfor %}</div></section>
+  <section class="card sales-form-card"><div class="sales-form-heading"><span>02</span><div><h3>Datos comerciales</h3><p>Origen, interés y contexto de la oportunidad.</p></div></div><div class="form-grid">{% for field in form %}{% if field.name in 'company,interested_service,source,campaign,budget' %}<label class="field"><span>{{ field.label }}</span>{{ field }}{{ field.errors }}</label>{% endif %}{% endfor %}<label class="field full"><span>{{ form.comments.label }}</span>{{ form.comments }}{{ form.comments.errors }}</label></div></section>
+  <section class="card sales-form-card"><div class="sales-form-heading"><span>03</span><div><h3>Control comercial</h3><p>Responsable, estado y calidad inicial del lead.</p></div></div><div class="form-grid">{% for field in form %}{% if field.name in 'assigned_to,status,quality' %}<label class="field"><span>{{ field.label }}</span>{{ field }}{{ field.errors }}</label>{% endif %}{% endfor %}</div></section>
+  <div class="sales-form-actions"><a class="btn btn-secondary" href="{% url 'sales:lead_list' %}">Cancelar</a><button class="btn btn-primary btn-lg" type="submit">Guardar lead →</button></div>
+</form>
+{% endblock %}

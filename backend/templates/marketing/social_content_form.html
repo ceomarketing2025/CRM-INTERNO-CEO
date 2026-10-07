@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block page_heading %}Registrar contenido · {{ profile.client.business_name }}{% endblock %}
+{% block content %}
+<style>
+.scf-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:14px}.scf-card{padding:18px}.scf-topics{display:flex;gap:6px;flex-wrap:wrap}.scf-topic{padding:6px 8px;border-radius:999px;background:rgba(47,95,242,.08);font-size:10px;font-weight:800}@media(max-width:850px){.scf-layout{grid-template-columns:1fr}}
+</style>
+<div class="page-intro"><div><span class="eyebrow">Historial mensual</span><h2>Registrar contenido creado</h2><p>Guarda servicio, tema, objetivo y resumen. Así el siguiente mes puedes revisar qué ya se publicó y evitar repetir.</p></div><a class="btn btn-secondary" href="{% url 'marketing:social_subscription_detail' profile.pk %}">← Volver</a></div>
+<div class="scf-layout"><form method="post" class="card form-card scf-card">{% csrf_token %}{{ form.non_field_errors }}{% for field in form %}<div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{{ field.errors }}</div>{% endfor %}<div class="form-actions"><button class="btn btn-primary">Guardar contenido</button></div></form><aside class="card scf-card"><div class="card-head"><div><h3>Temas recientes</h3><p>Referencia rápida para no repetir.</p></div></div><div class="scf-topics">{% for topic in recent_topics %}<span class="scf-topic">{{ topic }}</span>{% empty %}<span class="empty">Aún no hay historial.</span>{% endfor %}</div></aside></div>
+{% endblock %}

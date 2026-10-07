@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block page_heading %}{{ title }}{% endblock %}
+{% block content %}
+<div class="mg-form-head">
+  <div><span class="eyebrow">Gerencia · tarea transversal</span><h2>{{ title }}</h2><p>Selecciona primero el área. El responsable se filtra automáticamente. Cliente y proyecto son opcionales.</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'audit:management_tasks' %}">Volver</a></div>
+</div>
+
+<form method="post" class="card mg-task-form" id="managementTaskForm" data-options-url="{% url 'audit:management_task_options' %}">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert error form-wide">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="mg-form-section">
+    <div class="mg-form-section-title"><span>01</span><div><strong>Asignación</strong><small>Área y responsable de la actividad.</small></div></div>
+    <div class="form-grid">
+      <div class="field"><label>{{ form.area.label }}</label>{{ form.area }}{% for e in form.area.errors %}<span class="field-error">{{ e }}</span>{% endfor %}</div>
+      <div class="field"><label>{{ form.assigned_to.label }}</label>{{ form.assigned_to }}{% for e in form.assigned_to.errors %}<span class="field-error">{{ e }}</span>{% endfor %}</div>
+    </div>
+  </div>
+
+  <div class="mg-form-section">
+    <div class="mg-form-section-title"><span>02</span><div><strong>Actividad</strong><small>Qué debe hacer el responsable y para cuándo.</small></div></div>
+    <div class="form-grid">
+      <div class="field"><label>{{ form.title.label }}</label>{{ form.title }}{% for e in form.title.errors %}<span class="field-error">{{ e }}</span>{% endfor %}</div>
+      <div class="field"><label>{{ form.priority.label }}</label>{{ form.priority }}{% for e in form.priority.errors %}<span class="field-error">{{ e }}</span>{% endfor %}</div>
+      <div class="field form-wide"><label>{{ form.description.label }}</label>{{ form.description }}{% for e in form.description.errors %}<span class="field-error">{{ e }}</span>{% endfor %}</div>
+      <div class="field"><label>{{ form.due_date.label }}</label>{{ form.due_date }}{% for e in form.due_date.errors %}<span class="field-error">{{ e }}</span>{% endfor %}</div>
+    </div>
+  </div>
+
+  <div class="mg-form-section optional-project-block">
+    <div class="mg-form-section-title"><span>03</span><div><strong>Vincular a proyecto</strong><small>Opcional. Si eliges cliente, Proyecto mostrará únicamente sus proyectos.</small></div></div>
+    <div class="form-grid">
+      <div class="field"><label>{{ form.client.label }}</label>{{ form.client }}<small>{{ form.client.help_text }}</small>{% for e in form.client.errors %}<span class="field-error">{{ e }}</span>{% endfor %}</div>
+      <div class="field"><label>{{ form.project.label }}</label>{{ form.project }}<small>{{ form.project.help_text }}</small>{% for e in form.project.errors %}<span class="field-error">{{ e }}</span>{% endfor %}</div>
+    </div>
+  </div>
+
+  <div class="mg-form-save"><div><strong>La tarea aparecerá en el área seleccionada.</strong><span>{% if task %}Los cambios se sincronizan inmediatamente.{% else %}El responsable podrá cambiar su estado desde su panel de tareas.{% endif %}</span></div><button class="btn btn-primary btn-lg" type="submit">Guardar tarea</button></div>
+</form>
+
+<script>
+(function(){
+  const form=document.getElementById('managementTaskForm');
+  if(!form) return;
+  const area=document.getElementById('id_area');
+  const responsible=document.getElementById('id_assigned_to');
+  const client=document.getElementById('id_client');
+  const project=document.getElementById('id_project');
+  const endpoint=form.dataset.optionsUrl;
+  const initialResponsible=responsible.value;
+  const initialProject=project.value;
+  let firstLoad=true;
+
+  function fill(select, rows, placeholder, selected){
+    select.innerHTML='';
+    const empty=document.createElement('option'); empty.value=''; empty.textContent=placeholder; select.appendChild(empty);
+    rows.forEach(row=>{const o=document.createElement('option');o.value=row.id;o.textContent=row.label;if(String(row.id)===String(selected))o.selected=true;select.appendChild(o);});
+  }
+  async function refresh(){
+    const params=new URLSearchParams();
+    if(area.value) params.set('area',area.value);
+    if(client.value) params.set('client',client.value);
+    const response=await fetch(endpoint+'?'+params.toString(),{headers:{'X-Requested-With':'XMLHttpRequest'}});
+    if(!response.ok) return;
+    const data=await response.json();
+    const selectedResponsible=responsible.value || (firstLoad?initialResponsible:'');
+    const selectedProject=project.value || (firstLoad?initialProject:'');
+    fill(responsible,data.responsibles,'Selecciona responsable',selectedResponsible);
+    fill(project,data.projects,client.value?'Selecciona proyecto (opcional)':'Selecciona primero un cliente',selectedProject);
+    firstLoad=false;
+  }
+  area.addEventListener('change',()=>{responsible.value='';refresh();});
+  client.addEventListener('change',()=>{project.value='';refresh();});
+  refresh();
+})();
+</script>
+{% endblock %}

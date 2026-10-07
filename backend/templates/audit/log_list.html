@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block page_heading %}Logs del sistema{% endblock %}
+{% block content %}
+<div class="page-intro">
+  <div>
+    <span class="eyebrow">Configuración · trazabilidad</span>
+    <h2>Logs del sistema</h2>
+    <p>Registro central de cambios realizados en proyectos y módulos. Solo Gerencia puede consultar esta bitácora.</p>
+  </div>
+</div>
+
+<form method="get" class="card toolbar" style="align-items:center;flex-wrap:wrap">
+  <input type="search" name="q" value="{{ q }}" placeholder="Buscar usuario, acción, módulo o detalle">
+  <select name="module">
+    <option value="">Todos los módulos</option>
+    {% for item in modules %}<option value="{{ item }}" {% if selected_module == item %}selected{% endif %}>{{ item|title }}</option>{% endfor %}
+  </select>
+  <button class="btn btn-secondary" type="submit">Filtrar</button>
+  {% if q or selected_module %}<a class="btn btn-ghost" href="{% url 'audit:logs' %}">Limpiar</a>{% endif %}
+</form>
+
+<div class="card">
+  <div class="card-head"><div><h3>Actividad registrada</h3><p>{{ page.paginator.count }} movimientos encontrados.</p></div></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Fecha</th><th>Usuario</th><th>Módulo</th><th>Acción</th><th>Entidad</th><th>Detalle</th></tr></thead>
+      <tbody>
+      {% for log in page.object_list %}
+        <tr>
+          <td>{{ log.created_at|date:'d/m/Y H:i:s' }}</td>
+          <td><strong>{{ log.user.display_name|default:'Sistema' }}</strong>{% if log.user %}<span class="table-sub">{{ log.user.email }}</span>{% endif %}</td>
+          <td><span class="log-module-chip">{{ log.module|default:'sistema'|title }}</span></td>
+          <td><strong>{{ log.action }}</strong></td>
+          <td>{{ log.entity_type|default:'—' }}{% if log.entity_id %}<span class="table-sub">#{{ log.entity_id }}</span>{% endif %}</td>
+          <td class="log-description">{{ log.description|default:'—' }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6"><div class="empty">No hay movimientos para los filtros seleccionados.</div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page.paginator.num_pages > 1 %}
+  <div class="actions" style="justify-content:center;margin-top:16px">
+    {% if page.has_previous %}<a class="btn btn-secondary" href="?q={{ q|urlencode }}&module={{ selected_module|urlencode }}&page={{ page.previous_page_number }}">← Anterior</a>{% endif %}
+    <span class="badge">Página {{ page.number }} / {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="btn btn-secondary" href="?q={{ q|urlencode }}&module={{ selected_module|urlencode }}&page={{ page.next_page_number }}">Siguiente →</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

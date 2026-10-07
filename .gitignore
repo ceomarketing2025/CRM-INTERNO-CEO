@@ -1,0 +1,15 @@
+.env
+__pycache__/
+*.py[cod]
+*.sqlite3
+backend/media/*
+!backend/media/.gitkeep
+backend/staticfiles/
+.vscode/
+.idea/
+.DS_Store
+
+backend/celerybeat-schedule
+
+# Celery Beat - archivo runtime, no versionar
+backend/celerybeat-schedule*

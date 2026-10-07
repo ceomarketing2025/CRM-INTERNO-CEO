@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block page_heading %}Social Media · Planes{% endblock %}
+{% block content %}
+<style>
+.smc-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}.smc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.smc-card{padding:18px}.smc-card h3{margin:5px 0}.smc-net{font-size:12px;line-height:1.6;opacity:.75}.smc-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.smc-metric{padding:10px;border-radius:12px;background:rgba(127,127,127,.06)}.smc-metric strong{display:block;font-size:20px}.smc-metric span{font-size:10px;opacity:.65}.smc-actions{display:flex;gap:8px;flex-wrap:wrap}@media(max-width:980px){.smc-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:650px){.smc-grid{grid-template-columns:1fr}}
+</style>
+<div class="smc-head"><div><span class="eyebrow">Social Media · Planes</span><h2>Catálogo de planes</h2><p>Estos planes son compartidos con Diseño: Marketing define qué incluye y Diseño usa la misma suscripción para ejecutar publicaciones.</p></div><div class="actions"><a class="btn btn-secondary" href="{% url 'marketing:social_plans' %}">← Social Media</a><a class="btn btn-primary" href="{% url 'marketing:social_catalog_create' %}">＋ Crear plan</a></div></div>
+<div class="smc-grid">
+{% for p in records %}
+  <article class="card smc-card">
+    <div class="card-head"><div><span class="eyebrow">{% if p.is_active %}Activo{% else %}Inactivo{% endif %}</span><h3>{{ p.name }}</h3></div></div>
+    <div class="smc-net"><strong>Redes:</strong> {% for n in p.rules.social_networks %}{{ n|title }}{% if not forloop.last %}, {% endif %}{% empty %}Sin redes definidas{% endfor %}{% if p.rules.extra_platforms %} · {{ p.rules.extra_platforms }}{% endif %}</div>
+    <div class="smc-metrics"><div class="smc-metric"><strong>{{ p.weekly_posts }}</strong><span>posts / ciclo</span></div><div class="smc-metric"><strong>{{ p.weekly_videos }}</strong><span>videos / ciclo</span></div><div class="smc-metric"><strong>{{ p.rules.cycle_days|default:15 }}</strong><span>días</span></div></div>
+    <p>{{ p.description|default:'Sin notas adicionales.' }}</p>
+    <div class="smc-actions"><a class="btn btn-secondary" href="{% url 'marketing:social_catalog_edit' p.pk %}">Editar plan</a><a class="btn btn-primary" href="{% url 'marketing:social_subscription_create' %}?plan={{ p.pk }}">Asignar a empresa</a></div>
+  </article>
+{% empty %}<div class="card empty">No hay planes Social Media todavía.</div>{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block page_heading %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-intro"><div><h2>{{ title }}</h2><p>{{ subtitle }}</p></div><div class="actions"><a class="btn btn-secondary" href="{% url 'plans:list' %}">Volver a planes</a></div></div>
+<div class="card form-card-v7">
+  <form method="post">{% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert error">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="form-grid-v7">
+      {% for field in form %}
+      <div class="{% if field.name == 'notes' %}form-wide{% endif %} plan-assignment-field" data-field="{{ field.name }}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {{ field.errors }}
+      </div>
+      {% endfor %}
+    </div>
+    <div id="socialAssignmentHint" class="sync-info-banner" style="display:none">
+      <strong>Social Media → Diseño</strong>
+      <span>Al guardar, el cliente aparecerá automáticamente en el nuevo módulo Social Media de Diseño con sus semanas y metas de posts/videos.</span>
+    </div>
+    <div class="form-actions-v7"><button class="btn btn-primary" type="submit">Guardar asignación</button></div>
+  </form>
+</div>
+<script>
+(function(){
+  const plan = document.getElementById('{{ form.plan.id_for_label }}');
+  const responsible = document.querySelector('[data-field="assigned_design_user"]');
+  const hint = document.getElementById('socialAssignmentHint');
+  const socialIds = new Set([{% for plan_id in social_plan_ids %}'{{ plan_id }}'{% if not forloop.last %},{% endif %}{% endfor %}]);
+  function sync(){
+    if(!plan) return;
+    const isSocial = socialIds.has(String(plan.value));
+    if(responsible) responsible.style.display = isSocial ? 'block' : 'none';
+    if(hint) hint.style.display = isSocial ? 'block' : 'none';
+  }
+  plan && plan.addEventListener('change', sync); sync();
+})();
+</script>
+{% endblock %}

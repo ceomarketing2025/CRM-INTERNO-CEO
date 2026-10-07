@@ -1,0 +1,4 @@
+<div class="campaign-mini-row">
+  <div><a href="{% url 'marketing:campaign_edit' c.pk %}"><strong>{{ c.name }}</strong></a><small>{{ c.objective|default:'Sin objetivo' }} · {{ c.start_date|date:'d/m/Y'|default:'Sin fecha' }} → {{ c.end_date|date:'d/m/Y'|default:'Sin fecha' }}</small></div>
+  <span class="semantic-pill {% if c.status == 'completed' or c.status == 'launched' or c.status == 'approved' %}is-success{% elif c.status == 'manager_review' or c.status == 'scheduled' %}is-wait{% elif c.status == 'changes_requested' %}is-danger{% else %}is-muted{% endif %}">{{ c.get_status_display }}</span>
+</div>

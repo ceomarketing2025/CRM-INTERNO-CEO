@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+{% block page_heading %}Marketing · {{ project.client.business_name }}{% endblock %}
+{% block content %}
+<div id="marketing-flow-top">
+  {% with marketing_section='intake' %}{% include 'marketing/_project_nav.html' %}{% endwith %}
+</div>
+
+<style>
+.marketing-auto-state{min-height:46px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 13px;border:1px solid rgba(127,127,127,.16);border-radius:14px;background:rgba(127,127,127,.035)}
+.marketing-auto-state strong{font-size:13px}.marketing-auto-state small{margin:0;max-width:420px;text-align:right}
+@media(max-width:700px){.marketing-auto-state{align-items:flex-start;flex-direction:column}.marketing-auto-state small{text-align:left}}
+</style>
+
+<div class="page-intro marketing-page-intro">
+  <div>
+    <span class="eyebrow">{{ project.project_code }} · Marketing</span>
+    <h2>Información inicial de Marketing</h2>
+    <p>Completa los datos operativos necesarios para continuar. Las notas de la reunión son opcionales y ya no se requiere cargar documentos en esta etapa.</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-primary" href="{% url 'marketing:task_create' %}?project={{ project.pk }}&amp;return_to=ficha">＋ Tarea</a>
+    <a class="btn btn-secondary" href="{% url 'handoff:summary' project.pk %}">Resumen general</a>
+  </div>
+</div>
+
+{% if workspace.intake_ready %}
+<div class="semantic-banner is-success">
+  <strong>Información inicial completa.</strong>
+  <span>Las decisiones operativas necesarias están listas. Ya puedes trabajar Google Business, Google LSA y Publicidad Digital.</span>
+</div>
+{% else %}
+<div class="semantic-banner is-wait">
+  <strong>Información inicial incompleta.</strong>
+  <span>Guarda las decisiones operativas pendientes. Las notas de la reunión son opcionales y los documentos ya no bloquean esta etapa.</span>
+</div>
+{% endif %}
+
+<div class="two-col wide-left marketing-layout">
+  <form class="card form-card marketing-section-card" method="post" id="marketing-intake-form">
+    {% csrf_token %}
+
+    {% if form.errors %}
+    <div class="semantic-banner is-danger" style="margin-bottom:16px;">
+      <strong>No se pudo guardar la información.</strong>
+      <span>Corrige los campos señalados. El estado automático se actualizará cuando la información obligatoria quede válida.</span>
+    </div>
+    {{ form.non_field_errors }}
+    {% endif %}
+
+    <div class="card-head">
+      <div>
+        <h3>Información general</h3>
+        <p>Datos base para que Marketing pueda continuar con los tres frentes.</p>
+      </div>
+      <span class="semantic-pill {% if workspace.intake_ready %}is-success{% else %}is-danger{% endif %}">
+        {{ workspace.get_intake_status_display }}
+      </span>
+    </div>
+
+    <div class="marketing-form-section">
+      <h4>Control inicial</h4>
+      <div class="form-grid">
+        <div class="field">
+          <label>Información inicial</label>
+          <div class="marketing-auto-state">
+            <strong>{% if workspace.intake_ready %}Completo{% else %}Incompleto{% endif %}</strong>
+            <small>Estado automático; no necesitas seleccionarlo manualmente.</small>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>{{ form.assigned_to.label }}</label>
+          {{ form.assigned_to }}
+          {% if form.assigned_to.help_text %}<small>{{ form.assigned_to.help_text }}</small>{% endif %}
+          {{ form.assigned_to.errors }}
+        </div>
+
+        <div class="field form-wide">
+          <label>{{ form.meeting_summary.label }}</label>
+          {{ form.meeting_summary }}
+          <small>{{ form.meeting_summary.help_text }}</small>
+          {{ form.meeting_summary.errors }}
+        </div>
+      </div>
+    </div>
+
+    <div class="marketing-form-section">
+      <h4>Empresa</h4>
+      <div class="form-grid">
+        <div class="field">
+          <label>{{ form.owner_name.label }}</label>
+          {{ form.owner_name }}
+          <small>{{ form.owner_name.help_text }}</small>
+          {{ form.owner_name.errors }}
+        </div>
+        <div class="field">
+          <label>{{ form.legal_business_name.label }}</label>
+          {{ form.legal_business_name }}
+          {{ form.legal_business_name.errors }}
+        </div>
+        <div class="field">
+          <label>{{ form.founding_date.label }}</label>
+          {{ form.founding_date }}
+          <small>{{ form.founding_date.help_text }}</small>
+          {{ form.founding_date.errors }}
+        </div>
+        <div class="field form-wide">
+          <label>{{ form.company_description.label }}</label>
+          {{ form.company_description }}
+          {{ form.company_description.errors }}
+        </div>
+      </div>
+    </div>
+
+    <div class="marketing-form-section">
+      <h4>Checks de acceso operativo</h4>
+      <div class="form-grid">
+        <div class="field">
+          <label>{{ form.contact_email.label }}</label>
+          {{ form.contact_email }}
+          {{ form.contact_email.errors }}
+        </div>
+
+        <div class="field">
+          <label>{{ form.email_account_mode.label }}</label>
+          {{ form.email_account_mode }}
+          <small>{{ form.email_account_mode.help_text }}</small>
+          {{ form.email_account_mode.errors }}
+        </div>
+
+        <div class="field form-wide conditional-panel" data-show-when="id_email_account_mode" data-value="existing">
+          <label>{{ form.gmail_email.label }}</label>
+          {{ form.gmail_email }}
+          <small>Si es el mismo del campo “Correo electrónico”, puedes dejarlo vacío y el CRM lo reutilizará automáticamente. No guardes contraseñas.</small>
+          {{ form.gmail_email.errors }}
+        </div>
+
+        <div class="field form-wide conditional-panel" data-show-when="id_email_account_mode" data-value="create">
+          <div class="semantic-banner is-wait compact">
+            <strong>Lo crea CEO Marketing.</strong>
+            <span>Puedes continuar sin ingresar una dirección. El correo se registra después, cuando ya exista.</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>{{ form.business_profile_mode.label }}</label>
+          {{ form.business_profile_mode }}
+          {{ form.business_profile_mode.errors }}
+        </div>
+
+        <div class="field">
+          <label>{{ form.lsa_documents_available.label }}</label>
+          {{ form.lsa_documents_available }}
+          <small>{{ form.lsa_documents_available.help_text }}</small>
+          {{ form.lsa_documents_available.errors }}
+        </div>
+
+        <div class="field form-wide">
+          <label>{{ form.notes.label }}</label>
+          {{ form.notes }}
+          {{ form.notes.errors }}
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary">Guardar información inicial</button>
+    </div>
+  </form>
+
+  <div class="marketing-side-stack">
+    <div class="card marketing-section-card">
+      <div class="card-head">
+        <div>
+          <h3>Checklist automático</h3>
+          <p>Solo las tres decisiones operativas necesarias bloquean el avance. Las notas de la reunión son opcionales.</p>
+        </div>
+      </div>
+      {% for area, label, items in groups %}
+        {% if area == 'intake' %}
+          {% include 'marketing/_checks.html' with checks=items %}
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% if workspace.intake_ready %}
+<div class="marketing-module-grid">
+  <a class="marketing-module-card" href="{% url 'marketing:google_business' project.pk %}">
+    <span class="module-no">01</span>
+    <h3>Google Business</h3>
+    <p>Perfil, estado de verificación, link, ID, redes, reviews, QR y mensaje.</p>
+    <b>Entrar →</b>
+  </a>
+  <a class="marketing-module-card" href="{% url 'marketing:google_lsa' project.pk %}">
+    <span class="module-no">02</span>
+    <h3>Google LSA</h3>
+    <p>Drive de documentos, validaciones, costo semanal, leads y recordatorios.</p>
+    <b>Entrar →</b>
+  </a>
+  <a class="marketing-module-card" href="{% url 'marketing:digital_ads' project.pk %}">
+    <span class="module-no">03</span>
+    <h3>Publicidad Digital</h3>
+    <p>Publicidad tradicional habilita Meta, Google y TikTok; toda campaña requiere aprobación previa al lanzamiento.</p>
+    <b>Entrar →</b>
+  </a>
+</div>
+{% endif %}
+
+<script>
+(function(){
+  var emailMode = document.getElementById('id_email_account_mode');
+  var contactEmail = document.getElementById('id_contact_email');
+  var gmailEmail = document.getElementById('id_gmail_email');
+
+  function refreshConditional(){
+    document.querySelectorAll('[data-show-when]').forEach(function(panel){
+      var source=document.getElementById(panel.dataset.showWhen);
+      if(!source) return;
+      var allowed=(panel.dataset.value||'').split(',');
+      var visible=allowed.includes(source.value);
+      panel.hidden=!visible;
+      panel.querySelectorAll('input,select,textarea').forEach(function(field){
+        field.disabled=!visible;
+      });
+    });
+  }
+
+  function setRequired(field, required){
+    if(!field) return;
+    field.required=!!required;
+    if(required) field.setAttribute('aria-required','true');
+    else field.removeAttribute('aria-required');
+  }
+
+  function refreshRequirements(){
+    var needsEmail = emailMode && emailMode.value === 'existing';
+    setRequired(contactEmail, needsEmail && !(gmailEmail && gmailEmail.value.trim()));
+    setRequired(gmailEmail, needsEmail && !(contactEmail && contactEmail.value.trim()));
+  }
+
+  document.addEventListener('change', function(){
+    refreshConditional();
+    refreshRequirements();
+  });
+  document.addEventListener('input', refreshRequirements);
+
+  refreshConditional();
+  refreshRequirements();
+})();
+</script>
+{% include 'marketing/_custom_dropdowns.html' %}
+{% endblock %}

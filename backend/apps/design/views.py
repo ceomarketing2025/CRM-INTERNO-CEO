@@ -1,0 +1,1073 @@
+from django.contrib import messages
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.core.exceptions import PermissionDenied
+from apps.audit.models import ActivityLog
+from apps.audit.services import log_activity
+from apps.core.decorators import role_required
+from apps.projects.models import Project, ProjectPlanAssignment
+from apps.projects.selectors import can_access_project, projects_for_area
+from apps.projects.services import sync_project_area_records
+from apps.resources.models import ProjectResourceLink
+from apps.plans.forms import SOCIAL_NETWORK_CHOICES, SocialMediaAssignmentForm
+from apps.plans.models import ClientPlan, ServicePlan
+from apps.plans.models.choices import PlanDepartment, ServiceType
+from apps.plans.services import renewal_urgency
+from .forms import DesignBriefForm, PaletteForm, PaletteQuickForm, DesignTaskForm
+from .models import ColorPalette, DesignBrief, DesignTask, DesignTaskCycle, DesignTaskCycleItem, PaletteColor, SocialMediaContentItem, SocialMediaCycle
+from .services import (
+    build_palette_pdf, complete_design_brief, design_task_progress,
+    ensure_current_design_task_cycle, ensure_current_social_media_cycle,
+    ensure_default_design_tasks_for_project, _refresh_design_cycle_summary,
+    design_process_state,
+)
+
+
+PALETTE_DEFAULTS = {
+    "text": "#000000",
+    "background": "#FFFFFF",
+    "primary": "#0C3168",
+    "secondary": "#C9CBD1",
+    "accent": "#2571B7",
+}
+PALETTE_LABELS = {
+    "text": "Texto",
+    "background": "Fondo",
+    "primary": "Primario",
+    "secondary": "Secundario",
+    "accent": "Acento",
+}
+PALETTE_USAGE = {
+    "text": "Texto principal y contraste",
+    "background": "Fondos y áreas neutras",
+    "primary": "60% · secciones principales y llamados a la acción",
+    "secondary": "30% · tarjetas, botones secundarios y apoyo visual",
+    "accent": "10% · elementos clave, links y detalles",
+}
+
+
+def _palette_initial(palette):
+    by_role = {c.role: c.hex_code for c in palette.colors.all()}
+    return {
+        "text_hex": by_role.get("text", PALETTE_DEFAULTS["text"]),
+        "background_hex": by_role.get("background", PALETTE_DEFAULTS["background"]),
+        "primary_hex": by_role.get("primary", PALETTE_DEFAULTS["primary"]),
+        "secondary_hex": by_role.get("secondary", PALETTE_DEFAULTS["secondary"]),
+        "accent_hex": by_role.get("accent", PALETTE_DEFAULTS["accent"]),
+        "general_rules": palette.general_rules,
+    }
+
+
+def _upsert_palette_color(palette, role, hex_code, order):
+    obj = palette.colors.filter(role=role).order_by("id").first()
+    if obj:
+        obj.label = PALETTE_LABELS[role]
+        obj.hex_code = hex_code
+        obj.usage = PALETTE_USAGE[role]
+        obj.order = order
+        obj.save(update_fields=["label", "hex_code", "usage", "order", "updated_at"])
+        palette.colors.filter(role=role).exclude(pk=obj.pk).delete()
+        return obj
+    return PaletteColor.objects.create(
+        palette=palette,
+        role=role,
+        label=PALETTE_LABELS[role],
+        hex_code=hex_code,
+        usage=PALETTE_USAGE[role],
+        order=order,
+    )
+
+
+@role_required("design")
+def design_list(request):
+    # Un proyecto pertenece al área de Diseño cuando tiene al menos un plan activo
+    # de Diseño contratado. Conservamos también las asignaciones históricas para no
+    # ocultar proyectos creados antes del esquema multi-plan.
+    projects = (
+        projects_for_area("design")
+        .prefetch_related(
+            "color_palettes__colors",
+            "resource_links",
+            "image_references",
+        )
+        .order_by("-updated_at", "-created_at")
+    )
+    from django.db.models import Q
+    q = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "all").strip()
+    if q:
+        projects = projects.filter(
+            Q(client__business_name__icontains=q)
+            | Q(client__full_name__icontains=q)
+            | Q(project_code__icontains=q)
+            | Q(name__icontains=q)
+            | Q(contracted_plans__plan__name__icontains=q)
+        ).distinct()
+
+    project_rows = []
+    for project in projects:
+        sync_project_area_records(project, request.user)
+        try:
+            brief = project.design_brief
+        except DesignBrief.DoesNotExist:
+            brief = None
+        palette = next((p for p in project.color_palettes.all() if p.is_primary), None)
+        roles = {c.role for c in palette.colors.all()} if palette else set()
+        resource_kinds = {r.kind for r in project.resource_links.all() if r.area == ProjectResourceLink.Area.DESIGN}
+        resources_ready = ProjectResourceLink.Kind.LOGO in resource_kinds and ProjectResourceLink.Kind.PALETTE_DRIVE in resource_kinds
+        last_log = ActivityLog.objects.filter(metadata__project_id=project.pk).select_related("user").first()
+        design_plans = [
+            assignment.plan
+            for assignment in project.contracted_plans.all()
+            if assignment.is_active
+            and assignment.plan.department == PlanDepartment.DESIGN
+            and assignment.plan.service_type != ServiceType.SOCIAL_MEDIA
+        ]
+        workflow_plans = [
+            assignment.plan
+            for assignment in project.contracted_plans.all()
+            if assignment.is_active and assignment.plan.service_type != ServiceType.SOCIAL_MEDIA
+        ]
+        if not design_plans and not workflow_plans:
+            # Social Media vive únicamente en su módulo independiente.
+            continue
+        brief_done = bool(brief and brief.completed)
+        palette_done = all(role in roles for role in PALETTE_DEFAULTS)
+        design_steps = [
+            ("Ficha de Diseño", brief_done),
+            ("Paleta", palette_done),
+            ("Links Diseño", resources_ready),
+        ]
+        design_done = sum(1 for _, done in design_steps if done)
+        design_percent = round(design_done * 100 / len(design_steps))
+        if status == "pending" and design_percent >= 100:
+            continue
+        if status == "done" and design_percent < 100:
+            continue
+        project_rows.append({
+            "project": project,
+            "design_plans": design_plans,
+            "workflow_plans": workflow_plans,
+            "brief_done": brief_done,
+            "palette_done": palette_done,
+            "resources_ready": resources_ready,
+            "design_steps": design_steps,
+            "design_done": design_done,
+            "design_percent": design_percent,
+            "photo_count": project.image_references.count(),
+            "last_log": last_log,
+            "palette": palette,
+            "state": "green" if design_percent >= 100 else ("yellow" if design_percent >= 50 else "red"),
+        })
+    return render(request, "design/list.html", {
+        "project_rows": project_rows,
+        "project_count": len(project_rows),
+        "completed_count": sum(1 for row in project_rows if row["design_percent"] >= 100),
+        "pending_count": sum(1 for row in project_rows if row["design_percent"] < 100),
+        "search_query": q,
+        "selected_status": status,
+    })
+
+
+DESIGN_SUMMARY_GROUPS = [
+    ("Datos generales", [
+        "general_location", "business_notes", "social_notes", "meeting_attendees",
+    ]),
+    ("Logo e identidad", [
+        "logo_status", "logo_change_notes", "logo_format", "logo_file",
+    ]),
+    ("Dirección visual", [
+        "visual_structure", "visual_structure_notes", "style_direction",
+        "color_base_notes", "background_style",
+    ]),
+    ("Contenido y composición", [
+        "photo_availability", "stock_usage", "services", "page_style_notes",
+        "typography_direction", "layout_preferences", "visual_references",
+        "elements_to_avoid", "designer_notes",
+    ]),
+]
+
+
+def _design_brief_summary_sections(brief):
+    if not brief:
+        return []
+    sections = []
+    for title, field_names in DESIGN_SUMMARY_GROUPS:
+        rows = []
+        for field_name in field_names:
+            field = brief._meta.get_field(field_name)
+            raw_value = getattr(brief, field_name, None)
+            if field_name == "logo_file":
+                if raw_value:
+                    rows.append({
+                        "label": str(field.verbose_name),
+                        "value": getattr(raw_value, "name", "Logo cargado"),
+                        "url": getattr(raw_value, "url", ""),
+                    })
+                continue
+            if raw_value in (None, "", [], {}):
+                continue
+            display_method = getattr(brief, f"get_{field_name}_display", None)
+            value = display_method() if callable(display_method) else raw_value
+            rows.append({"label": str(field.verbose_name), "value": value, "url": ""})
+        sections.append({"title": title, "rows": rows})
+    return sections
+
+
+@role_required("design")
+def design_summary(request, project_pk):
+    """Resumen exclusivo del área de Diseño.
+
+    No consume handoff ni datos de Marketing, Desarrollo, Finanzas, credenciales o
+    Administración. La ficha transversal completa permanece únicamente en Proyectos.
+    """
+    project = get_object_or_404(
+        Project.objects.select_related("client").prefetch_related(
+            "color_palettes__colors",
+            "color_palettes__gradients",
+            "resource_links",
+            "image_references",
+        ),
+        pk=project_pk,
+    )
+    if not can_access_project(request.user, project):
+        raise PermissionDenied("Este proyecto no está asignado a Diseño.")
+
+    try:
+        brief = project.design_brief
+    except DesignBrief.DoesNotExist:
+        brief = None
+
+    palette = next((item for item in project.color_palettes.all() if item.is_primary), None)
+    palette_colors = list(palette.colors.all()) if palette else []
+    color_map = {item.role: item.hex_code for item in palette_colors}
+    palette_done = bool(palette and all(role in color_map for role in PALETTE_DEFAULTS))
+
+    auto_gradients = []
+    gradient_pairs = [
+        ("Acento → Primario", "accent", "primary"),
+        ("Secundario → Acento", "secondary", "accent"),
+        ("Fondo → Primario", "background", "primary"),
+    ]
+    for label, start_role, end_role in gradient_pairs:
+        start_hex = color_map.get(start_role)
+        end_hex = color_map.get(end_role)
+        if start_hex and end_hex:
+            auto_gradients.append({"label": label, "start": start_hex, "end": end_hex})
+
+    design_links = [
+        item for item in project.resource_links.all()
+        if item.area == ProjectResourceLink.Area.DESIGN
+    ]
+    resource_kinds = {item.kind for item in design_links}
+    resources_ready = (
+        ProjectResourceLink.Kind.LOGO in resource_kinds
+        and ProjectResourceLink.Kind.PALETTE_DRIVE in resource_kinds
+    )
+    image_rows = list(project.image_references.all())
+    client_images = [item for item in image_rows if item.source == "client"]
+    stock_images = [item for item in image_rows if item.source == "stock"]
+    other_images = [item for item in image_rows if item.source not in {"client", "stock"}]
+
+    brief_done = bool(brief and brief.completed)
+    steps = [
+        {"label": "Ficha", "done": brief_done},
+        {"label": "Paleta", "done": palette_done},
+        {"label": "Recursos", "done": resources_ready},
+    ]
+    done_count = sum(1 for item in steps if item["done"])
+    design_percent = round(done_count * 100 / len(steps))
+
+    process = design_process_state(project)
+    return render(request, "design/summary.html", {
+        "project": project,
+        "design_process": process,
+        "brief": brief,
+        "brief_sections": _design_brief_summary_sections(brief),
+        "palette": palette,
+        "palette_colors": palette_colors,
+        "auto_gradients": auto_gradients,
+        "design_links": design_links,
+        "client_images": client_images,
+        "stock_images": stock_images,
+        "other_images": other_images,
+        "steps": steps,
+        "done_count": done_count,
+        "design_percent": design_percent,
+        "brief_done": brief_done,
+        "palette_done": palette_done,
+        "resources_ready": resources_ready,
+    })
+
+
+@role_required("design")
+def brief_edit(request, project_pk):
+    project = get_object_or_404(Project.objects.select_related("client", "purchased_plan__plan"), pk=project_pk)
+    if not can_access_project(request.user, project):
+        raise PermissionDenied("Este proyecto no está asignado a Diseño.")
+    brief, _ = DesignBrief.objects.get_or_create(project=project)
+    palette, _ = ColorPalette.objects.get_or_create(
+        project=project,
+        is_primary=True,
+        defaults={"name": "Paleta principal", "description": "Paleta definida durante la asesoría visual."},
+    )
+    form = DesignBriefForm(request.POST or None, request.FILES or None, instance=brief)
+    if request.method == "POST" and form.is_valid():
+        brief = form.save()
+        action = request.POST.get("action", "save")
+        if action == "complete":
+            complete_design_brief(brief=brief, user=request.user)
+            log_activity(request.user, "design", "brief_complete", brief)
+            messages.success(request, "Ficha de Diseño marcada como completa. Las demás áreas siguen trabajando de forma independiente.")
+            return redirect("design:list")
+        log_activity(request.user, "design", "brief_update", brief)
+        messages.success(request, "Ficha de Diseño guardada.")
+        return redirect("design:list")
+    return render(request, "design/brief.html", {
+        "form": form,
+        "project": project,
+        "brief": brief,
+        "palette": palette,
+        "design_process": design_process_state(project),
+        "design_current_step": "brief",
+    })
+
+
+@role_required("design")
+def palette_create(request, project_pk):
+    """Abre directamente el editor visual de paleta.
+
+    Antes esta ruta mostraba un formulario intermedio para crear el nombre de la
+    paleta. Para operación diaria solo necesitamos una paleta principal por
+    proyecto: si no existe se crea y se abre inmediatamente.
+    """
+    project = get_object_or_404(Project, pk=project_pk)
+    if not can_access_project(request.user, project):
+        raise PermissionDenied("Este proyecto no está asignado a Diseño.")
+    palette = ColorPalette.objects.filter(project=project, is_primary=True).order_by("id").first()
+    if not palette:
+        palette = ColorPalette.objects.create(
+            project=project,
+            name="Paleta principal",
+            description="Paleta definida por el equipo de Diseño.",
+            is_primary=True,
+        )
+        log_activity(request.user, "design", "palette_create", palette, "Paleta principal creada")
+    return redirect("design:palette_detail", pk=palette.pk)
+
+
+@role_required("design")
+def palette_detail(request, pk):
+    palette = get_object_or_404(ColorPalette.objects.select_related("project__client").prefetch_related("colors", "gradients"), pk=pk)
+    if not can_access_project(request.user, palette.project):
+        raise PermissionDenied("Este proyecto no está asignado a Diseño.")
+
+    form = PaletteQuickForm(initial=_palette_initial(palette))
+    if request.method == "POST":
+        form = PaletteQuickForm(request.POST)
+        if form.is_valid():
+            for order, role in enumerate(PALETTE_DEFAULTS, start=1):
+                _upsert_palette_color(palette, role, form.cleaned_data[f"{role}_hex"], order)
+            palette.general_rules = form.cleaned_data.get("general_rules", "")
+            palette.is_primary = True
+            palette.save(update_fields=["general_rules", "is_primary", "updated_at"])
+            ColorPalette.objects.filter(project=palette.project, is_primary=True).exclude(pk=palette.pk).update(is_primary=False)
+            log_activity(request.user, "design", "palette_update", palette)
+            messages.success(request, "Paleta guardada correctamente.")
+            return redirect("design:list")
+    return render(request, "design/palette_detail.html", {
+        "palette": palette,
+        "project": palette.project,
+        "form": form,
+        "design_process": design_process_state(palette.project),
+        "design_current_step": "palette",
+    })
+
+
+@role_required("design")
+def palette_pdf(request, pk):
+    palette = get_object_or_404(ColorPalette.objects.select_related("project__client", "project__design_brief").prefetch_related("colors", "gradients"), pk=pk)
+    if not can_access_project(request.user, palette.project):
+        raise PermissionDenied("Este proyecto no está asignado a Diseño.")
+    pdf_bytes = build_palette_pdf(palette.project, palette)
+    filename = f"asesoria-visual-{palette.project.client.business_name}".lower().replace(" ", "-") + ".pdf"
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@role_required("design")
+def social_media_dashboard(request):
+    """Bandeja operativa de Diseño: actividades únicas y asignaciones de Gerencia.
+
+    Social Media vive exclusivamente en su módulo. El estado de cada actividad
+    sigue el flujo Pendiente → En proceso → Pausada / Con novedad → Para revisión
+    → Cerrada (esta última solo después de aprobación de Auditoría).
+    """
+    from django.db.models import Q
+    from django.utils import timezone
+    from apps.accounts.models import UserAccount
+    from apps.audit.models import ManagementTask
+    from apps.plans.models.choices import PlanDepartment
+
+    today = timezone.localdate()
+    q = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "all").strip()
+    responsible = (request.GET.get("responsible") or "all").strip()
+    if status == "pending":
+        status = "open"
+
+    valid_statuses = {choice[0] for choice in DesignTask.Status.choices}
+
+    projects = (
+        projects_for_area("design")
+        .prefetch_related(
+            "contracted_plans__plan",
+            "contracted_plans__design_tasks__assigned_to",
+        )
+        .filter(
+            contracted_plans__is_active=True,
+            contracted_plans__plan__department=PlanDepartment.DESIGN,
+            contracted_plans__plan__service_type__in=[
+                value for value, _label in ServiceType.choices if value != ServiceType.SOCIAL_MEDIA
+            ],
+        )
+        .distinct()
+        .order_by("client__business_name", "name")
+    )
+    if q:
+        projects = projects.filter(
+            Q(client__business_name__icontains=q)
+            | Q(client__full_name__icontains=q)
+            | Q(name__icontains=q)
+            | Q(project_code__icontains=q)
+            | Q(contracted_plans__plan__name__icontains=q)
+            | Q(contracted_plans__design_tasks__title__icontains=q)
+        ).distinct()
+
+    project_ids = list(projects.values_list("pk", flat=True))
+    for project in Project.objects.filter(pk__in=project_ids):
+        ensure_default_design_tasks_for_project(project, user=request.user)
+
+    projects = (
+        Project.objects.filter(pk__in=project_ids)
+        .select_related("client")
+        .prefetch_related(
+            "contracted_plans__plan",
+            "contracted_plans__design_tasks__assigned_to",
+        )
+        .order_by("client__business_name", "name")
+    )
+
+    rows = []
+    overall_parts = []
+    for project in projects:
+        service_rows = []
+        all_project_tasks = []
+        preview_tasks = []
+        assignments = [
+            assignment for assignment in project.contracted_plans.all()
+            if assignment.is_active
+            and assignment.plan.department == PlanDepartment.DESIGN
+            and assignment.plan.service_type != ServiceType.SOCIAL_MEDIA
+        ]
+        for assignment in assignments:
+            tasks = [
+                task for task in assignment.design_tasks.all()
+                if task.task_type == DesignTask.TaskType.STANDARD
+            ]
+            if responsible != "all" and responsible.isdigit():
+                tasks = [task for task in tasks if task.assigned_to_id == int(responsible)]
+            if not tasks and responsible != "all":
+                continue
+
+            matching_tasks = tasks
+            if status == "open":
+                matching_tasks = [task for task in tasks if task.status != DesignTask.Status.DONE]
+            elif status in valid_statuses:
+                matching_tasks = [task for task in tasks if task.status == status]
+            if status != "all" and not matching_tasks:
+                continue
+
+            states = [design_task_progress(task, today=today) for task in tasks]
+            progress = round(sum(item["progress"] for item in states) / len(states)) if states else 0
+            service_rows.append({
+                "assignment": assignment,
+                "plan": assignment.plan,
+                "tasks": tasks,
+                "progress": progress,
+                "dot_state": "blue" if progress >= 100 else ("yellow" if progress >= 50 else "red"),
+                "status_label": "Cerrado" if progress >= 100 else ("En proceso" if progress > 0 else "Pendiente"),
+            })
+            all_project_tasks.extend(tasks)
+            preview_tasks.extend(matching_tasks if status != "all" else tasks)
+
+        if not service_rows:
+            continue
+
+        project_progress = round(sum(item["progress"] for item in service_rows) / len(service_rows))
+        state = "blue" if project_progress >= 100 else ("yellow" if project_progress >= 50 else "red")
+        last_task = max(all_project_tasks, key=lambda task: task.created_at, default=None)
+        preview_tasks = sorted(
+            preview_tasks,
+            key=lambda task: (
+                task.status == DesignTask.Status.DONE,
+                -(task.created_at.timestamp() if task.created_at else 0),
+            ),
+        )[:5]
+        rows.append({
+            "project": project,
+            "services": service_rows,
+            "service_count": len(service_rows),
+            "task_count": len(all_project_tasks),
+            "tasks_preview": preview_tasks,
+            "progress": project_progress,
+            "state": state,
+            "last_task": last_task,
+        })
+        overall_parts.append(project_progress)
+
+    rows.sort(key=lambda row: (
+        row["progress"] >= 100,
+        -(row["last_task"].created_at.timestamp() if row["last_task"] and row["last_task"].created_at else 0),
+    ))
+
+    management_tasks = ManagementTask.objects.select_related(
+        "assigned_to", "client", "project", "created_by"
+    ).filter(area=ManagementTask.Area.DESIGN)
+    if not request.user.is_manager and not request.user.is_superuser:
+        management_tasks = management_tasks.filter(assigned_to=request.user)
+    if q:
+        management_tasks = management_tasks.filter(
+            Q(title__icontains=q)
+            | Q(description__icontains=q)
+            | Q(status_note__icontains=q)
+            | Q(client__business_name__icontains=q)
+            | Q(project__name__icontains=q)
+            | Q(project__project_code__icontains=q)
+        )
+    if responsible != "all" and responsible.isdigit():
+        management_tasks = management_tasks.filter(assigned_to_id=int(responsible))
+    if status == "open":
+        management_tasks = management_tasks.exclude(status=ManagementTask.Status.DONE)
+    elif status in {choice[0] for choice in ManagementTask.Status.choices}:
+        management_tasks = management_tasks.filter(status=status)
+    management_tasks = list(management_tasks)
+    management_tasks.sort(key=lambda task: (
+        task.status == ManagementTask.Status.DONE,
+        -(task.created_at.timestamp() if task.created_at else 0),
+    ))
+
+    responsibles = UserAccount.objects.filter(
+        is_active=True, role__in=[UserAccount.Role.DESIGN, UserAccount.Role.MANAGER]
+    ).order_by("first_name", "last_name", "email")
+
+    visible_unique_tasks = [task for row in rows for service in row["services"] for task in service["tasks"]]
+    total_unique_tasks = len(visible_unique_tasks)
+    completed_unique_tasks = sum(1 for task in visible_unique_tasks if task.status == DesignTask.Status.DONE)
+    overall_progress = round(sum(overall_parts) / len(overall_parts)) if overall_parts else 0
+    completed_projects = sum(1 for row in rows if row["progress"] >= 100)
+    pending_projects = max(len(rows) - completed_projects, 0)
+    management_done = sum(1 for task in management_tasks if task.status == ManagementTask.Status.DONE)
+    management_pending = max(len(management_tasks) - management_done, 0)
+
+    return render(request, "design/social_media.html", {
+        "rows": rows,
+        "project_count": len(rows),
+        "pending_projects": pending_projects,
+        "completed_projects": completed_projects,
+        "total_unique_tasks": total_unique_tasks,
+        "completed_unique_tasks": completed_unique_tasks,
+        "pending_unique_tasks": max(total_unique_tasks - completed_unique_tasks, 0),
+        "overall_progress": overall_progress,
+        "management_tasks": management_tasks,
+        "management_done": management_done,
+        "management_pending": management_pending,
+        "responsibles": responsibles,
+        "search_query": q,
+        "selected_status": status,
+        "selected_responsible": responsible,
+        "task_status_choices": DesignTask.Status.choices,
+    })
+
+
+def _design_task_audit_locked(task):
+    """Una tarea única finalizada y aprobada por auditoría queda inmutable."""
+    from apps.audit.models import GeneralAuditCheck
+    if task.task_type != DesignTask.TaskType.STANDARD or task.status != DesignTask.Status.DONE:
+        return False
+    check = GeneralAuditCheck.objects.filter(
+        source_key=f"design:task:{task.pk}", is_ready=True
+    ).first()
+    return bool(check and check.reviewed_at and check.reviewed_at >= task.updated_at)
+
+
+def _cycle_week_groups(cycle):
+    from collections import OrderedDict
+    from datetime import timedelta
+    groups = OrderedDict()
+    for item in cycle.delivery_items.all().order_by("week_number", "content_type", "sequence"):
+        bucket = groups.setdefault(item.week_number, {"number": item.week_number, "items": []})
+        bucket["items"].append(item)
+    result = []
+    for number, bucket in groups.items():
+        start = cycle.period_start + timedelta(days=(number - 1) * 7)
+        end = min(start + timedelta(days=6), cycle.period_end)
+        items = bucket["items"]
+        created = sum(1 for item in items if item.content_created)
+        published = sum(1 for item in items if item.content_published)
+        progress = round(sum(100 if i.content_published else (50 if i.content_created else 0) for i in items) / len(items)) if items else 0
+        result.append({
+            "number": number,
+            "label": f"Semana {number}",
+            "start": start,
+            "end": end,
+            "items": items,
+            "total": len(items),
+            "created": created,
+            "published": published,
+            "progress": progress,
+            "state": "green" if progress >= 100 else ("yellow" if progress > 0 else "red"),
+        })
+    return result
+
+
+@role_required("design")
+def design_project_tasks(request, project_pk):
+    """Bitácora operativa de Diseño de un solo proyecto."""
+    from django.utils import timezone
+    from apps.plans.models.choices import PlanDepartment
+
+    project = get_object_or_404(
+        Project.objects.select_related("client").prefetch_related(
+            "contracted_plans__plan",
+            "contracted_plans__design_tasks__assigned_to",
+            "contracted_plans__design_tasks__cycles__delivery_items__updated_by",
+        ),
+        pk=project_pk,
+    )
+    if not can_access_project(request.user, project):
+        raise PermissionDenied("Este proyecto no está asignado a Diseño.")
+    ensure_default_design_tasks_for_project(project, user=request.user)
+    # Recarga después de cualquier autocreación.
+    project = Project.objects.select_related("client").prefetch_related(
+        "contracted_plans__plan",
+        "contracted_plans__design_tasks__assigned_to",
+        "contracted_plans__design_tasks__cycles__delivery_items__updated_by",
+    ).get(pk=project.pk)
+
+    today = timezone.localdate()
+    service_rows = []
+    project_parts = []
+    for assignment in project.contracted_plans.all():
+        if (
+            not assignment.is_active
+            or assignment.plan.department != PlanDepartment.DESIGN
+            or assignment.plan.service_type == ServiceType.SOCIAL_MEDIA
+        ):
+            continue
+        task_rows = []
+        task_parts = []
+        tasks = [task for task in assignment.design_tasks.all() if task.task_type == DesignTask.TaskType.STANDARD]
+        tasks.sort(key=lambda task: (
+            task.status == DesignTask.Status.DONE,
+            -(task.created_at.timestamp() if task.created_at else 0),
+            task.order,
+            task.pk,
+        ))
+        for task in tasks:
+            state = design_task_progress(task, today=today)
+            locked = _design_task_audit_locked(task)
+            task_rows.append({
+                "task": task,
+                "state": state,
+                "cycle": None,
+                "week_groups": [],
+                "history": [],
+                "locked": locked,
+            })
+            task_parts.append(state["progress"])
+        service_progress = round(sum(task_parts) / len(task_parts)) if task_parts else 0
+        service_rows.append({
+            "assignment": assignment,
+            "plan": assignment.plan,
+            "tasks": task_rows,
+            "progress": service_progress,
+            "state": "blue" if service_progress >= 100 else ("yellow" if service_progress >= 50 else "red"),
+            "recurring": False,
+        })
+        project_parts.append(service_progress)
+
+    project_progress = round(sum(project_parts) / len(project_parts)) if project_parts else 0
+    return render(request, "design/task_project_detail.html", {
+        "project": project,
+        "services": service_rows,
+        "project_progress": project_progress,
+        "project_state": "blue" if project_progress >= 100 else ("yellow" if project_progress >= 50 else "red"),
+        "today": today,
+    })
+
+
+@role_required("design")
+def design_service_manage(request, project_pk):
+    """Agrega/retira únicamente productos de Diseño desde la bitácora del área."""
+    from apps.plans.models.choices import PlanDepartment
+    project = get_object_or_404(Project.objects.select_related("client"), pk=project_pk)
+    if not can_access_project(request.user, project):
+        raise PermissionDenied("Este proyecto no está asignado a Diseño.")
+    plans = ServicePlan.objects.filter(
+        is_active=True, department=PlanDepartment.DESIGN
+    ).exclude(service_type=ServiceType.SOCIAL_MEDIA).order_by("service_type", "name")
+    active_ids = set(
+        project.contracted_plans.filter(is_active=True, plan__department=PlanDepartment.DESIGN)
+        .exclude(plan__service_type=ServiceType.SOCIAL_MEDIA)
+        .values_list("plan_id", flat=True)
+    )
+
+    if request.method == "POST":
+        selected_ids = {int(value) for value in request.POST.getlist("service_plans") if str(value).isdigit()}
+        valid_ids = set(plans.values_list("pk", flat=True))
+        selected_ids &= valid_ids
+        actor = request.user if request.user.is_authenticated else None
+
+        for plan in plans.filter(pk__in=selected_ids):
+            ProjectPlanAssignment.objects.update_or_create(
+                project=project,
+                plan=plan,
+                defaults={"is_active": True, "agreed_price": plan.base_price, "created_by": actor},
+            )
+
+        for assignment in project.contracted_plans.select_related("plan").filter(
+            is_active=True, plan__department=PlanDepartment.DESIGN
+        ).exclude(plan__service_type=ServiceType.SOCIAL_MEDIA).exclude(plan_id__in=selected_ids):
+            protected = any(_design_task_audit_locked(task) for task in assignment.design_tasks.all())
+            if protected:
+                messages.warning(request, f"{assignment.plan.name} no se retiró porque contiene una tarea única completada y aprobada en Auditoría Proyectos.")
+                continue
+            assignment.is_active = False
+            assignment.save(update_fields=["is_active", "updated_at"])
+            log_activity(request.user, "design", "design_service_remove", assignment, assignment.plan.name)
+
+        ensure_default_design_tasks_for_project(project, user=request.user)
+        sync_project_area_records(project, request.user)
+        log_activity(request.user, "design", "design_services_update", project, "Servicios de Diseño actualizados")
+        messages.success(request, "Servicios de Diseño actualizados. La bitácora conservó todo el historial realizado.")
+        return redirect("design:tasks")
+
+    return render(request, "design/service_manage.html", {
+        "project": project,
+        "plans": plans,
+        "active_ids": active_ids,
+    })
+
+
+@role_required("design")
+def design_task_create(request):
+    initial = {}
+    if request.GET.get("project_plan"):
+        initial["project_plan"] = request.GET.get("project_plan")
+    form = DesignTaskForm(request.POST or None, user=request.user, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        task = form.save(commit=False)
+        task.created_by = request.user
+        task.updated_by = request.user
+        task.task_type = DesignTask.TaskType.STANDARD
+        task.status = DesignTask.Status.TODO
+        task.status_note = ""
+        task.save()
+        log_activity(request.user, "design", "design_task_create", task, task.title)
+        messages.success(request, "Actividad de Diseño creada.")
+        return redirect("design:tasks")
+    return render(request, "shared/form.html", {
+        "form": form,
+        "title": "Nueva tarea de Diseño",
+        "subtitle": "Diseño trabaja aquí con actividades únicas. Social Media se controla en su módulo independiente.",
+    })
+
+
+@role_required("design")
+def design_task_edit(request, pk):
+    task = get_object_or_404(DesignTask.objects.select_related("project_plan__project", "project_plan__plan"), pk=pk)
+    if not can_access_project(request.user, task.project_plan.project):
+        raise PermissionDenied("Esta tarea no pertenece a un proyecto asignado a Diseño.")
+    locked = _design_task_audit_locked(task)
+    if locked and request.method == "POST":
+        messages.error(request, "Esta tarea única ya fue completada y aprobada en Auditoría Proyectos. Quedó bloqueada como registro histórico.")
+        return redirect("design:tasks")
+    form = DesignTaskForm(request.POST or None, instance=task, user=request.user)
+    if locked:
+        for field in form.fields.values():
+            field.disabled = True
+        messages.info(request, "Registro protegido: la tarea fue completada y aprobada por Auditoría Proyectos.")
+    if request.method == "POST" and form.is_valid():
+        task = form.save(commit=False)
+        task.updated_by = request.user
+        task.save()
+        log_activity(request.user, "design", "design_task_update", task, task.title)
+        messages.success(request, "Actividad actualizada y registrada en bitácora.")
+        return redirect("design:tasks")
+    return render(request, "shared/form.html", {
+        "form": form,
+        "title": "Editar tarea de Diseño" if not locked else "Tarea protegida",
+        "subtitle": f"{task.project_plan.project.client.business_name} · {task.project_plan.plan.name} · Última edición {task.updated_at:%d/%m/%Y %H:%M}",
+    })
+
+
+@role_required("design")
+def design_task_status(request, pk):
+    """Transición controlada de una actividad única de Diseño.
+
+    Los empleados no pueden cerrar manualmente una tarea: la envían a revisión
+    y Auditoría Proyectos es quien la cierra al aprobarla.
+    """
+    if request.method != "POST":
+        return redirect("design:tasks")
+    task = get_object_or_404(
+        DesignTask.objects.select_related("project_plan__project", "assigned_to"), pk=pk
+    )
+    if not can_access_project(request.user, task.project_plan.project):
+        raise PermissionDenied("Esta tarea no pertenece a un proyecto asignado a Diseño.")
+    if task.task_type != DesignTask.TaskType.STANDARD:
+        messages.warning(request, "Social Media y contenido recurrente se gestionan en su módulo independiente.")
+        return redirect("design:tasks")
+    if _design_task_audit_locked(task):
+        messages.error(request, "La actividad ya fue aprobada por Auditoría y está cerrada.")
+        return redirect("design:tasks")
+
+    action = (request.POST.get("action") or "").strip().lower()
+    note = (request.POST.get("note") or "").strip()
+    old_status = task.status
+
+    if action in {"start", "resume"}:
+        if task.status not in {DesignTask.Status.TODO, DesignTask.Status.PAUSED, DesignTask.Status.CHANGES}:
+            messages.warning(request, "La actividad no puede iniciarse desde su estado actual.")
+            return redirect("design:tasks")
+        task.status = DesignTask.Status.DOING
+        task.status_note = ""
+    elif action == "pause":
+        if task.status not in {DesignTask.Status.DOING, DesignTask.Status.CHANGES, DesignTask.Status.REVIEW}:
+            messages.warning(request, "Primero debes iniciar la actividad para poder pausarla.")
+            return redirect("design:tasks")
+        if not note:
+            messages.error(request, "Indica el motivo de la pausa.")
+            return redirect("design:tasks")
+        task.status = DesignTask.Status.PAUSED
+        task.status_note = note
+    elif action == "review":
+        if task.status not in {DesignTask.Status.DOING, DesignTask.Status.CHANGES}:
+            messages.warning(request, "La actividad debe estar en proceso antes de enviarla a revisión.")
+            return redirect("design:tasks")
+        task.status = DesignTask.Status.REVIEW
+        task.status_note = ""
+    else:
+        messages.error(request, "Acción de estado inválida.")
+        return redirect("design:tasks")
+
+    task.updated_by = request.user
+    task.save(update_fields=["status", "status_note", "updated_by", "updated_at"])
+    description = f"{dict(DesignTask.Status.choices).get(old_status, old_status)} → {task.get_status_display()}"
+    if note:
+        description += f" · {note}"
+    log_activity(
+        request.user,
+        "design",
+        "design_task_status",
+        task,
+        description=description,
+        metadata={"task_id": task.pk, "from": old_status, "to": task.status},
+    )
+    messages.success(request, f"Actividad actualizada: {task.get_status_display()}.")
+    return redirect("design:tasks")
+
+
+@role_required("design")
+def design_task_toggle(request, pk):
+    """Ruta histórica conservada para no romper enlaces antiguos."""
+    messages.info(request, "El estado ahora se controla con Iniciar, Pausar y Enviar a revisión.")
+    return redirect("design:tasks")
+
+
+@role_required("design")
+def design_task_cycle_item_update(request, pk):
+    if request.method != "POST":
+        return redirect("design:tasks")
+    item = get_object_or_404(
+        DesignTaskCycleItem.objects.select_related("cycle__task__project_plan__project"), pk=pk
+    )
+    project = item.cycle.task.project_plan.project
+    if not can_access_project(request.user, project):
+        raise PermissionDenied("Este entregable no pertenece a un proyecto asignado a Diseño.")
+    action = request.POST.get("action")
+    if action == "toggle_created":
+        item.content_created = not item.content_created
+        if not item.content_created:
+            item.content_published = False
+    elif action == "toggle_published":
+        item.content_published = not item.content_published
+        if item.content_published:
+            item.content_created = True
+    item.updated_by = request.user
+    item.save()
+    _refresh_design_cycle_summary(item.cycle, user=request.user, touch=True)
+    log_activity(
+        request.user,
+        "design",
+        "design_delivery_update",
+        item.cycle.task,
+        description=f"{item.cycle.label} · {item.get_content_type_display()} {item.sequence} · {'Publicado' if item.content_published else ('Creado' if item.content_created else 'Pendiente')}",
+        metadata={"cycle_id": item.cycle_id, "delivery_item_id": item.pk},
+    )
+    return redirect(request.POST.get("next") or "design:project_tasks", project_pk=project.pk) if not request.POST.get("next") else redirect(request.POST.get("next"))
+
+
+@role_required("design")
+def design_task_cycle_update(request, pk):
+    """Compatibilidad con los checks antiguos del ciclo completo."""
+    if request.method != "POST":
+        return redirect("design:tasks")
+    cycle = get_object_or_404(DesignTaskCycle.objects.select_related("task__project_plan__project"), pk=pk)
+    if not can_access_project(request.user, cycle.task.project_plan.project):
+        raise PermissionDenied("Este periodo no pertenece a un proyecto asignado a Diseño.")
+    action = request.POST.get("action")
+    if action == "toggle_created":
+        cycle.content_created = not cycle.content_created
+        if not cycle.content_created:
+            cycle.content_published = False
+    elif action == "toggle_published":
+        cycle.content_published = not cycle.content_published
+        if cycle.content_published:
+            cycle.content_created = True
+    cycle.updated_by = request.user
+    cycle.save()
+    log_activity(request.user, "design", "design_task_cycle_update", cycle.task, description=f"{cycle.label} · {cycle.state_label}", metadata={"cycle_id": cycle.pk})
+    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER")
+    return redirect(next_url or "design:tasks")
+
+
+@role_required("design")
+def social_media_assign(request):
+    project = None
+    project_id = request.GET.get("project") or request.POST.get("project")
+    if project_id:
+        project = Project.objects.select_related("client").filter(pk=project_id).first()
+    initial = {}
+    if request.GET.get("plan"):
+        initial["plan"] = request.GET.get("plan")
+    form = SocialMediaAssignmentForm(request.POST or None, project=project, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        assignment = form.save(commit=False)
+        assignment.created_by = request.user
+        assignment.save()
+        selected_project = form.cleaned_data.get("project") or project
+        if selected_project:
+            ProjectPlanAssignment.objects.update_or_create(
+                project=selected_project,
+                plan=assignment.plan,
+                defaults={
+                    "subscription": assignment,
+                    "agreed_price": assignment.agreed_price,
+                    "is_active": True,
+                    "created_by": request.user,
+                },
+            )
+        ensure_current_social_media_cycle(assignment)
+        log_activity(request.user, "design", "social_media_assign", assignment)
+        messages.success(request, "Suscripción Social Media configurada para el cliente.")
+        return redirect("design:social_media")
+    return render(request, "design/social_media_assignment.html", {
+        "form": form,
+        "title": "Configurar suscripción de Social Media",
+        "subtitle": "Selecciona proyecto, plan, renovación y redes sociales. El próximo pago se calcula automáticamente.",
+        "project": project,
+    })
+
+
+@role_required("design")
+def social_media_assignment_edit(request, pk):
+    assignment = get_object_or_404(
+        ClientPlan.objects.select_related("client", "plan"),
+        pk=pk,
+        plan__service_type=ServiceType.SOCIAL_MEDIA,
+    )
+    current_link = assignment.project_links.select_related("project").first()
+    bound_project = current_link.project if current_link else None
+    form = SocialMediaAssignmentForm(request.POST or None, instance=assignment, project=bound_project)
+    if request.method == "POST" and form.is_valid():
+        assignment = form.save()
+        selected_project = form.cleaned_data.get("project") or bound_project
+        assignment.project_links.exclude(project=selected_project).update(subscription=None)
+        if selected_project:
+            ProjectPlanAssignment.objects.update_or_create(
+                project=selected_project,
+                plan=assignment.plan,
+                defaults={
+                    "subscription": assignment,
+                    "agreed_price": assignment.agreed_price,
+                    "is_active": True,
+                    "created_by": request.user,
+                },
+            )
+        ensure_current_social_media_cycle(assignment)
+        log_activity(request.user, "design", "social_media_assignment_update", assignment)
+        messages.success(request, "Suscripción actualizada.")
+        return redirect("design:social_media_detail", pk=assignment.pk)
+    return render(request, "design/social_media_assignment.html", {
+        "form": form,
+        "title": "Editar suscripción Social Media",
+        "subtitle": assignment.client.business_name,
+        "assignment": assignment,
+        "project": bound_project,
+    })
+
+
+@role_required("design")
+def social_media_detail(request, pk):
+    from django.utils import timezone
+
+    assignment = get_object_or_404(
+        ClientPlan.objects.select_related("client", "plan", "created_by"),
+        pk=pk,
+        plan__service_type=ServiceType.SOCIAL_MEDIA,
+    )
+    project_link = assignment.project_links.select_related("project").first()
+    cycle = ensure_current_social_media_cycle(assignment)
+    network_labels = dict(SOCIAL_NETWORK_CHOICES)
+    selected_networks = [
+        {"key": key, "label": network_labels.get(key, key)}
+        for key in (assignment.social_networks or [])
+    ]
+
+    if request.method == "POST" and cycle:
+        for item in cycle.items.all():
+            ready = request.POST.get(f"ready_{item.pk}") == "1"
+            published = [
+                key for key in (assignment.social_networks or [])
+                if request.POST.get(f"network_{item.pk}_{key}") == "1"
+            ]
+            notes = (request.POST.get(f"notes_{item.pk}") or "").strip()[:300]
+            changed = ready != item.ready or published != (item.published_networks or []) or notes != item.notes
+            if changed:
+                item.ready = ready
+                item.published_networks = published
+                item.notes = notes
+                item.updated_by = request.user
+                item.save(update_fields=["ready", "published_networks", "notes", "updated_by", "updated_at"])
+
+        cycle.updated_by = request.user
+        cycle.save(update_fields=["updated_by", "updated_at"])
+        log_activity(request.user, "design", "social_media_progress", assignment)
+        messages.success(request, "Avance de Social Media guardado.")
+        return redirect("design:social_media_detail", pk=assignment.pk)
+
+    urgency = renewal_urgency(assignment.renewal_date)
+    items = list(cycle.items.all()) if cycle else []
+    return render(request, "design/social_media_detail.html", {
+        "assignment": assignment,
+        "project": project_link.project if project_link else None,
+        "cycle": cycle,
+        "items": items,
+        "selected_networks": selected_networks,
+        "urgency": urgency,
+        "today": timezone.localdate(),
+    })

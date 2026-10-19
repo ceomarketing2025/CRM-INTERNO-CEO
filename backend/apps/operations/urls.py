@@ -21,6 +21,7 @@ urlpatterns = [
     path("production/<int:pk>/edit/", views.production_edit, name="production_edit"),
     path("development/project/<int:project_pk>/production/", views.web_production_sheet, name="web_production_sheet"),
     path("development/project/<int:project_pk>/styles/", views.development_project_styles, name="development_project_styles"),
+    path("development/standards/", views.development_standards, name="development_standards"),
     path("development/project/<int:project_pk>/production/quick-toggle/", views.web_production_quick_toggle, name="web_production_quick_toggle"),
     path("development/tasks/", views.development_tasks, name="development_tasks"),
 ]

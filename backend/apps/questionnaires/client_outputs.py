@@ -305,11 +305,29 @@ def _production_structure(sheet):
         return "La estructura del sitio todavía no ha sido configurada en Ficha de Producción."
 
     lines = []
-    pages = list(sheet.pages.all().order_by("order", "id"))
+    pages = list(sheet.pages.select_related("parent").all().order_by("order", "id"))
     if pages:
         lines.append("PÁGINAS PRINCIPALES")
+        page_by_parent = {}
         for page in pages:
-            lines.append(f"├── {_clean(page.name) or 'Página sin nombre'}")
+            page_by_parent.setdefault(page.parent_id, []).append(page)
+
+        visited = set()
+        def append_page(item, depth=0):
+            if item.pk in visited:
+                return
+            visited.add(item.pk)
+            prefix = "    " * depth + "├── "
+            kind = "Grupo" if getattr(item, "entry_type", "page") == "group" else "Página"
+            lines.append(f"{prefix}{kind}: {_clean(item.name) or 'Sin nombre'}")
+            for child in page_by_parent.get(item.pk, []):
+                append_page(child, depth + 1)
+
+        for page in page_by_parent.get(None, []):
+            append_page(page)
+        # Fallback para jerarquías antiguas/inconsistentes: no perder registros.
+        for page in pages:
+            append_page(page)
 
     counties = list(sheet.counties.all().prefetch_related("services", "cities").order_by("order", "id"))
     if counties:
@@ -379,7 +397,7 @@ def _seo_rows(sheet):
             "",
         ])
 
-    for page in sheet.pages.all().order_by("order", "id"):
+    for page in sheet.pages.exclude(entry_type="group").order_by("order", "id"):
         add("Página", page)
     for county in sheet.counties.all().prefetch_related("services").order_by("order", "id"):
         add("County", county)

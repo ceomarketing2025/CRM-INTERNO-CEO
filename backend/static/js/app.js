@@ -124,7 +124,12 @@ document.addEventListener("DOMContentLoaded", () => {
     '.palette-live-preview button',
     '.mini-check',
     '.development-filter',
-    '.area-filter-btn-v11'
+    '.area-filter-btn-v11',
+    '.sidebar-collapse-handle',
+    '.info-quick-form .mini-action',
+    '.info-quick-form .suggestion-pill',
+    '.info-quick-form .row-remove',
+    '.dev-sheet-accordion button'
   ].join(',');
 
   const ICON_ONLY_SELECTOR = [
@@ -362,4 +367,33 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   window.crmDecorateButtons = decorateAllButtons;
+})();
+
+/* ===== V29 · Menú lateral plegable ===== */
+(function(){
+  function initSidebarCollapse(){
+    const button=document.getElementById('sidebarCollapseHandle');
+    if(!button)return;
+    const key='crmSidebarCollapsed';
+    const desktop=()=>window.matchMedia('(min-width: 781px)').matches;
+    function apply(collapsed,persist=false){
+      if(!desktop()){
+        document.body.classList.remove('sidebar-collapsed');
+        button.setAttribute('aria-expanded','true');
+        button.setAttribute('aria-label','Ocultar menú lateral');
+        return;
+      }
+      document.body.classList.toggle('sidebar-collapsed',collapsed);
+      button.setAttribute('aria-expanded',collapsed?'false':'true');
+      button.setAttribute('aria-label',collapsed?'Mostrar menú lateral':'Ocultar menú lateral');
+      if(persist){try{localStorage.setItem(key,collapsed?'1':'0');}catch(e){}}
+    }
+    let initial=false;
+    try{initial=localStorage.getItem(key)==='1';}catch(e){}
+    apply(initial,false);
+    button.addEventListener('click',()=>apply(!document.body.classList.contains('sidebar-collapsed'),true));
+    window.addEventListener('resize',()=>{let saved=false;try{saved=localStorage.getItem(key)==='1';}catch(e){}apply(saved,false);});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initSidebarCollapse);
+  else initSidebarCollapse();
 })();

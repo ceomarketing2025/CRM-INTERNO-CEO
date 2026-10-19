@@ -1271,3 +1271,43 @@ html body .app-shell .main .content .design-info-actions .btn.crm-action-button.
 /* ===== Ventas · conversión de lead a cliente ===== */
 .sales-conversion-panel{width:min(820px,calc(100vw - 28px));padding:28px}.sales-conversion-form{gap:16px}.sales-conversion-block{border:1px solid #e7ebf3;border-radius:16px;background:#fafbfe;padding:15px}.sales-conversion-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:9px}.sales-conversion-heading strong{display:block;margin-top:4px;font-size:12px;color:#17243b}.sales-conversion-block>p{margin:0 0 12px;color:var(--muted);font-size:9px;line-height:1.55}.sales-match-badge{display:inline-flex;align-items:center;padding:6px 9px;border-radius:999px;background:#e8f7f0;color:#18755e;font-size:8px;font-weight:900;white-space:nowrap}.sales-match-badge.neutral{background:#eef2f7;color:#69758a}.sales-client-mode{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}.sales-client-mode label{display:flex!important;align-items:flex-start;gap:9px!important;padding:12px!important;border:1px solid #e0e6f0;border-radius:12px;background:#fff;cursor:pointer;transition:.18s}.sales-client-mode label:has(input:checked){border-color:#6e8fe8;background:#f4f7ff;box-shadow:0 0 0 2px rgba(55,96,230,.08)}.sales-client-mode input{margin-top:2px;accent-color:#2458df}.sales-client-mode b,.sales-client-mode small{display:block}.sales-client-mode b{font-size:9px;color:#1d2a41}.sales-client-mode small{margin-top:3px;color:var(--muted);font-size:8px;font-weight:500;line-height:1.4}.sales-field-help{display:block;color:#8a94a6;font-size:8px;font-weight:500;letter-spacing:0;margin-top:2px}.sales-services-block{padding:16px}.sales-service-search{display:flex;align-items:center;gap:8px;margin-bottom:13px;padding:0 11px;border:1px solid #dce2ec;border-radius:11px;background:#fff}.sales-service-search span{color:#7b879a;font-size:15px}.sales-service-search input{border:0!important;box-shadow:none!important;padding-left:0!important}.sales-service-groups{display:grid;gap:12px;max-height:330px;overflow:auto;padding-right:4px}.sales-service-group{display:grid;gap:7px}.sales-service-group-title{display:flex;justify-content:space-between;align-items:center;padding:0 2px}.sales-service-group-title span{font-size:9px;font-weight:900;color:#3a4860;text-transform:uppercase;letter-spacing:.65px}.sales-service-group-title small{font-size:8px;color:var(--muted)}.sales-service-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.sales-service-option{display:flex!important;align-items:flex-start;gap:9px!important;padding:10px!important;border:1px solid #e7ebf3;border-radius:11px;background:#fff;cursor:pointer;transition:.15s}.sales-service-option:hover{border-color:#c8d4ee;background:#f8faff}.sales-service-option:has(input:checked){border-color:#7595eb;background:#f3f6ff}.sales-service-option input{margin-top:2px;accent-color:#2458df}.sales-service-option b,.sales-service-option small{display:block}.sales-service-option b{font-size:8px;color:#26334b;line-height:1.35}.sales-service-option small{margin-top:2px;font-size:7px;color:#8a94a6;font-weight:500}.sales-service-empty{text-align:center;padding:18px;color:var(--muted);font-size:9px}.sales-service-count{padding:6px 9px;border-radius:999px;background:#eef3ff;color:#2858c8;font-size:8px;font-weight:900}.sales-conversion-summary{border-radius:16px;background:linear-gradient(145deg,#f8faff,#f3f6fc);border:1px solid #e4e9f3;padding:15px}.sales-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.sales-summary-grid>div{min-width:0;padding:10px;border-radius:10px;background:#fff;border:1px solid #e8ecf3}.sales-summary-grid span,.sales-summary-grid strong{display:block}.sales-summary-grid span{font-size:7px;color:#7f8a9d;text-transform:uppercase;letter-spacing:.5px;font-weight:900}.sales-summary-grid strong{margin-top:4px;font-size:9px;color:#1e2a40;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sales-conversion-actions{position:sticky;bottom:-28px;margin:0 -28px -28px;padding:14px 28px;background:rgba(255,255,255,.97);border-top:1px solid #e8ecf3;backdrop-filter:blur(8px);z-index:3}.sales-conversion-actions .btn-primary:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}.sales-conversion-core{align-items:end}
 @media(max-width:760px){.sales-conversion-panel{padding:22px 17px}.sales-client-mode,.sales-service-options,.sales-summary-grid{grid-template-columns:1fr}.sales-conversion-actions{bottom:-22px;margin:0 -17px -22px;padding:12px 17px}.sales-service-groups{max-height:280px}}
+
+/* ===== V28 · Legibilidad general del CRM ===== */
+html{font-size:15px}
+html body{font-size:14px}
+html body .app-shell .brand strong{font-size:16px!important}
+html body .app-shell .brand span{font-size:11.5px!important}
+html body .app-shell .nav-v16 summary b,
+html body .app-shell .nav-v16>.nav-link b{font-size:13.5px!important}
+html body .app-shell .nav-v16 .nav-section-links .nav-link b{font-size:12.5px!important}
+html body .app-shell .nav-v16 .nav-section-links .nav-link>span{font-size:9.5px!important}
+html body .app-shell .topbar h1{font-size:21px!important}
+html body .app-shell .main .content .eyebrow{font-size:10.5px!important}
+html body .app-shell .main .content .page-intro h2{font-size:30px!important}
+html body .app-shell .main .content .page-intro p{font-size:13.5px!important;line-height:1.55!important}
+html body .app-shell .main .content :where(.btn,button.btn){font-size:12px!important}
+html body .app-shell .main .content :where(input,select,textarea){font-size:12.5px!important}
+html body .app-shell .main .content :where(.field label,.form-field label,.devTask label,.devTasks__field label){font-size:11px!important}
+html body .app-shell .main .content :where(table td){font-size:12px!important}
+html body .app-shell .main .content :where(table th){font-size:10px!important}
+html body .app-shell .main .content :where(.table-sub,.muted,small){line-height:1.45}
+html body .app-shell .main .content :where(.project-work-summary-head p,.developer-work-summary-head p,.production-filters-head p,.technical-bridge-card summary p,.dev-notifications-head p){font-size:11px!important}
+html body .app-shell .main .content :where(.project-work-stats small,.developer-work-stats small,.technical-data-head span,.technical-data-item>small,.dev-notification-meta span,.dev-notification-copy small){font-size:9.5px!important}
+html body .app-shell .main .content :where(.technical-data-value,.dev-notification-copy p,.project-work-last-update,.dev-permission-notice span){font-size:11px!important}
+html body .app-shell .main .content :where(.dev-sheet-panel summary small,.dev-table-head p,.county-workgroup-head span){font-size:11px!important}
+
+/* ===== V29 · Menú lateral plegable ===== */
+@media (min-width:781px){
+  .app-shell{transition:grid-template-columns .22s ease;}
+  .sidebar{min-width:0;transition:transform .22s ease,opacity .18s ease;will-change:transform;}
+  .sidebar-collapse-handle{position:fixed;z-index:1200;left:270px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:26px;height:54px;padding:0;border:1px solid #35445f;border-left:0;border-radius:0 10px 10px 0;background:#172238;color:#fff;box-shadow:3px 0 12px rgba(13,25,46,.15);cursor:pointer;transition:left .22s ease,background .18s ease;}
+  .sidebar-collapse-handle:hover{background:#23324e;}
+  .sidebar-collapse-handle span{font-size:22px;line-height:1;transition:transform .22s ease;}
+  body.sidebar-collapsed .app-shell{grid-template-columns:0 minmax(0,1fr)!important;}
+  body.sidebar-collapsed .sidebar{transform:translateX(-100%);opacity:0;pointer-events:none;overflow:hidden;}
+  body.sidebar-collapsed .sidebar-collapse-handle{left:0;border-left:1px solid #35445f;}
+  body.sidebar-collapsed .sidebar-collapse-handle span{transform:rotate(180deg);}
+  body.sidebar-collapsed .main{min-width:0;width:100%;}
+}
+@media (min-width:781px) and (max-width:1100px){.sidebar-collapse-handle{left:230px;}}
+@media (max-width:780px){.sidebar-collapse-handle{display:none!important;}}

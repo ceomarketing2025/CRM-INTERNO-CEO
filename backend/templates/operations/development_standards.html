@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block page_heading %}Estándares de desarrollo{% endblock %}
+{% block content %}
+<style>
+.dev-standards{max-width:1500px;margin:0 auto}.dev-standards-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:20px}.dev-standards-head h2{margin:4px 0 6px}.dev-standards-head p{margin:0;max-width:850px;color:#6f7d92}.dev-standards-badge{display:inline-flex;align-items:center;min-height:34px;padding:7px 11px;border-radius:999px;background:#eef3fb;color:#34558c;font-size:11px;font-weight:850;white-space:nowrap}.dev-standard-panel{margin-bottom:14px;border:1px solid #e1e7ef;border-radius:16px;background:#fff;overflow:hidden}.dev-standard-panel>summary{list-style:none;display:grid;grid-template-columns:42px 1fr auto;gap:13px;align-items:center;padding:18px 20px;cursor:pointer}.dev-standard-panel>summary::-webkit-details-marker{display:none}.dev-standard-index{width:38px;height:38px;border-radius:11px;background:#edf3fb;color:#31548d;display:grid;place-items:center;font-size:12px;font-weight:900}.dev-standard-panel summary strong{display:block;font-size:16px;color:#20314b}.dev-standard-panel summary small{display:block;margin-top:3px;color:#758297;font-size:11px}.dev-standard-panel[open] .dev-standard-chevron{transform:rotate(180deg)}.dev-standard-chevron{transition:.2s ease}.dev-standard-content{padding:18px 20px 22px;border-top:1px solid #edf0f4}.type-table{width:100%;border-collapse:collapse}.type-table th,.type-table td{padding:10px;border-bottom:1px solid #edf0f4;text-align:left}.type-table th{font-size:10px;color:#768399;text-transform:uppercase;letter-spacing:.06em}.type-table td:first-child{font-weight:850;color:#273b59}.type-table input{width:100%;min-height:38px;border:1px solid #d8e1ec;border-radius:9px;padding:8px 10px;font:inherit}.spacing-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.standard-field label{display:block;margin-bottom:6px;font-size:11px;font-weight:850;color:#53647d}.standard-field input,.standard-field textarea{width:100%;border:1px solid #d8e1ec;border-radius:10px;padding:10px 12px;font:inherit;background:#fff;color:#17233b}.standard-field textarea{min-height:190px;resize:vertical;line-height:1.55}.standard-field small{display:block;margin-top:5px;color:#8692a4;font-size:10px}.standard-two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}.standards-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.readonly-note{margin:0 0 14px;padding:12px 14px;border:1px solid #dfe5ee;border-radius:12px;background:#f7f9fc;color:#64748b;font-size:12px}.dev-standards input:disabled,.dev-standards textarea:disabled{background:#f6f8fb;color:#69768a;cursor:not-allowed}@media(max-width:1000px){.spacing-grid{grid-template-columns:repeat(2,1fr)}.standard-two-col{grid-template-columns:1fr}}@media(max-width:650px){.dev-standards-head{align-items:flex-start;flex-direction:column}.spacing-grid{grid-template-columns:1fr}.type-table{display:block;overflow:auto}.dev-standard-panel>summary{grid-template-columns:38px 1fr}.dev-standard-chevron{display:none}.standards-actions{flex-direction:column}.standards-actions .btn{width:100%}}
+</style>
+
+<div class="dev-standards">
+  <div class="dev-standards-head">
+    <div>
+      <span class="eyebrow">Desarrollo · Configuración global</span>
+      <h2>Estándares de desarrollo</h2>
+      <p>Estas reglas son generales para el área. Aquí van tamaños, espaciados y reglas para prompts. Header, botones y excepciones se configuran dentro de cada Ficha de producción.</p>
+    </div>
+    <span class="dev-standards-badge">Global · todos los proyectos</span>
+  </div>
+
+  {% if not can_manage_standards %}<div class="readonly-note">Puedes consultar los estándares. Los cambios globales los administra Gerencia.</div>{% endif %}
+
+  <form method="post">
+    {% csrf_token %}<input type="hidden" name="action" value="save_standards">
+
+    <details class="dev-standard-panel" open>
+      <summary><span class="dev-standard-index">01</span><span><strong>Tipografía global</strong><small>Tamaños, pesos, interlineado y fuentes que se usan como regla general.</small></span><b class="dev-standard-chevron">⌄</b></summary>
+      <div class="dev-standard-content">
+        <table class="type-table">
+          <thead><tr><th>Elemento</th><th>Fuente</th><th>Tamaño px</th><th>Peso</th><th>Line height</th><th>Letter spacing</th></tr></thead>
+          <tbody>
+            <tr><td>H1</td><td><input name="h1_font" value="{{ typography.h1.font }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" name="h1_size" value="{{ typography.h1.size }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" step="100" name="h1_weight" value="{{ typography.h1.weight }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input name="h1_line_height" value="{{ typography.h1.line_height }}" {% if not can_manage_standards %}disabled{% endif %}></td><td>—</td></tr>
+            <tr><td>H2</td><td><input name="h2_font" value="{{ typography.h2.font }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" name="h2_size" value="{{ typography.h2.size }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" step="100" name="h2_weight" value="{{ typography.h2.weight }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input name="h2_line_height" value="{{ typography.h2.line_height }}" {% if not can_manage_standards %}disabled{% endif %}></td><td>—</td></tr>
+            <tr><td>H3</td><td><input name="h3_font" value="{{ typography.h3.font }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" name="h3_size" value="{{ typography.h3.size }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" step="100" name="h3_weight" value="{{ typography.h3.weight }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input name="h3_line_height" value="{{ typography.h3.line_height }}" {% if not can_manage_standards %}disabled{% endif %}></td><td>—</td></tr>
+            <tr><td>H4</td><td><input name="h4_font" value="{{ typography.h4.font }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" name="h4_size" value="{{ typography.h4.size }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" step="100" name="h4_weight" value="{{ typography.h4.weight }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input name="h4_line_height" value="{{ typography.h4.line_height }}" {% if not can_manage_standards %}disabled{% endif %}></td><td>—</td></tr>
+            <tr><td>H5</td><td><input name="h5_font" value="{{ typography.h5.font }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" name="h5_size" value="{{ typography.h5.size }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" step="100" name="h5_weight" value="{{ typography.h5.weight }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input name="h5_line_height" value="{{ typography.h5.line_height }}" {% if not can_manage_standards %}disabled{% endif %}></td><td>—</td></tr>
+            <tr><td>Párrafo</td><td><input name="paragraph_font" value="{{ typography.paragraph.font }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" name="paragraph_size" value="{{ typography.paragraph.size }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" step="100" name="paragraph_weight" value="{{ typography.paragraph.weight }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input name="paragraph_line_height" value="{{ typography.paragraph.line_height }}" {% if not can_manage_standards %}disabled{% endif %}></td><td>—</td></tr>
+            <tr><td>Kicker / Eyebrow</td><td><input name="kicker_font" value="{{ typography.kicker.font }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" name="kicker_size" value="{{ typography.kicker.size }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input type="number" step="100" name="kicker_weight" value="{{ typography.kicker.weight }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input name="kicker_line_height" value="{{ typography.kicker.line_height }}" {% if not can_manage_standards %}disabled{% endif %}></td><td><input name="kicker_letter_spacing" value="{{ typography.kicker.letter_spacing }}" {% if not can_manage_standards %}disabled{% endif %}></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+
+    <details class="dev-standard-panel" open>
+      <summary><span class="dev-standard-index">02</span><span><strong>Espaciados globales</strong><small>Medidas base para mantener consistencia en páginas y componentes.</small></span><b class="dev-standard-chevron">⌄</b></summary>
+      <div class="dev-standard-content spacing-grid">
+        <div class="standard-field"><label>Ancho máximo del contenedor (px)</label><input type="number" name="container_max" value="{{ spacing.container_max }}" {% if not can_manage_standards %}disabled{% endif %}><small>Regla general de ancho.</small></div>
+        <div class="standard-field"><label>Sección desktop Y (px)</label><input type="number" name="section_y_desktop" value="{{ spacing.section_y_desktop }}" {% if not can_manage_standards %}disabled{% endif %}></div>
+        <div class="standard-field"><label>Sección tablet Y (px)</label><input type="number" name="section_y_tablet" value="{{ spacing.section_y_tablet }}" {% if not can_manage_standards %}disabled{% endif %}></div>
+        <div class="standard-field"><label>Sección móvil Y (px)</label><input type="number" name="section_y_mobile" value="{{ spacing.section_y_mobile }}" {% if not can_manage_standards %}disabled{% endif %}></div>
+        <div class="standard-field"><label>Gap de contenido (px)</label><input type="number" name="content_gap" value="{{ spacing.content_gap }}" {% if not can_manage_standards %}disabled{% endif %}></div>
+        <div class="standard-field"><label>Gap entre cards (px)</label><input type="number" name="card_gap" value="{{ spacing.card_gap }}" {% if not can_manage_standards %}disabled{% endif %}></div>
+        <div class="standard-field"><label>Radio de cards (px)</label><input type="number" name="card_radius" value="{{ spacing.card_radius }}" {% if not can_manage_standards %}disabled{% endif %}></div>
+      </div>
+    </details>
+
+    <details class="dev-standard-panel" open>
+      <summary><span class="dev-standard-index">03</span><span><strong>Reglas de producción</strong><small>Instrucciones generales para prompts y criterios que deben repetirse en todos los proyectos.</small></span><b class="dev-standard-chevron">⌄</b></summary>
+      <div class="dev-standard-content standard-two-col">
+        <div class="standard-field"><label>Reglas para el prompt</label><textarea name="prompt_rules" placeholder="Ej.: mantener estructura de plantilla, no repetir imágenes, respetar densidad SEO..." {% if not can_manage_standards %}disabled{% endif %}>{{ standard.prompt_rules }}</textarea><small>Estas reglas son globales; las excepciones van dentro de la Ficha de producción del proyecto.</small></div>
+        <div class="standard-field"><label>Reglas generales de desarrollo</label><textarea name="general_rules" placeholder="Ej.: responsive obligatorio, convenciones de componentes, criterios de QA..." {% if not can_manage_standards %}disabled{% endif %}>{{ standard.general_rules }}</textarea><small>No incluye paleta, header ni botones específicos del cliente.</small></div>
+      </div>
+    </details>
+
+    {% if can_manage_standards %}<div class="standards-actions"><button class="btn btn-primary" type="submit">Guardar estándares globales</button></div>{% endif %}
+  </form>
+
+  {% if can_manage_standards %}
+  <form method="post" class="standards-actions" onsubmit="return confirm('¿Restaurar tipografía, espaciados y reglas globales a los valores base?');">
+    {% csrf_token %}<input type="hidden" name="action" value="reset_standards"><button class="btn btn-secondary" type="submit">Restaurar valores base</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

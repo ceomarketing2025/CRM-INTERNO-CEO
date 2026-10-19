@@ -67,7 +67,7 @@ def ensure_default_internal_sections(*, sheet, user):
         WebProductionInternalSection.objects.create(
             sheet=sheet,
             name=name,
-            complexity=SeoComplexity.SIMPLE,
+            complexity=SeoComplexity.LEVEL_1,
             points=1,
             order=next_order,
             updated_by=user,
@@ -317,19 +317,19 @@ def save_production_record(*, form, user):
 def auto_workload(obj):
     """Puntaje operativo usado para equilibrar trabajo entre desarrolladores."""
     if isinstance(obj, (WebProductionCountyService, WebProductionCounty, WebProductionCity)):
-        return SeoComplexity.MEDIUM, 2
+        return SeoComplexity.LEVEL_3, 3
 
     if isinstance(obj, WebProductionPage):
         name = (obj.name or "").strip().lower()
         complex_pages = {"home", "services", "areas we service", "areas we serve", "contact"}
         medium_pages = {"about", "gallery", "blog", "faq", "blog/faq", "blog / faq"}
         if name in complex_pages:
-            return SeoComplexity.COMPLEX, 3
+            return SeoComplexity.LEVEL_5, 5
         if name in medium_pages:
-            return SeoComplexity.MEDIUM, 2
-        return SeoComplexity.SIMPLE, 1
+            return SeoComplexity.LEVEL_3, 3
+        return SeoComplexity.LEVEL_1, 1
 
-    return SeoComplexity.SIMPLE, 1
+    return SeoComplexity.LEVEL_1, 1
 
 
 def apply_seo_automation(obj):
@@ -339,9 +339,11 @@ def apply_seo_automation(obj):
         obj.points = points
     else:
         obj.points = {
-            SeoComplexity.SIMPLE: 1,
-            SeoComplexity.MEDIUM: 2,
-            SeoComplexity.COMPLEX: 3,
+            SeoComplexity.LEVEL_1: 1,
+            SeoComplexity.LEVEL_2: 2,
+            SeoComplexity.LEVEL_3: 3,
+            SeoComplexity.LEVEL_4: 4,
+            SeoComplexity.LEVEL_5: 5,
         }.get(obj.complexity, 1)
     # Slug starts automatically, but a developer can override it later.
     # If a custom slug is already present, never overwrite it server-side.
@@ -371,7 +373,12 @@ def ensure_web_production_structure(*, sheet, main_page_target, county_target, s
         "cities_per_county_target", "header_structure", "updated_by", "updated_at",
     ])
 
-    existing_pages = list(sheet.pages.filter(page_type=WebProductionPage.PageType.PRINCIPAL).order_by("order", "id"))
+    existing_pages = list(
+        sheet.pages.filter(
+            page_type=WebProductionPage.PageType.PRINCIPAL,
+            entry_type=WebProductionPage.EntryType.PAGE,
+        ).order_by("order", "id")
+    )
     for index in range(len(existing_pages), main_page_target):
         name = DEFAULT_MAIN_PAGES[index] if index < len(DEFAULT_MAIN_PAGES) else f"Página principal {index + 1}"
         obj = WebProductionPage(

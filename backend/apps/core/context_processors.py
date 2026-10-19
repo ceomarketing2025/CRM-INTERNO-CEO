@@ -14,8 +14,12 @@ def _navigation_context(request):
         "general_audit", "general_audit_check", "social_tracking", "social_tracking_audit"
     }:
         group, module, page = "audit", "Auditor├¡a", "Auditor├¡a Proyectos"
+    elif namespace == "operations" and url_name == "development_standards":
+        group, module, page = "development", "Desarrollo", "Estándares"
     elif namespace == "operations" and url_name == "development_project_styles":
-        group, module, page = "development", "Desarrollo", "Estilos"
+        group, module, page = "development", "Desarrollo", "Ficha de producción"
+    elif namespace == "operations" and url_name == "development_tasks":
+        group, module, page = "development", "Desarrollo", "Tareas"
     elif namespace == "operations" and url_name in {
         "web_production_sheet", "web_production_quick_toggle"
     }:
@@ -49,11 +53,11 @@ def _navigation_context(request):
     elif namespace == "questionnaires":
         group, module = "development", "Desarrollo"
         if url_name in {"seo_status", "seo_status_import", "seo_status_detail"}:
-            page = "Estado SEO"
+            page = "Matriz SEO"
         elif url_name == "development_dashboard":
             page = "Resumen de tareas"
         else:
-            page = "Informaci├│n Desarrollo"
+            page = "Ficha de información"
     elif namespace == "projects" or namespace == "handoff":
         group, module = "projects", "Proyectos"
         page = "Resumen del proyecto" if namespace == "handoff" else "Proyectos"

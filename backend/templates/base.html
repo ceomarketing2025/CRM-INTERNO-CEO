@@ -175,17 +175,25 @@
 
           <a
             href="{% url 'questionnaires:development_information' %}"
-            class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Información' and not request.GET.view %}active{% endif %}"
+            class="nav-link {% if active_nav_group == 'development' and current_url_name == 'development_information' and not request.GET.view %}active{% endif %}"
           >
             <span>01</span>
-            <b>Información</b>
+            <b>Ficha de información</b>
+          </a>
+
+          <a
+            href="{% url 'questionnaires:development_information' %}?view=production"
+            class="nav-link {% if active_nav_group == 'development' and request.GET.view == 'production' or active_nav_group == 'development' and current_page_label == 'Ficha de producción' %}active{% endif %}"
+          >
+            <span>02</span>
+            <b>Ficha de producción</b>
           </a>
 
           <a
             href="{% url 'operations:development_tasks' %}"
             class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Tareas' %}active{% endif %}"
           >
-            <span>02</span>
+            <span>03</span>
             <b>Tareas</b>
             {% if development_task_unread_count %}
               <em style="margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#e5484d;color:#fff;font-style:normal;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;">{{ development_task_unread_count }}</em>
@@ -193,19 +201,11 @@
           </a>
 
           <a
-            href="{% url 'questionnaires:development_information' %}?view=production"
-            class="nav-link {% if active_nav_group == 'development' and request.GET.view == 'production' or active_nav_group == 'development' and current_page_label == 'Ficha de producción' %}active{% endif %}"
-          >
-            <span>03</span>
-            <b>Ficha de producción</b>
-          </a>
-
-          <a
-            href="{% url 'questionnaires:development_information' %}?view=styles"
-            class="nav-link {% if active_nav_group == 'development' and request.GET.view == 'styles' or active_nav_group == 'development' and current_page_label == 'Estilos' %}active{% endif %}"
+            href="{% url 'operations:development_standards' %}"
+            class="nav-link {% if active_nav_group == 'development' and current_page_label == 'Estándares' %}active{% endif %}"
           >
             <span>04</span>
-            <b>Estilos</b>
+            <b>Estándares</b>
           </a>
 
           <a
@@ -589,6 +589,9 @@
 
   </aside>
 
+  <button type="button" class="sidebar-collapse-handle" id="sidebarCollapseHandle" aria-label="Ocultar menú lateral" aria-expanded="true">
+    <span aria-hidden="true">‹</span>
+  </button>
 
   <main class="main">
 

@@ -89,173 +89,70 @@ def website_answer_payload(questionnaire):
 
 
 def website_questionnaire_progress(questionnaire):
+    """Progreso de la ficha breve de Desarrollo.
 
+    El porcentaje se calcula por fases visibles en la interfaz. Los campos
+    eliminados del flujo (slogan y cotizaciones) ya no bloquean el 100 %.
+    """
     if (
         not questionnaire
-        or questionnaire.template.code
-        != WEBSITE_TEMPLATE_CODE
+        or questionnaire.template.code != WEBSITE_TEMPLATE_CODE
     ):
-        return {
-            "complete": 0,
-            "total": 11,
-            "percent": 0,
-        }
+        return {"complete": 0, "total": 8, "percent": 0}
 
-    answers = _answer_map(
-        questionnaire
-    )
+    answers = _answer_map(questionnaire)
 
     def answer_complete(key):
-
         answer = answers.get(key)
-
-        if not answer:
-            return False
-
-        return answer.state in {
-            AnswerState.CONFIRMED,
-            AnswerState.NO,
-            AnswerState.NOT_APPLICABLE,
-        }
-
+        return bool(
+            answer
+            and answer.state in {
+                AnswerState.CONFIRMED,
+                AnswerState.NO,
+                AnswerState.NOT_APPLICABLE,
+            }
+        )
 
     section_checks = {
-
-        "general": [
-            answer_complete(
-                "company_description"
-            ),
-        ],
-
         "business": [
-            answer_complete(
-                "business_logic"
-            ),
+            answer_complete("company_description"),
+            answer_complete("business_logic"),
         ],
-
-        "services": [
-            answer_complete(
-                "main_services"
-            ),
-        ],
-
+        "brand": [answer_complete("has_mission_vision")],
+        "team": [answer_complete("show_team")],
+        "services": [answer_complete("main_services")],
         "coverage": [
-            answer_complete(
-                "service_areas"
-            ),
-            answer_complete(
-                "coverage"
-            ),
+            answer_complete("service_areas"),
+            answer_complete("coverage"),
         ],
-
         "contact": [
-            answer_complete(
-                "business_hours"
-            ),
-            answer_complete(
-                "is_24_7"
-            ),
-            answer_complete(
-                "contact_numbers"
-            ),
+            answer_complete("business_hours"),
+            answer_complete("is_24_7"),
+            answer_complete("contact_numbers"),
+            answer_complete("website_forms"),
         ],
-
-        "quotes": [
-            answer_complete(
-                "quotes"
-            ),
-        ],
-
-        "brand": [
-            answer_complete(
-                "slogan"
-            ),
-            answer_complete(
-                "has_mission_vision"
-            ),
-        ],
-
+        "marketing": [answer_complete("has_social")],
         "certifications": [
-            answer_complete(
-                "certifications"
-            ),
-            answer_complete(
-                "warranties"
-            ),
-            answer_complete(
-                "experience_years"
-            ),
+            answer_complete("certifications"),
+            answer_complete("warranties"),
+            answer_complete("experience_years"),
         ],
-
-        "team": [
-            answer_complete(
-                "show_team"
-            ),
-        ],
-
-        "marketing": [
-            answer_complete(
-                "has_social"
-            ),
-        ],
-
-        "forms": [
-            answer_complete(
-                "website_forms"
-            ),
-        ],
-
     }
 
-
     section_percentages = []
-
     complete_sections = 0
-
-
     for checks in section_checks.values():
-
-        completed_checks = sum(
-            1
-            for check in checks
-            if check
-        )
-
-        section_percent = (
-            round(
-                completed_checks
-                / len(checks)
-                * 100
-            )
-            if checks
-            else 0
-        )
-
-        section_percentages.append(
-            section_percent
-        )
-
+        completed_checks = sum(1 for check in checks if check)
+        section_percent = round(completed_checks / len(checks) * 100) if checks else 0
+        section_percentages.append(section_percent)
         if section_percent == 100:
             complete_sections += 1
 
-
-    total_sections = len(
-        section_checks
-    )
-
-
+    total_sections = len(section_checks)
     overall_percent = (
-        round(
-            sum(
-                section_percentages
-            )
-            / total_sections
-        )
-        if total_sections
-        else 0
+        round(sum(section_percentages) / total_sections)
+        if total_sections else 0
     )
-
-
     return {
         "complete": complete_sections,
         "total": total_sections,

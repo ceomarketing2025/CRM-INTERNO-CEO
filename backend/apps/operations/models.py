@@ -1205,9 +1205,11 @@ class ProductionRecord(TimestampedModel):
 
 
 class SeoComplexity(models.TextChoices):
-    SIMPLE = "S", "Simple"
-    MEDIUM = "M", "Media"
-    COMPLEX = "C", "Compleja"
+    LEVEL_1 = "1", "Nivel 1"
+    LEVEL_2 = "2", "Nivel 2"
+    LEVEL_3 = "3", "Nivel 3"
+    LEVEL_4 = "4", "Nivel 4"
+    LEVEL_5 = "5", "Nivel 5"
 
 
 class ProductionWorkStatus(models.TextChoices):
@@ -1247,6 +1249,65 @@ DEFAULT_TYPOGRAPHY_CONFIG = {
 
 def default_typography_config():
     return {key: dict(value) for key, value in DEFAULT_TYPOGRAPHY_CONFIG.items()}
+
+
+DEFAULT_DEVELOPMENT_SPACING_CONFIG = {
+    "container_max": 1280,
+    "section_y_desktop": 96,
+    "section_y_tablet": 72,
+    "section_y_mobile": 48,
+    "content_gap": 24,
+    "card_gap": 16,
+    "card_radius": 16,
+}
+
+
+def default_development_spacing_config():
+    return dict(DEFAULT_DEVELOPMENT_SPACING_CONFIG)
+
+
+class DevelopmentStandard(TimestampedModel):
+    """Reglas globales del área de Desarrollo, independientes de cada proyecto."""
+
+    singleton_key = models.CharField(
+        max_length=32,
+        unique=True,
+        default="global",
+        editable=False,
+    )
+    typography_config = models.JSONField(
+        default=default_typography_config,
+        blank=True,
+        verbose_name="Tipografía global",
+    )
+    spacing_config = models.JSONField(
+        default=default_development_spacing_config,
+        blank=True,
+        verbose_name="Espaciados globales",
+    )
+    prompt_rules = models.TextField(
+        blank=True,
+        verbose_name="Reglas para prompts",
+    )
+    general_rules = models.TextField(
+        blank=True,
+        verbose_name="Reglas generales",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_development_standards",
+    )
+
+    class Meta:
+        verbose_name = "Estándar de Desarrollo"
+        verbose_name_plural = "Estándares de Desarrollo"
+
+    def __str__(self):
+        return "Estándares globales de Desarrollo"
+
 
 class WebProductionSheet(TimestampedModel):
     project = models.OneToOneField(
@@ -1336,7 +1397,7 @@ class ProductionSeoBase(TimestampedModel):
     complexity = models.CharField(
         max_length=2,
         choices=SeoComplexity.choices,
-        default=SeoComplexity.SIMPLE,
+        default=SeoComplexity.LEVEL_1,
     )
 
     points = models.PositiveSmallIntegerField(
@@ -1496,6 +1557,26 @@ class WebProductionPage(ProductionSeoBase):
         default=PageType.PRINCIPAL,
     )
 
+    class EntryType(models.TextChoices):
+        PAGE = "page", "Página"
+        GROUP = "group", "Nombre / grupo"
+
+    entry_type = models.CharField(
+        max_length=12,
+        choices=EntryType.choices,
+        default=EntryType.PAGE,
+        verbose_name="Tipo de elemento",
+    )
+
+    parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="children",
+        verbose_name="Elemento superior",
+    )
+
     class Meta:
         ordering = [
             "order",
@@ -1619,7 +1700,7 @@ class WebProductionInternalSection(
     complexity = models.CharField(
         max_length=2,
         choices=SeoComplexity.choices,
-        default=SeoComplexity.SIMPLE,
+        default=SeoComplexity.LEVEL_1,
     )
 
     points = models.PositiveSmallIntegerField(

@@ -6,11 +6,17 @@ from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.http import JsonResponse
+from django.utils import timezone
 from django.core.exceptions import PermissionDenied
 from apps.audit.models import ActivityLog
 from apps.audit.services import log_activity
 from apps.core.decorators import role_required
-from apps.operations.models import WebProductionSheet
+from apps.operations.models import (
+    WebProductionSheet,
+    WebProductionCounty,
+    WebProductionCity,
+)
 from apps.projects.models import Project
 from apps.projects.selectors import can_access_project, projects_for_area
 from apps.projects.services import sync_project_area_records, _development_template_for_project
@@ -196,247 +202,67 @@ def _status_for(condition, negative=False):
     return bool(condition), bool(negative and condition)
 
 
-def _website_save(questionnaire, request):
+def _website_save(questionnaire, request, *, finalize=False):
+    """Guarda la ficha breve de Desarrollo.
+
+    El autosave usa esta misma rutina, pero mantiene la ficha como borrador.
+    Solo el botón final puede marcarla como completa cuando llega al 100 %.
+    """
     user = request.user
+    existing = website_answer_payload(questionnaire)
 
     company_description = _clean(request.POST.get("company_description"))
     save_key_answer(
-        questionnaire=questionnaire, key="company_description", user=user,
-        value_text=company_description, complete=bool(company_description),
+        questionnaire=questionnaire,
+        key="company_description",
+        user=user,
+        value_text=company_description,
+        complete=bool(company_description),
     )
 
-    # ==========================================
-    # LOGICA DEL NEGOCIO
-    # ==========================================
-
-    customer_type = _clean(
-        request.POST.get("customer_type")
-    )
-
-    business_sells = _clean(
-        request.POST.get("business_sells")
-    )
-
-    business_audience = _clean(
-        request.POST.get("business_audience")
-    )
-
-    business_where = _clean(
-        request.POST.get("business_where")
-    )
-
-    business_priority_sale = _clean(
-        request.POST.get("business_priority_sale")
-    )
-
-    visitor_action = _clean(
-        request.POST.get("visitor_action")
-    )
-
-    visitor_action_other = _clean(
-        request.POST.get("visitor_action_other")
-    )
-
-
-    business_logic_complete = bool(
-        customer_type
-        and visitor_action
-        and (
-            visitor_action != "other"
-            or visitor_action_other
-        )
-    )
-
-
-    business_logic_lines = []
-
-
+    customer_type = _clean(request.POST.get("customer_type"))
+    visitor_action = _clean(request.POST.get("visitor_action"))
+    visitor_action_other = _clean(request.POST.get("visitor_action_other"))
     customer_type_labels = {
         "residential": "Residencial",
         "commercial": "Comercial",
         "both": "Ambos",
         "na": "No aplica",
     }
-
-
     visitor_action_labels = {
         "call": "Llamar",
         "quote": "Solicitar cotización",
         "estimate": "Solicitar estimado",
         "other": "Otro",
     }
-
-
+    business_logic_complete = bool(
+        customer_type
+        and visitor_action
+        and (visitor_action != "other" or visitor_action_other)
+    )
+    business_logic_lines = []
     if customer_type:
-
         business_logic_lines.append(
-            "Tipo de cliente: "
-            + customer_type_labels.get(
-                customer_type,
-                customer_type,
-            )
+            f"Tipo de cliente: {customer_type_labels.get(customer_type, customer_type)}"
         )
-
-
     if visitor_action:
-
-        if (
-            visitor_action == "other"
-            and visitor_action_other
-        ):
-
-            business_logic_lines.append(
-                f"Acción principal: {visitor_action_other}"
-            )
-
-        else:
-
-            business_logic_lines.append(
-                "Acción principal: "
-                + visitor_action_labels.get(
-                    visitor_action,
-                    visitor_action,
-                )
-            )
-
-
+        action_label = (
+            visitor_action_other
+            if visitor_action == "other" and visitor_action_other
+            else visitor_action_labels.get(visitor_action, visitor_action)
+        )
+        business_logic_lines.append(f"Acción principal: {action_label}")
     save_key_answer(
         questionnaire=questionnaire,
         key="business_logic",
         user=user,
-        value_text="\n".join(
-            business_logic_lines
-        ),
+        value_text="\n".join(business_logic_lines),
         value_json={
             "customer_type": customer_type,
             "visitor_action": visitor_action,
             "visitor_action_other": visitor_action_other,
         },
         complete=business_logic_complete,
-    )
-
-    # ==========================================
-    # COTIZACIONES
-    # ==========================================
-
-    free_estimates = _clean(
-        request.POST.get("free_estimates")
-    )
-
-    quote_channels = [
-        _clean(value)
-        for value in request.POST.getlist(
-            "quote_channel"
-        )
-        if _clean(value)
-    ]
-
-    quote_notes = _clean(
-        request.POST.get("quote_notes")
-    )
-
-    quotes_complete = bool(
-    free_estimates
-)
-
-    quote_lines = []
-
-    if free_estimates:
-        quote_lines.append(
-            f"Estimados gratuitos: {free_estimates}"
-        )
-
-    if quote_channels:
-        quote_lines.append(
-            "Canales: " +
-            ", ".join(quote_channels)
-        )
-
-    if quote_notes:
-        quote_lines.append(
-            f"Notas: {quote_notes}"
-        )
-
-    save_key_answer(
-        questionnaire=questionnaire,
-        key="quotes",
-        user=user,
-        value_text="\n".join(
-            quote_lines
-        ),
-        value_json={
-            "free_estimates": free_estimates,
-            "channels": quote_channels,
-            "notes": quote_notes,
-        },
-        complete=quotes_complete,
-    )
-
-
-
-
-    # ==========================================
-    # FORMULARIOS
-    # ==========================================
-
-    form_fields = [
-        _clean(value)
-        for value in request.POST.getlist(
-            "form_fields"
-        )
-        if _clean(value)
-    ]
-
-    form_receiver_email = _clean(
-        request.POST.get(
-            "form_receiver_email"
-        )
-    )
-
-    forms_complete = (
-        bool(form_fields) and
-        bool(form_receiver_email)
-    )
-
-    forms_lines = []
-
-    if form_fields:
-        forms_lines.append(
-            "Campos: " +
-            ", ".join(form_fields)
-        )
-
-    if form_receiver_email:
-        forms_lines.append(
-            f"Email receptor: {form_receiver_email}"
-        )
-
-    save_key_answer(
-        questionnaire=questionnaire,
-        key="website_forms",
-        user=user,
-        value_text="\n".join(
-            forms_lines
-        ),
-        value_json={
-            "fields": form_fields,
-            "receiver_email":
-                form_receiver_email,
-        },
-        complete=forms_complete,
-    )
-    slogan_mode = request.POST.get("slogan_mode", "")
-    slogan_text = _clean(request.POST.get("slogan_text"))
-    slogan_complete = slogan_mode == "none" or (slogan_mode in {"existing", "create"} and bool(slogan_text))
-    slogan_label = {
-        "existing": f"Slogan actual: {slogan_text}",
-        "create": f"Slogan creado/propuesto: {slogan_text}",
-        "none": "No crear slogan",
-    }.get(slogan_mode, slogan_text)
-    save_key_answer(
-        questionnaire=questionnaire, key="slogan", user=user,
-        value_text=slogan_label, value_json={"mode": slogan_mode, "text": slogan_text},
-        complete=slogan_complete, negative=slogan_mode == "none",
     )
 
     mission_has = _yes_no(request.POST.get("mission_has"))
@@ -449,135 +275,64 @@ def _website_save(questionnaire, request):
     mission_complete = (
         mission_has == "yes" and bool(mission and vision)
     ) or (
-        mission_has == "no" and all([mission_origin, mission_clients, vision_future, vision_legacy])
+        mission_has == "no"
+        and all([mission_origin, mission_clients, vision_future, vision_legacy])
     )
-    mission_summary = ""
     if mission_has == "yes":
         mission_summary = f"Misión: {mission}\nVisión: {vision}".strip()
     elif mission_has == "no":
         mission_summary = "Información recopilada para crear misión y visión"
+    else:
+        mission_summary = ""
     save_key_answer(
-        questionnaire=questionnaire, key="has_mission_vision", user=user,
+        questionnaire=questionnaire,
+        key="has_mission_vision",
+        user=user,
         value_text=mission_summary,
         value_json={
-            "has": mission_has, "mission": mission, "vision": vision,
-            "mission_origin": mission_origin, "mission_clients": mission_clients,
-            "vision_future": vision_future, "vision_legacy": vision_legacy,
-        }, complete=mission_complete, negative=False,
+            "has": mission_has,
+            "mission": mission,
+            "vision": vision,
+            "mission_origin": mission_origin,
+            "mission_clients": mission_clients,
+            "vision_future": vision_future,
+            "vision_legacy": vision_legacy,
+        },
+        complete=mission_complete,
     )
 
-        # ==========================================
-    # ABOUT Y TEAM
-    # ==========================================
-
-    team_include = _yes_no(
-        request.POST.get(
-            "team_include"
-        )
-    )
-
-    team_scope = _clean(
-        request.POST.get(
-            "team_scope"
-        )
-    )
-
-    team_other = _clean(
-        request.POST.get(
-            "team_other"
-        )
-    )
-
-    team_notes = _clean(
-        request.POST.get(
-            "team_notes"
-        )
-    )
-
-
+    team_include = _yes_no(request.POST.get("team_include"))
+    team_scope = _clean(request.POST.get("team_scope"))
+    team_other = _clean(request.POST.get("team_other"))
+    team_notes = _clean(request.POST.get("team_notes"))
     allowed_team_scopes = {
-        "owner_photo",
-        "team_photo",
-        "group_photos",
-        "no_photo",
-        "other",
+        "owner_photo", "team_photo", "group_photos", "no_photo", "other"
     }
-
-
     if team_scope not in allowed_team_scopes:
         team_scope = ""
-
-
     if team_include == "no":
-
         team_scope = ""
         team_other = ""
         team_notes = ""
-
         team_complete = True
-
-        team_summary = (
-            "No incluir contenido de About / Team"
-        )
-
-
+        team_summary = "No incluir contenido de About / Team"
     elif team_include == "yes":
-
-        if team_scope == "other":
-
-            team_complete = bool(
-                team_other
-            )
-
-        else:
-
-            team_complete = (
-                team_scope
-                in allowed_team_scopes
-                and team_scope != "other"
-            )
-
-
-        team_labels = {
-            "owner_photo":
-                "Foto del dueño",
-
-            "team_photo":
-                "Foto con el team",
-
-            "group_photos":
-                "Fotos por grupos",
-
-            "no_photo":
-                "Sin foto",
-
-            "other":
-                team_other or "Otro",
-        }
-
-
-        team_summary = (
-            team_labels.get(
-                team_scope,
-                ""
-            )
+        team_complete = bool(team_scope) and (
+            team_scope != "other" or bool(team_other)
         )
-
-
+        team_labels = {
+            "owner_photo": "Foto del dueño",
+            "team_photo": "Foto con el equipo",
+            "group_photos": "Fotos por grupos",
+            "no_photo": "Sin foto",
+            "other": team_other or "Otro",
+        }
+        team_summary = team_labels.get(team_scope, "")
         if team_notes:
-
-            team_summary = (
-                f"{team_summary}\n"
-                f"Notas: {team_notes}"
-            ).strip()
-
-
+            team_summary = f"{team_summary}\nNotas: {team_notes}".strip()
     else:
-
         team_complete = False
         team_summary = ""
-
-
     save_key_answer(
         questionnaire=questionnaire,
         key="show_team",
@@ -590,150 +345,72 @@ def _website_save(questionnaire, request):
             "notes": team_notes,
         },
         complete=team_complete,
-        negative=(
-            team_include == "no"
-        ),
-    )
-    service_names = [
-        _clean(name)
-        for name in request.POST.getlist(
-            "service_name"
-        )
-    ]
-
-    service_names = [
-        name
-        for name in service_names
-        if name
-    ]
-
-
-    primary_raw = request.POST.get(
-        "service_primary",
-        ""
+        negative=team_include == "no",
     )
 
+    service_names = [
+        _clean(name) for name in request.POST.getlist("service_name") if _clean(name)
+    ]
+    primary_raw = request.POST.get("service_primary", "")
     try:
-        primary_index = int(
-            primary_raw
-        )
-    except (
-        TypeError,
-        ValueError,
-    ):
+        primary_index = int(primary_raw)
+    except (TypeError, ValueError):
         primary_index = None
-
-
     business_type = _clean(
-        request.POST.get(
-            "services_business_type"
-        )
+        request.POST.get("services_business_type") or request.POST.get("business_type")
     )
-
-    business_type_other = _clean(
-        request.POST.get(
-            "business_type_other"
-        )
-    )
-
-
-    structure_raw = request.POST.get(
-        "service_structure_json",
-        ""
-    )
-
-    try:
-        categories = (
-            json.loads(structure_raw)
-            if structure_raw
-            else []
-        )
-    except (
-        json.JSONDecodeError,
-        TypeError,
-    ):
-        categories = []
-
-
+    business_type_other = _clean(request.POST.get("business_type_other"))
+    old_services = (existing.get("main_services") or {}).get("json") or {}
+    structure_raw = request.POST.get("service_structure_json", "")
+    if structure_raw:
+        try:
+            categories = json.loads(structure_raw)
+        except (json.JSONDecodeError, TypeError):
+            categories = old_services.get("categories") or []
+    else:
+        categories = old_services.get("categories") or []
     excluded_services = [
         _clean(name)
-        for name in request.POST.getlist(
-            "excluded_service_name"
-        )
+        for name in request.POST.getlist("excluded_service_name")
+        if _clean(name)
     ]
-
-    excluded_services = [
-        name
-        for name in excluded_services
-        if name
-    ]
-
+    if not excluded_services:
+        excluded_services = old_services.get("excluded_services") or []
 
     services = []
-
-    for index, name in enumerate(
-        service_names
-    ):
-
+    for index, name in enumerate(service_names):
         services.append({
             "name": name,
-            "primary": (
-                index == primary_index
-            ),
+            "primary": index == primary_index,
             "excluded": False,
             "order": index,
         })
-
-
+    found_primary = False
+    for item in services:
+        if item["primary"] and not found_primary:
+            found_primary = True
+        else:
+            item["primary"] = False
     for name in excluded_services:
-
         services.append({
             "name": name,
             "primary": False,
             "excluded": True,
             "order": len(services),
         })
-
-
-    found_primary = False
-
-    for item in services:
-
-        if (
-            item["primary"]
-            and not item["excluded"]
-            and not found_primary
-        ):
-            found_primary = True
-
-        else:
-            item["primary"] = False
-
-
     service_lines = []
-
     for item in services:
-
         line = item["name"]
-
         if item["primary"]:
             line += " (PRINCIPAL)"
-
         if item["excluded"]:
             line += " (DEJAR FUERA)"
-
-        service_lines.append(
-            line
-        )
-
-
+        service_lines.append(line)
     save_key_answer(
         questionnaire=questionnaire,
         key="main_services",
         user=user,
-        value_text="\n".join(
-            service_lines
-        ),
+        value_text="\n".join(service_lines),
         value_json={
             "business_type": business_type,
             "business_type_other": business_type_other,
@@ -745,109 +422,80 @@ def _website_save(questionnaire, request):
             business_type
             and service_names
             and found_primary
-            and (
-                business_type != "other"
-                or business_type_other
-            )
+            and (business_type != "other" or business_type_other)
         ),
     )
 
+    area_strategy = _clean(request.POST.get("area_strategy"))
+    if area_strategy not in {"client", "study"}:
+        area_strategy = (
+            ((existing.get("service_areas") or {}).get("json") or {}).get("strategy")
+            or ""
+        )
     area_types = request.POST.getlist("area_type")
     area_names = request.POST.getlist("area_name")
+    area_parents = request.POST.getlist("area_parent")
     areas = []
     for index, raw_name in enumerate(area_names):
         name = _clean(raw_name)
         if not name:
             continue
-        area_type = area_types[index] if index < len(area_types) and area_types[index] in {"state", "county", "city"} else "city"
-        areas.append({"type": area_type, "name": name})
+        area_type = (
+            area_types[index]
+            if index < len(area_types) and area_types[index] in {"state", "county", "city"}
+            else "city"
+        )
+        parent = _clean(area_parents[index]) if index < len(area_parents) else ""
+        areas.append({"type": area_type, "name": name, "parent": parent})
     area_labels = {"state": "Estado", "county": "Condado", "city": "Ciudad"}
+    area_strategy_label = {
+        "client": "Localidades específicas definidas por el cliente",
+        "study": "Localidades definidas por estudio de demanda",
+    }.get(area_strategy, "")
+    area_lines = [area_strategy_label] if area_strategy_label else []
+    area_lines.extend(
+        f"{area_labels.get(item['type'], 'Área')}: {item['name']}"
+        + (f" · {item['parent']}" if item.get("parent") else "")
+        for item in areas
+    )
+    areas_complete = bool(area_strategy) and (
+        area_strategy == "study" or bool(areas)
+    )
     save_key_answer(
-        questionnaire=questionnaire, key="service_areas", user=user,
-        value_text="\n".join(f"{area_labels.get(item['type'], 'Área')}: {item['name']}" for item in areas),
-        value_json={"items": areas}, complete=bool(areas),
+        questionnaire=questionnaire,
+        key="service_areas",
+        user=user,
+        value_text="\n".join(area_lines),
+        value_json={"strategy": area_strategy, "items": areas},
+        complete=areas_complete,
     )
 
     coverage_miles = _clean(request.POST.get("coverage_miles"))
     coverage_complete = coverage_miles.isdigit() and int(coverage_miles) >= 0
     save_key_answer(
-        questionnaire=questionnaire, key="coverage", user=user,
+        questionnaire=questionnaire,
+        key="coverage",
+        user=user,
         value_text=f"{coverage_miles} millas alrededor" if coverage_miles else "",
-        value_json={"miles": coverage_miles}, complete=coverage_complete,
+        value_json={"miles": coverage_miles},
+        complete=coverage_complete,
     )
 
-
-
-    # ==========================================
-    # HORARIO Y ATENCION 24/7
-    # ==========================================
-
-    is_24_7 = _yes_no(
-        request.POST.get(
-            "is_24_7"
-        )
-    )
-
-    start_time = _clean(
-        request.POST.get(
-            "hours_start"
-        )
-    )
-
-    start_period = (
-        request.POST.get(
-            "hours_start_period",
-            "AM",
-        )
-        if request.POST.get(
-            "hours_start_period"
-        ) in {
-            "AM",
-            "PM",
-        }
-        else "AM"
-    )
-
-    end_time = _clean(
-        request.POST.get(
-            "hours_end"
-        )
-    )
-
-    end_period = (
-        request.POST.get(
-            "hours_end_period",
-            "PM",
-        )
-        if request.POST.get(
-            "hours_end_period"
-        ) in {
-            "AM",
-            "PM",
-        }
-        else "PM"
-    )
-
-
-    hours_complete = (
-        is_24_7 == "yes"
-        or bool(
-            start_time
-            and end_time
-        )
-)
-
+    is_24_7 = _yes_no(request.POST.get("is_24_7"))
+    start_time = _clean(request.POST.get("hours_start"))
+    start_period = request.POST.get("hours_start_period", "AM")
+    if start_period not in {"AM", "PM"}:
+        start_period = "AM"
+    end_time = _clean(request.POST.get("hours_end"))
+    end_period = request.POST.get("hours_end_period", "PM")
+    if end_period not in {"AM", "PM"}:
+        end_period = "PM"
+    hours_complete = is_24_7 == "yes" or bool(start_time and end_time)
     hours_text = (
-    "24/7"
-    if is_24_7 == "yes"
-    else (
-        f"{start_time} {start_period} - "
-        f"{end_time} {end_period}"
-        if start_time and end_time
-        else ""
+        "24/7"
+        if is_24_7 == "yes"
+        else (f"{start_time} {start_period} - {end_time} {end_period}" if start_time and end_time else "")
     )
-)
-
     save_key_answer(
         questionnaire=questionnaire,
         key="business_hours",
@@ -861,236 +509,332 @@ def _website_save(questionnaire, request):
         },
         complete=hours_complete,
     )
-
-
     save_key_answer(
         questionnaire=questionnaire,
         key="is_24_7",
         user=user,
-        value_text=(
-            "Sí"
-            if is_24_7 == "yes"
-            else (
-                "No"
-                if is_24_7 == "no"
-                else ""
-            )
-        ),
-        value_json={
-            "answer": is_24_7
-        },
-        complete=(
-            is_24_7
-            in {
-                "yes",
-                "no",
-            }
-        ),
-        negative=(
-            is_24_7 == "no"
-        ),
+        value_text="Sí" if is_24_7 == "yes" else ("No" if is_24_7 == "no" else ""),
+        value_json={"answer": is_24_7},
+        complete=is_24_7 in {"yes", "no"},
+        negative=is_24_7 == "no",
     )
 
-    # ==========================================
-    # TELEFONOS
-    # ==========================================
-
-    phone_numbers = (
-        request.POST.getlist(
-            "phone_number"
-        )
-    )
-
-    phone_primary = (
-        request.POST.get(
-            "phone_primary",
-            "",
-        )
-    )
-
-    phone_whatsapp_indexes = set(
-        request.POST.getlist(
-            "phone_whatsapp"
-        )
-    )
-
-
+    phone_numbers = request.POST.getlist("phone_number")
+    phone_primary = request.POST.get("phone_primary", "")
+    phone_whatsapp_indexes = set(request.POST.getlist("phone_whatsapp"))
     phones = []
-
-
-    for index, raw_number in enumerate(
-        phone_numbers
-    ):
-
-        number = _clean(
-            raw_number
-        )
-
+    for index, raw_number in enumerate(phone_numbers):
+        number = _clean(raw_number)
         if not number:
             continue
-
-
         phones.append({
             "number": number,
-
-            "primary": (
-                str(index)
-                == str(
-                    phone_primary
-                )
-            ),
-
-            "whatsapp": (
-                str(index)
-                in phone_whatsapp_indexes
-            ),
+            "primary": str(index) == str(phone_primary),
+            "whatsapp": str(index) in phone_whatsapp_indexes,
         })
-
-
-    if (
-        phones
-        and not any(
-            item["primary"]
-            for item in phones
-        )
-    ):
-
-        phones[0][
-            "primary"
-        ] = True
-
-
+    if phones and not any(item["primary"] for item in phones):
+        phones[0]["primary"] = True
     phone_lines = []
-
-
     for item in phones:
-
         tags = []
-
-
         if item["primary"]:
-
-            tags.append(
-                "Principal"
-            )
-
-
+            tags.append("Principal")
         if item["whatsapp"]:
-
-            tags.append(
-                "WhatsApp"
-            )
-
-
-        suffix = (
-            f" ({', '.join(tags)})"
-            if tags
-            else ""
-        )
-
-
-        phone_lines.append(
-            f"{item['number']}"
-            f"{suffix}"
-        )
-
-
+            tags.append("WhatsApp")
+        suffix = f" ({', '.join(tags)})" if tags else ""
+        phone_lines.append(f"{item['number']}{suffix}")
     save_key_answer(
         questionnaire=questionnaire,
         key="contact_numbers",
         user=user,
-        value_text="\n".join(
-            phone_lines
-        ),
-        value_json={
-            "numbers": phones
-        },
-        complete=bool(
-            phones
-        ),
+        value_text="\n".join(phone_lines),
+        value_json={"numbers": phones},
+        complete=bool(phones),
     )
+
+    lead_receiver_email = _clean(
+        request.POST.get("lead_receiver_email")
+        or request.POST.get("form_receiver_email")
+    )
+    save_key_answer(
+        questionnaire=questionnaire,
+        key="website_forms",
+        user=user,
+        value_text=(
+            f"Correo de recepción de leads: {lead_receiver_email}"
+            if lead_receiver_email else ""
+        ),
+        value_json={"fields": [], "receiver_email": lead_receiver_email},
+        complete=bool(lead_receiver_email),
+    )
+
     social_has = _yes_no(request.POST.get("social_has"))
-    social_keys = ["facebook", "instagram", "tiktok", "youtube", "twitter", "yelp", "linkedin", "nextdoor"]
+    social_keys = [
+        "facebook", "instagram", "tiktok", "youtube",
+        "twitter", "yelp", "linkedin", "nextdoor",
+    ]
     networks = {}
     enabled_networks = []
-    for key in social_keys:
-        if request.POST.get(f"social_enabled_{key}") == "1":
-            enabled_networks.append(key)
-            networks[key] = _clean(request.POST.get(f"social_url_{key}"))
-    custom_names = request.POST.getlist("social_custom_name")
-    custom_urls = request.POST.getlist("social_custom_url")
     custom_social = []
-    for index in range(max(len(custom_names), len(custom_urls))):
-        name = _clean(custom_names[index]) if index < len(custom_names) else ""
-        url = _clean(custom_urls[index]) if index < len(custom_urls) else ""
-        if name or url:
-            custom_social.append({"name": name, "url": url})
-    has_social_selection = bool(enabled_networks) or bool(custom_social)
-    social_complete = social_has == "no" or (social_has == "yes" and has_social_selection)
-    social_labels = {
-        "facebook": "Facebook", "instagram": "Instagram", "tiktok": "TikTok", "youtube": "YouTube",
-        "twitter": "X / Twitter", "yelp": "Yelp", "linkedin": "LinkedIn", "nextdoor": "Nextdoor",
-    }
-    social_lines = [f"{social_labels[key]}: {url}" for key, url in networks.items() if url]
-    social_lines += [f"{item['name'] or 'Otra red'}: {item['url']}" for item in custom_social if item.get("url")]
-    social_text = "No tiene redes sociales" if social_has == "no" else "\n".join(social_lines)
-    save_key_answer(
-        questionnaire=questionnaire, key="has_social", user=user,
-        value_text=social_text, value_json={"has": social_has, "networks": networks, "enabled": enabled_networks, "custom": custom_social},
-        complete=social_complete, negative=social_has == "no",
+
+    # V3: filas compactas "red + enlace". Se mantiene compatibilidad con
+    # el formulario anterior para no perder datos durante una actualización.
+    row_names = request.POST.getlist("social_network_name")
+    row_urls = request.POST.getlist("social_network_url")
+    row_custom_names = request.POST.getlist("social_network_custom_name")
+    if row_names or row_urls or row_custom_names:
+        row_count = max(len(row_names), len(row_urls), len(row_custom_names))
+        for index in range(row_count):
+            network = _clean(row_names[index]) if index < len(row_names) else ""
+            url = _clean(row_urls[index]) if index < len(row_urls) else ""
+            custom_name = (
+                _clean(row_custom_names[index])
+                if index < len(row_custom_names) else ""
+            )
+            if network in social_keys:
+                # Guardamos solo enlaces reales; seleccionar una red sin link
+                # no marca la fase como completada.
+                if url:
+                    networks[network] = url
+                    if network not in enabled_networks:
+                        enabled_networks.append(network)
+            elif network == "other":
+                if custom_name or url:
+                    custom_social.append({"name": custom_name, "url": url})
+    else:
+        for key in social_keys:
+            if request.POST.get(f"social_enabled_{key}") == "1":
+                enabled_networks.append(key)
+                networks[key] = _clean(request.POST.get(f"social_url_{key}"))
+        custom_names = request.POST.getlist("social_custom_name")
+        custom_urls = request.POST.getlist("social_custom_url")
+        for index in range(max(len(custom_names), len(custom_urls))):
+            name = _clean(custom_names[index]) if index < len(custom_names) else ""
+            url = _clean(custom_urls[index]) if index < len(custom_urls) else ""
+            if name or url:
+                custom_social.append({"name": name, "url": url})
+
+    has_social_selection = bool(networks) or any(
+        item.get("url") for item in custom_social
     )
-
- 
-
-
-
+    social_complete = social_has == "no" or (
+        social_has == "yes" and has_social_selection
+    )
+    social_labels = {
+        "facebook": "Facebook", "instagram": "Instagram", "tiktok": "TikTok",
+        "youtube": "YouTube", "twitter": "X / Twitter", "yelp": "Yelp",
+        "linkedin": "LinkedIn", "nextdoor": "Nextdoor",
+    }
+    social_lines = [
+        f"{social_labels[key]}: {url}"
+        for key, url in networks.items() if url
+    ]
+    social_lines += [
+        f"{item['name'] or 'Otra red'}: {item['url']}"
+        for item in custom_social if item.get("url")
+    ]
+    social_text = (
+        "No tiene redes sociales"
+        if social_has == "no"
+        else "\n".join(social_lines)
+    )
+    save_key_answer(
+        questionnaire=questionnaire,
+        key="has_social",
+        user=user,
+        value_text=social_text,
+        value_json={
+            "has": social_has,
+            "networks": networks,
+            "enabled": enabled_networks,
+            "custom": custom_social,
+        },
+        complete=social_complete,
+        negative=social_has == "no",
+    )
 
     cert_has = _yes_no(request.POST.get("certifications_has"))
     cert_detail = _clean(request.POST.get("certifications_detail"))
     cert_complete = cert_has == "no" or (cert_has == "yes" and bool(cert_detail))
     save_key_answer(
-        questionnaire=questionnaire, key="certifications", user=user,
-        value_text=cert_detail if cert_has == "yes" else ("No tiene certificaciones" if cert_has == "no" else ""),
-        value_json={"has": cert_has, "detail": cert_detail}, complete=cert_complete, negative=cert_has == "no",
+        questionnaire=questionnaire,
+        key="certifications",
+        user=user,
+        value_text=(
+            cert_detail if cert_has == "yes"
+            else ("No tiene certificaciones" if cert_has == "no" else "")
+        ),
+        value_json={"has": cert_has, "detail": cert_detail},
+        complete=cert_complete,
+        negative=cert_has == "no",
     )
 
     warranty_has = _yes_no(request.POST.get("warranties_has"))
     warranty_detail = _clean(request.POST.get("warranties_detail"))
-    warranty_complete = warranty_has == "no" or (warranty_has == "yes" and bool(warranty_detail))
+    warranty_complete = warranty_has == "no" or (
+        warranty_has == "yes" and bool(warranty_detail)
+    )
     save_key_answer(
-        questionnaire=questionnaire, key="warranties", user=user,
-        value_text=warranty_detail if warranty_has == "yes" else ("No ofrece garantía" if warranty_has == "no" else ""),
-        value_json={"has": warranty_has, "detail": warranty_detail}, complete=warranty_complete, negative=warranty_has == "no",
+        questionnaire=questionnaire,
+        key="warranties",
+        user=user,
+        value_text=(
+            warranty_detail if warranty_has == "yes"
+            else ("No ofrece garantía" if warranty_has == "no" else "")
+        ),
+        value_json={"has": warranty_has, "detail": warranty_detail},
+        complete=warranty_complete,
+        negative=warranty_has == "no",
     )
 
     experience_years = _clean(request.POST.get("experience_years"))
     experience_complete = experience_years.isdigit()
     save_key_answer(
-        questionnaire=questionnaire, key="experience_years", user=user,
-        value_text=experience_years, value_json={"years": experience_years}, complete=experience_complete,
+        questionnaire=questionnaire,
+        key="experience_years",
+        user=user,
+        value_text=experience_years,
+        value_json={"years": experience_years},
+        complete=experience_complete,
     )
 
-    
-
-    progress = website_questionnaire_progress(
-        questionnaire
-)
-
+    progress = website_questionnaire_progress(questionnaire)
     questionnaire.status = (
         QuestionnaireStatus.COMPLETE
-        if progress["percent"] == 100
+        if finalize and progress["percent"] == 100
         else QuestionnaireStatus.IN_PROGRESS
     )
-
-    questionnaire.save(
-        update_fields=[
-            "status",
-            "updated_at",
-        ]
-    )
-
+    questionnaire.save(update_fields=["status", "updated_at"])
     return progress
 
+
+def _sync_questionnaire_areas_to_production(questionnaire, user):
+    """Sincroniza condados/ciudades editados en Información hacia Producción.
+
+    Solo se llama cuando el navegador marca que el bloque de áreas fue tocado,
+    evitando borrar una estructura antigua simplemente por abrir la ficha.
+    """
+    payload = website_answer_payload(questionnaire)
+    area_data = (payload.get("service_areas") or {}).get("json") or {}
+    items = [item for item in (area_data.get("items") or []) if isinstance(item, dict)]
+
+    sheet, _ = WebProductionSheet.objects.get_or_create(
+        project=questionnaire.project,
+        defaults={"updated_by": user},
+    )
+
+    desired_counties = {}
+    desired_cities = {}
+    for item in items:
+        area_type = _clean(item.get("type")).lower()
+        name = _clean(item.get("name"))
+        parent = _clean(item.get("parent"))
+        if not name:
+            continue
+        key = name.casefold()
+        if area_type == "county":
+            desired_counties[key] = name
+        elif area_type == "city":
+            desired_cities[key] = {"name": name, "parent": parent}
+
+    # Si el proyecto usará áreas definidas por estudio y todavía no se cargaron
+    # localidades concretas, no destruimos una estructura de Producción existente.
+    # Cuando el estudio agregue condados/ciudades, la sincronización vuelve a ser exacta.
+    strategy = _clean(area_data.get("strategy")).lower()
+    if strategy == "study" and not desired_counties and not desired_cities:
+        log_activity(
+            user,
+            "development",
+            "production_area_sync_deferred",
+            sheet,
+            description=(
+                "Sincronización de áreas diferida: la estrategia es estudio de demanda "
+                "y aún no existen localidades concretas en la ficha de información."
+            ),
+            metadata={"project_id": questionnaire.project_id},
+        )
+        return sheet
+
+    # Primero ciudades para que borrar un condado no deje ciudades huérfanas.
+    for city in list(sheet.cities.all()):
+        if (city.name or "").strip().casefold() not in desired_cities:
+            city.delete()
+
+    for county in list(sheet.counties.all()):
+        if (county.name or "").strip().casefold() not in desired_counties:
+            county.delete()
+
+    county_map = {
+        (county.name or "").strip().casefold(): county
+        for county in sheet.counties.all()
+    }
+    county_order = sheet.counties.order_by("-order").values_list("order", flat=True).first() or 0
+    for key, name in desired_counties.items():
+        county = county_map.get(key)
+        if county is None:
+            county_order += 1
+            county = WebProductionCounty.objects.create(
+                sheet=sheet,
+                name=name,
+                complexity="1",
+                points=1,
+                order=county_order,
+                updated_by=user,
+            )
+            county_map[key] = county
+        elif county.name != name:
+            county.name = name
+            county.updated_by = user
+            county.save(update_fields=["name", "updated_by", "updated_at"])
+
+    city_map = {
+        (city.name or "").strip().casefold(): city
+        for city in sheet.cities.select_related("county")
+    }
+    city_order = sheet.cities.order_by("-order").values_list("order", flat=True).first() or 0
+    for key, item in desired_cities.items():
+        city = city_map.get(key)
+        county = county_map.get(item["parent"].casefold()) if item["parent"] else None
+        if city is None:
+            city_order += 1
+            city = WebProductionCity.objects.create(
+                sheet=sheet,
+                county=county,
+                name=item["name"],
+                complexity="1",
+                points=1,
+                order=city_order,
+                updated_by=user,
+            )
+            city_map[key] = city
+        else:
+            fields = []
+            if city.name != item["name"]:
+                city.name = item["name"]
+                fields.append("name")
+            if city.county_id != (county.pk if county else None):
+                city.county = county
+                fields.append("county")
+            if fields:
+                city.updated_by = user
+                fields.extend(["updated_by", "updated_at"])
+                city.save(update_fields=fields)
+
+    sheet.county_target = len(desired_counties)
+    sheet.updated_by = user
+    sheet.save(update_fields=["county_target", "updated_by", "updated_at"])
+    log_activity(
+        user,
+        "development",
+        "production_area_sync_from_information",
+        sheet,
+        description=(
+            f"Áreas sincronizadas desde ficha de información: "
+            f"{len(desired_counties)} condado(s), {len(desired_cities)} ciudad(es)."
+        ),
+        metadata={"project_id": questionnaire.project_id},
+    )
+    return sheet
 
 def _website_fill_context(questionnaire):
     payload = website_answer_payload(questionnaire)
@@ -1108,23 +852,18 @@ def _website_fill_context(questionnaire):
 
 @role_required("developer")
 def development_information(request):
-    """Entrada a la información/formulario del área de Desarrollo."""
+    """Listado horizontal de fichas de información y producción de Desarrollo."""
+    view_mode = (request.GET.get("view") or "information").strip().lower()
+    if view_mode == "styles":
+        return redirect("operations:development_standards")
+    if view_mode not in {"information", "production"}:
+        view_mode = "information"
 
-    projects = projects_for_area(
-        "development"
-    ).order_by(
-        "-updated_at",
-        "-created_at",
-    )
-
+    projects = projects_for_area("development").order_by("-updated_at", "-created_at")
     rows = []
 
     for project in projects:
-        sync_project_area_records(
-            project,
-            request.user,
-        )
-
+        sync_project_area_records(project, request.user)
         questionnaire = (
             ProjectQuestionnaire.objects
             .filter(project=project)
@@ -1133,56 +872,72 @@ def development_information(request):
             .first()
         )
 
-        if (
-            questionnaire
-            and questionnaire.template.code
-            == WEBSITE_TEMPLATE_CODE
-        ):
-            progress = website_questionnaire_progress(
-                questionnaire
-            )
+        if questionnaire and questionnaire.template.code == WEBSITE_TEMPLATE_CODE:
+            progress = website_questionnaire_progress(questionnaire)
         else:
+            is_complete = bool(questionnaire and questionnaire.status == QuestionnaireStatus.COMPLETE)
             progress = {
-                "complete": (
-                    1
-                    if questionnaire
-                    and questionnaire.status
-                    == QuestionnaireStatus.COMPLETE
-                    else 0
-                ),
-                "total": (
-                    1
-                    if questionnaire
-                    else 0
-                ),
-                "percent": (
-                    100
-                    if questionnaire
-                    and questionnaire.status
-                    == QuestionnaireStatus.COMPLETE
-                    else 0
-                ),
+                "complete": 1 if is_complete else 0,
+                "total": 1 if questionnaire else 0,
+                "percent": 100 if is_complete else 0,
             }
 
-        outputs = build_development_outputs(
-            project,
-            questionnaire,
+        information_remaining = max(progress["total"] - progress["complete"], 0)
+        outputs = build_development_outputs(project, questionnaire)
+
+        sheet = (
+            WebProductionSheet.objects
+            .filter(project=project)
+            .prefetch_related("pages", "counties__services", "cities", "internal_sections")
+            .first()
+        )
+        production_total = 0
+        production_complete = 0
+        if sheet:
+            counties = list(sheet.counties.all())
+            production_rows = (
+                list(sheet.pages.exclude(entry_type="group"))
+                + counties
+                + [service for county in counties for service in county.services.all()]
+                + list(sheet.cities.all())
+                + list(sheet.internal_sections.all())
+            )
+            production_total = len(production_rows)
+            production_complete = sum(
+                1 for item in production_rows
+                if getattr(item, "workflow_status", "") == "complete"
+            )
+        production_percent = round((production_complete / production_total) * 100) if production_total else 0
+        production_remaining = max(production_total - production_complete, 0)
+
+        last_log = (
+            ActivityLog.objects
+            .filter(metadata__project_id=project.pk)
+            .select_related("user")
+            .order_by("-created_at")
+            .first()
         )
 
         rows.append({
             "project": project,
             "questionnaire": questionnaire,
             "progress": progress,
+            "information_remaining": information_remaining,
+            "sheet": sheet,
+            "production_total": production_total,
+            "production_complete": production_complete,
+            "production_percent": production_percent,
+            "production_remaining": production_remaining,
+            "last_log": last_log,
             **outputs,
         })
 
     return render(
         request,
         "questionnaires/development_information.html",
-        {
-            "rows": rows,
-        },
+        {"rows": rows, "view_mode": view_mode},
     )
+
 @role_required("developer")
 def development_dashboard(request):
     projects = Project.objects.select_related("client", "purchased_plan__plan").filter(project_type__in=["website", "software", "seo"])
@@ -1200,7 +955,7 @@ def development_dashboard(request):
         sheet = WebProductionSheet.objects.filter(project=project).prefetch_related("pages", "counties__services", "cities").first()
         last_log = ActivityLog.objects.filter(metadata__project_id=project.pk).select_related("user").first()
         if sheet:
-            all_rows = list(sheet.pages.all()) + list(sheet.counties.all()) + [s for c in sheet.counties.all() for s in c.services.all()] + list(sheet.cities.all())
+            all_rows = list(sheet.pages.exclude(entry_type="group")) + list(sheet.counties.all()) + [s for c in sheet.counties.all() for s in c.services.all()] + list(sheet.cities.all())
             total = len(all_rows)
             complete = sum(1 for row in all_rows if row.state == "complete")
             production_percent = round((complete / total) * 100) if total else 0
@@ -2109,67 +1864,56 @@ def fill(request, pk):
     if questionnaire.template.code == WEBSITE_TEMPLATE_CODE:
 
         if request.method == "POST":
-
-            section_focus = _clean(
-                request.POST.get(
-                    "section_focus"
-                )
-            )
-
-            save_action = _clean(
-                request.POST.get(
-                    "save_action"
-                )
-            )
-
-            allowed_sections = {
-                "general",
-                "business",
-                "services",
-                "coverage",
-                "contact",
-                "quotes",
-                "brand",
-                "certifications",
-                "team",
-                "marketing",
-                "forms",
-            }
+            is_autosave = request.POST.get("autosave") == "1"
+            finalize = request.POST.get("finalize") == "1" and not is_autosave
+            autosave_section = _clean(request.POST.get("autosave_section"))
 
             with transaction.atomic():
-
                 progress = _website_save(
                     questionnaire,
                     request,
+                    finalize=finalize,
                 )
+
+                if request.POST.get("areas_touched") == "1":
+                    _sync_questionnaire_areas_to_production(
+                        questionnaire,
+                        request.user,
+                    )
 
                 log_activity(
                     request.user,
                     "questionnaires",
-                    "save_website_technical",
+                    "autosave_website_technical" if is_autosave else "save_website_technical",
                     questionnaire,
-                    description="Ficha técnica guardada.",
-                )
-
-            messages.success(
-                request,
-                "Ficha técnica guardada.",
-            )
-
-            if (
-                save_action == "keep"
-                and section_focus in allowed_sections
-            ):
-
-                fill_url = reverse(
-                    "questionnaires:fill",
-                    kwargs={
-                        "pk": pk
+                    description=(
+                        f"{'Borrador guardado automáticamente' if is_autosave else 'Ficha de información guardada'} "
+                        f"· {progress['percent']}% completado ({progress['complete']}/{progress['total']})."
+                    ),
+                    metadata={
+                        "project_id": questionnaire.project_id,
+                        "progress_percent": progress["percent"],
+                        "progress_complete": progress["complete"],
+                        "progress_total": progress["total"],
+                        "section": autosave_section,
+                        "draft": is_autosave or not finalize,
                     },
                 )
 
-                return redirect(
-                    f"{fill_url}?section={section_focus}"
+            if is_autosave:
+                return JsonResponse({
+                    "ok": True,
+                    "progress": progress,
+                    "status": "draft",
+                    "saved_at": timezone.localtime().strftime("%H:%M"),
+                })
+
+            if finalize and progress["percent"] == 100:
+                messages.success(request, "Ficha de información guardada y completada.")
+            else:
+                messages.success(
+                    request,
+                    "Ficha guardada como borrador. Puedes continuar completándola cuando quieras.",
                 )
 
             return redirect(
@@ -2274,6 +2018,8 @@ def fill(request, pk):
                 "questionnaires",
                 "save_answers",
                 questionnaire,
+                description=f"Ficha de información actualizada · estado {questionnaire.get_status_display()}.",
+                metadata={"project_id": questionnaire.project_id, "status": questionnaire.status},
             )
 
         messages.success(

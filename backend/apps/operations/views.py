@@ -19,12 +19,20 @@ from apps.design.models import ColorPalette, PaletteColor
 from apps.projects.models import Project
 from apps.projects.selectors import can_access_project
 from apps.questionnaires.models import ProjectQuestionnaire
-from apps.questionnaires.services import WEBSITE_TEMPLATE_CODE, website_answer_payload
+from apps.questionnaires.models.choices import QuestionnaireStatus
+from apps.questionnaires.services import (
+    WEBSITE_TEMPLATE_CODE,
+    save_key_answer,
+    website_answer_payload,
+    website_questionnaire_progress,
+)
 from .tasks import send_development_task_email
 from .forms import DomainHostingRecordForm, ProductionRecordForm, ProjectCredentialForm, WebProductionStructureForm
 from .models import (
     CompleteStatus,
     DEFAULT_TYPOGRAPHY_CONFIG,
+    DEFAULT_DEVELOPMENT_SPACING_CONFIG,
+    DevelopmentStandard,
     CredentialType,
     DomainHostingRecord,
     DomainOperationType,
@@ -523,6 +531,77 @@ def _technical_production_inputs(project):
         strategy,
     )
 
+
+def _sync_production_areas_to_questionnaire(sheet, user):
+    """Mantiene condados y ciudades de Producción sincronizados con Información."""
+    questionnaire = (
+        ProjectQuestionnaire.objects
+        .filter(project=sheet.project, template__code=WEBSITE_TEMPLATE_CODE)
+        .select_related("template")
+        .prefetch_related("template__sections__questions", "answers__question")
+        .first()
+    )
+    if not questionnaire:
+        return None
+
+    current = website_answer_payload(questionnaire)
+    current_areas = (current.get("service_areas") or {}).get("json") or {}
+    strategy = current_areas.get("strategy") or "client"
+
+    states = [
+        item for item in (current_areas.get("items") or [])
+        if isinstance(item, dict) and item.get("type") == "state" and str(item.get("name") or "").strip()
+    ]
+    counties = list(sheet.counties.all().order_by("order", "id"))
+    cities = list(sheet.cities.select_related("county").all().order_by("order", "id"))
+
+    items = list(states)
+    items.extend({"type": "county", "name": county.name, "parent": ""} for county in counties if county.name.strip())
+    items.extend({
+        "type": "city",
+        "name": city.name,
+        "parent": city.county.name if city.county_id else "",
+    } for city in cities if city.name.strip())
+
+    strategy_label = (
+        "Localidades específicas definidas por el cliente"
+        if strategy == "client"
+        else "Localidades definidas por estudio de demanda"
+    )
+    labels = {"state": "Estado", "county": "Condado", "city": "Ciudad"}
+    lines = [strategy_label]
+    lines.extend(
+        f"{labels.get(item.get('type'), 'Área')}: {item.get('name', '')}"
+        + (f" · {item.get('parent')}" if item.get("parent") else "")
+        for item in items
+    )
+    complete = bool(strategy) and (strategy == "study" or bool(items))
+    save_key_answer(
+        questionnaire=questionnaire,
+        key="service_areas",
+        user=user,
+        value_text="\n".join(lines),
+        value_json={"strategy": strategy, "items": items},
+        complete=complete,
+    )
+
+    progress = website_questionnaire_progress(questionnaire)
+    if questionnaire.status == QuestionnaireStatus.COMPLETE and progress["percent"] < 100:
+        questionnaire.status = QuestionnaireStatus.IN_PROGRESS
+        questionnaire.save(update_fields=["status", "updated_at"])
+
+    log_activity(
+        user,
+        "development",
+        "information_area_sync_from_production",
+        sheet,
+        description=(
+            f"Áreas sincronizadas hacia ficha de información: "
+            f"{len(counties)} condado(s), {len(cities)} ciudad(es)."
+        ),
+        metadata={"project_id": sheet.project_id},
+    )
+    return questionnaire
 
 
 _PROJECT_FULL_ACCESS_RESPONSIBILITIES = {
@@ -1065,9 +1144,9 @@ def _update_internal_section(
 
     if allow_assignment_changes:
         complexity = request.POST.get(f"{prefix}_complexity", "").strip()
-        if complexity in {"S", "M", "C"}:
+        if complexity in {"1", "2", "3", "4", "5"}:
             obj.complexity = complexity
-            obj.points = {"S": 1, "M": 2, "C": 3}[complexity]
+            obj.points = int(complexity)
 
     obj.smtp_email = request.POST.get(
         f"{prefix}_smtp_email",
@@ -1155,137 +1234,134 @@ def _normalized_typography_config(sheet):
 
 @role_required("developer")
 def development_project_styles(request, project_pk):
-    project = get_object_or_404(
-        Project.objects.select_related("client"),
-        pk=project_pk,
-    )
+    """Compatibilidad: la configuración propia del proyecto ahora vive en Producción."""
+    project = get_object_or_404(Project, pk=project_pk)
     if not can_access_project(request.user, project):
         raise PermissionDenied("No tienes acceso a este proyecto.")
+    return redirect("operations:web_production_sheet", project_pk=project.pk)
 
-    sheet, _ = WebProductionSheet.objects.get_or_create(project=project)
-    if not (sheet.header_structure or "").strip():
-        sheet.header_structure = _DEFAULT_HEADER_STRUCTURE
-        sheet.save(update_fields=["header_structure", "updated_at"])
-    can_manage_styles = _can_manage_full_development_project(request.user, project)
-    palette = _style_palette_for_project(project)
+
+def _normalized_standard_typography(standard):
+    source = standard.typography_config or {}
+    result = {}
+    for key, default in DEFAULT_TYPOGRAPHY_CONFIG.items():
+        value = source.get(key) if isinstance(source, dict) else None
+        result[key] = dict(default)
+        if isinstance(value, dict):
+            result[key].update({k: v for k, v in value.items() if v not in (None, "")})
+    return result
+
+
+def _normalized_standard_spacing(standard):
+    source = standard.spacing_config or {}
+    result = dict(DEFAULT_DEVELOPMENT_SPACING_CONFIG)
+    if isinstance(source, dict):
+        for key in result:
+            try:
+                result[key] = int(source.get(key, result[key]))
+            except (TypeError, ValueError):
+                pass
+    return result
+
+
+@role_required("developer")
+def development_standards(request):
+    """Configuración global para todos los proyectos del área de Desarrollo."""
+    standard, _ = DevelopmentStandard.objects.get_or_create(singleton_key="global")
+    can_manage_standards = bool(request.user.is_superuser or getattr(request.user, "role", "") == "manager")
 
     if request.method == "POST":
-        if not can_manage_styles:
-            raise PermissionDenied("Solo Gerencia, Admin o el Responsable principal puede modificar Estilos.")
+        if not can_manage_standards:
+            raise PermissionDenied("Solo Gerencia puede modificar los estándares globales.")
 
-        action = request.POST.get("action", "").strip()
+        action = (request.POST.get("action") or "save_standards").strip()
+        if action == "reset_standards":
+            standard.typography_config = {key: dict(value) for key, value in DEFAULT_TYPOGRAPHY_CONFIG.items()}
+            standard.spacing_config = dict(DEFAULT_DEVELOPMENT_SPACING_CONFIG)
+            standard.prompt_rules = ""
+            standard.general_rules = ""
+            standard.updated_by = request.user
+            standard.save()
+            log_activity(
+                request.user,
+                "development",
+                "development_standards_reset",
+                standard,
+                description="Estándares globales de Desarrollo restaurados.",
+            )
+            messages.success(request, "Estándares restaurados a los valores base.")
+            return redirect("operations:development_standards")
 
-        if action == "save_typography":
-            config = _normalized_typography_config(sheet)
-            for key in DEFAULT_TYPOGRAPHY_CONFIG:
-                config[key]["font"] = request.POST.get(f"{key}_font", config[key].get("font", "")).strip() or config[key].get("font", "")
-                raw_size = request.POST.get(f"{key}_size", "").strip()
-                raw_weight = request.POST.get(f"{key}_weight", "").strip()
-                raw_line = request.POST.get(f"{key}_line_height", "").strip()
-                if raw_size.isdigit():
-                    config[key]["size"] = max(8, min(140, int(raw_size)))
-                if raw_weight.isdigit():
-                    config[key]["weight"] = max(100, min(900, int(raw_weight)))
-                if raw_line:
-                    config[key]["line_height"] = raw_line[:12]
-                if key == "kicker":
-                    config[key]["letter_spacing"] = request.POST.get("kicker_letter_spacing", config[key].get("letter_spacing", "0.14em")).strip()[:20] or "0.14em"
-            sheet.typography_config = config
-            sheet.updated_by = request.user
-            sheet.save(update_fields=["typography_config", "updated_by", "updated_at"])
-            log_activity(request.user, "development", "styles_typography_save", sheet)
-            messages.success(request, "Tipografía guardada.")
+        typography = _normalized_standard_typography(standard)
+        for key in DEFAULT_TYPOGRAPHY_CONFIG:
+            font = (request.POST.get(f"{key}_font") or typography[key].get("font", "")).strip()
+            typography[key]["font"] = font[:80] or typography[key].get("font", "")
+            raw_size = (request.POST.get(f"{key}_size") or "").strip()
+            raw_weight = (request.POST.get(f"{key}_weight") or "").strip()
+            raw_line = (request.POST.get(f"{key}_line_height") or "").strip()
+            if raw_size.isdigit():
+                typography[key]["size"] = max(8, min(160, int(raw_size)))
+            if raw_weight.isdigit():
+                typography[key]["weight"] = max(100, min(900, int(raw_weight)))
+            if raw_line:
+                typography[key]["line_height"] = raw_line[:12]
+            if key == "kicker":
+                typography[key]["letter_spacing"] = (request.POST.get("kicker_letter_spacing") or typography[key].get("letter_spacing", "0.14em")).strip()[:20] or "0.14em"
 
-        elif action == "reset_typography":
-            sheet.typography_config = {key: dict(value) for key, value in DEFAULT_TYPOGRAPHY_CONFIG.items()}
-            sheet.updated_by = request.user
-            sheet.save(update_fields=["typography_config", "updated_by", "updated_at"])
-            log_activity(request.user, "development", "styles_typography_reset", sheet)
-            messages.success(request, "Tipografía restaurada al estándar.")
-
-        elif action == "save_header":
-            sheet.header_structure = request.POST.get("header_structure", "").strip() or _DEFAULT_HEADER_STRUCTURE
-            sheet.updated_by = request.user
-            sheet.save(update_fields=["header_structure", "updated_by", "updated_at"])
-            log_activity(request.user, "development", "styles_header_save", sheet)
-            messages.success(request, "Estructura del header guardada.")
-
-        elif action == "reset_header":
-            sheet.header_structure = _DEFAULT_HEADER_STRUCTURE
-            sheet.updated_by = request.user
-            sheet.save(update_fields=["header_structure", "updated_by", "updated_at"])
-            log_activity(request.user, "development", "styles_header_reset", sheet)
-            messages.success(request, "Header restaurado al estándar.")
-
-        elif action == "save_buttons":
-            sheet.button_style_code = request.POST.get("button_style_code", "")
-            sheet.updated_by = request.user
-            sheet.save(update_fields=["button_style_code", "updated_by", "updated_at"])
-            log_activity(request.user, "development", "styles_buttons_save", sheet)
-            messages.success(request, "Estilo de botones guardado.")
-
-        elif action == "delete_buttons":
-            sheet.button_style_code = ""
-            sheet.updated_by = request.user
-            sheet.save(update_fields=["button_style_code", "updated_by", "updated_at"])
-            log_activity(request.user, "development", "styles_buttons_delete", sheet)
-            messages.success(request, "Estilo de botones eliminado.")
-
-        elif action == "save_palette":
-            valid_hex = re.compile(r"^#[0-9A-Fa-f]{6}$")
-            for order, role in enumerate(_STYLE_PALETTE_DEFAULTS, start=1):
-                raw = request.POST.get(f"palette_{role}", "").strip().upper()
-                if not valid_hex.fullmatch(raw):
-                    messages.error(request, f"Color inválido en {_STYLE_PALETTE_LABELS[role]}.")
-                    return redirect("operations:development_project_styles", project_pk=project.pk)
-                obj = palette.colors.filter(role=role).order_by("id").first()
-                if obj:
-                    obj.label = _STYLE_PALETTE_LABELS[role]
-                    obj.hex_code = raw
-                    obj.usage = _STYLE_PALETTE_USAGE[role]
-                    obj.order = order
-                    obj.save(update_fields=["label", "hex_code", "usage", "order", "updated_at"])
-                    palette.colors.filter(role=role).exclude(pk=obj.pk).delete()
-                else:
-                    PaletteColor.objects.create(
-                        palette=palette,
-                        role=role,
-                        label=_STYLE_PALETTE_LABELS[role],
-                        hex_code=raw,
-                        usage=_STYLE_PALETTE_USAGE[role],
-                        order=order,
-                    )
-            palette.is_primary = True
-            palette.save(update_fields=["is_primary", "updated_at"])
-            ColorPalette.objects.filter(project=project, is_primary=True).exclude(pk=palette.pk).update(is_primary=False)
-            log_activity(request.user, "development", "styles_palette_save", palette)
-            messages.success(request, "Paleta guardada.")
-
-        return redirect("operations:development_project_styles", project_pk=project.pk)
-
-    typography = _normalized_typography_config(sheet)
-    palette_map = {item.role: item.hex_code for item in palette.colors.all()}
-    palette_rows = [
-        {
-            "role": role,
-            "label": _STYLE_PALETTE_LABELS[role],
-            "hex": palette_map.get(role, default),
-            "usage": _STYLE_PALETTE_USAGE[role],
+        spacing = _normalized_standard_spacing(standard)
+        spacing_limits = {
+            "container_max": (900, 2200),
+            "section_y_desktop": (20, 220),
+            "section_y_tablet": (20, 180),
+            "section_y_mobile": (12, 140),
+            "content_gap": (0, 100),
+            "card_gap": (0, 80),
+            "card_radius": (0, 60),
         }
-        for role, default in _STYLE_PALETTE_DEFAULTS.items()
-    ]
+        for key, (minimum, maximum) in spacing_limits.items():
+            raw = (request.POST.get(key) or "").strip()
+            if raw.isdigit():
+                spacing[key] = max(minimum, min(maximum, int(raw)))
+
+        changed = []
+        if standard.typography_config != typography:
+            changed.append("tipografía")
+        if standard.spacing_config != spacing:
+            changed.append("espaciados")
+        prompt_rules = (request.POST.get("prompt_rules") or "").strip()
+        general_rules = (request.POST.get("general_rules") or "").strip()
+        if standard.prompt_rules != prompt_rules:
+            changed.append("reglas de prompt")
+        if standard.general_rules != general_rules:
+            changed.append("reglas generales")
+
+        standard.typography_config = typography
+        standard.spacing_config = spacing
+        standard.prompt_rules = prompt_rules
+        standard.general_rules = general_rules
+        standard.updated_by = request.user
+        standard.save()
+        log_activity(
+            request.user,
+            "development",
+            "development_standards_update",
+            standard,
+            description="Estándares globales actualizados: " + (", ".join(changed) if changed else "sin cambios de contenido"),
+            metadata={"changed_sections": changed},
+        )
+        messages.success(request, "Estándares globales guardados.")
+        return redirect("operations:development_standards")
 
     return render(
         request,
-        "operations/development_styles.html",
+        "operations/development_standards.html",
         {
-            "project": project,
-            "sheet": sheet,
-            "can_manage_styles": can_manage_styles,
-            "typography": typography,
-            "palette": palette,
-            "palette_rows": palette_rows,
-            "default_header": _DEFAULT_HEADER_STRUCTURE,
+            "standard": standard,
+            "typography": _normalized_standard_typography(standard),
+            "spacing": _normalized_standard_spacing(standard),
+            "can_manage_standards": can_manage_standards,
+            "active_nav_group": "development",
+            "current_page_label": "Estándares",
         },
     )
 
@@ -1332,7 +1408,13 @@ def _production_email_item_data(row_type, obj):
 def _production_grouped_email_assignments(sheet, assignment_field):
     grouped = defaultdict(list)
     row_sets = (
-        ("page", sheet.pages.select_related("responsible", "reviewer").all()),
+        (
+            "page",
+            sheet.pages
+            .exclude(entry_type=WebProductionPage.EntryType.GROUP)
+            .select_related("responsible", "reviewer")
+            .all(),
+        ),
         ("county", sheet.counties.select_related("responsible", "reviewer").all()),
         (
             "service",
@@ -1459,6 +1541,10 @@ def web_production_sheet(
             cities_per_county_target=0,
             user=request.user,
         )
+
+    if not (sheet.header_structure or "").strip():
+        sheet.header_structure = _DEFAULT_HEADER_STRUCTURE
+        sheet.save(update_fields=["header_structure", "updated_at"])
 
     ensure_default_internal_sections(
         sheet=sheet,
@@ -1636,6 +1722,7 @@ def web_production_sheet(
             "delete_service",
             "delete_city",
             "save_general",
+            "save_project_configuration",
             "send_production_assignments",
             "send_production_reviewers",
         }
@@ -1746,10 +1833,10 @@ def web_production_sheet(
                     raise PermissionDenied(
                         "Solo el responsable principal o Gerencia puede cambiar la complejidad."
                     )
-                if value not in {"S", "M", "C"}:
-                    return quick_error("Complejidad inválida.")
+                if value not in {"1", "2", "3", "4", "5"}:
+                    return quick_error("Complejidad inválida. Usa un nivel del 1 al 5.")
                 obj.complexity = value
-                obj.points = {"S": 1, "M": 2, "C": 3}[value]
+                obj.points = int(value)
             elif field == "name" and hasattr(obj, "name"):
                 if not can_manage_project:
                     raise PermissionDenied(
@@ -1760,6 +1847,39 @@ def web_production_sheet(
                 obj.name = value
                 if isinstance(obj, WebProductionCountyService) and hasattr(obj, "service_name"):
                     obj.service_name = value
+            elif field == "entry_type" and isinstance(obj, WebProductionPage):
+                if not can_manage_project:
+                    raise PermissionDenied(
+                        "Solo el responsable principal o Gerencia puede cambiar el tipo de elemento."
+                    )
+                if value not in WebProductionPage.EntryType.values:
+                    return quick_error("Tipo de página inválido.")
+                obj.entry_type = value
+                if value == WebProductionPage.EntryType.GROUP:
+                    obj.complexity = "1"
+                    obj.points = 1
+                    obj.keyword = ""
+                    obj.slug = ""
+            elif field == "parent" and isinstance(obj, WebProductionPage):
+                if not can_manage_project:
+                    raise PermissionDenied(
+                        "Solo el responsable principal o Gerencia puede cambiar la jerarquía."
+                    )
+                parent = None
+                if value:
+                    if not value.isdigit():
+                        return quick_error("Elemento superior inválido.")
+                    parent = sheet.pages.filter(pk=int(value)).first()
+                    if parent is None or parent.pk == obj.pk:
+                        return quick_error("Elemento superior inválido.")
+                    ancestor = parent
+                    seen = set()
+                    while ancestor is not None and ancestor.pk not in seen:
+                        if ancestor.pk == obj.pk:
+                            return quick_error("La jerarquía no puede formar un ciclo.")
+                        seen.add(ancestor.pk)
+                        ancestor = ancestor.parent
+                obj.parent = parent
             elif field == "slug" and hasattr(obj, "slug"):
                 obj.slug = slugify(value)
             elif field == "keyword" and hasattr(obj, "keyword"):
@@ -1823,6 +1943,8 @@ def web_production_sheet(
                 sheet, obj, row_type, request.user, history_before,
                 review_note=request.POST.get("review_note", "").strip(),
             )
+            if field == "name" and row_type in {"county", "city"}:
+                _sync_production_areas_to_questionnaire(sheet, request.user)
             sheet.updated_by = request.user
             sheet.save(update_fields=["updated_by", "updated_at"])
 
@@ -2171,7 +2293,7 @@ def web_production_sheet(
             section = WebProductionInternalSection.objects.create(
                 sheet=sheet,
                 name=(request.POST.get("section_name", "").strip() or f"Sección interna {order}"),
-                complexity="S",
+                complexity="1",
                 points=1,
                 order=order,
                 updated_by=request.user,
@@ -2280,6 +2402,7 @@ def web_production_sheet(
                     user=request.user,
                     **structure_form.cleaned_data,
                 )
+                _sync_production_areas_to_questionnaire(sheet, request.user)
 
                 messages.success(
                     request,
@@ -2296,35 +2419,37 @@ def web_production_sheet(
 
         elif action == "add_page":
             order = (
-                sheet.pages
-                .order_by(
-                    "-order"
-                )
-                .values_list(
-                    "order",
-                    flat=True,
-                )
-                .first()
+                sheet.pages.order_by("-order").values_list("order", flat=True).first()
                 or 0
             ) + 1
-
+            entry_type = request.POST.get("page_entry_type", WebProductionPage.EntryType.PAGE).strip()
+            if entry_type not in WebProductionPage.EntryType.values:
+                entry_type = WebProductionPage.EntryType.PAGE
+            parent_id = request.POST.get("page_parent_id", "").strip()
+            parent = (
+                sheet.pages.filter(pk=int(parent_id)).first()
+                if parent_id.isdigit()
+                else None
+            )
+            requested_name = request.POST.get("page_name", "").strip()
+            default_name = (
+                f"Grupo {order}"
+                if entry_type == WebProductionPage.EntryType.GROUP
+                else f"Página extra {order}"
+            )
             obj = WebProductionPage(
                 sheet=sheet,
-                page_type=(
-                    WebProductionPage
-                    .PageType.EXTRA
-                ),
-                name=(
-                    f"Página extra {order}"
-                ),
+                page_type=WebProductionPage.PageType.EXTRA,
+                entry_type=entry_type,
+                parent=parent,
+                name=requested_name or default_name,
                 order=order,
+                complexity="1",
+                points=1,
                 updated_by=request.user,
             )
-
-            apply_seo_automation(
-                obj
-            )
-
+            if entry_type == WebProductionPage.EntryType.PAGE:
+                apply_seo_automation(obj)
             obj.save()
 
             log_activity(
@@ -2332,6 +2457,9 @@ def web_production_sheet(
                 "development",
                 "production_page_add",
                 sheet,
+                description=(
+                    f"{'Grupo' if entry_type == WebProductionPage.EntryType.GROUP else 'Página'}: {obj.name}"
+                ),
             )
 
             return redirect(
@@ -2426,6 +2554,7 @@ def web_production_sheet(
                 "production_county_add",
                 sheet,
             )
+            _sync_production_areas_to_questionnaire(sheet, request.user)
 
             return redirect(
                 "operations:web_production_sheet",
@@ -2557,6 +2686,7 @@ def web_production_sheet(
                 "production_city_add",
                 sheet,
             )
+            _sync_production_areas_to_questionnaire(sheet, request.user)
 
             return redirect(
                 "operations:web_production_sheet",
@@ -2697,7 +2827,10 @@ def web_production_sheet(
                 )
 
             label = obj.name
+            sync_areas_after_delete = action in {"delete_county", "delete_city"}
             obj.delete()
+            if sync_areas_after_delete:
+                _sync_production_areas_to_questionnaire(sheet, request.user)
 
             log_activity(
                 request.user,
@@ -2716,6 +2849,35 @@ def web_production_sheet(
                 "operations:web_production_sheet",
                 project_pk=project.pk,
             )
+
+        elif action == "save_project_configuration":
+            old_header = sheet.header_structure
+            old_buttons = sheet.button_style_code
+            old_notes = sheet.notes
+
+            sheet.header_structure = (request.POST.get("header_structure") or "").strip() or _DEFAULT_HEADER_STRUCTURE
+            sheet.button_style_code = request.POST.get("button_style_code", "")
+            sheet.notes = (request.POST.get("sheet_notes") or "").strip()
+            sheet.updated_by = request.user
+            sheet.save(update_fields=["header_structure", "button_style_code", "notes", "updated_by", "updated_at"])
+
+            changed = []
+            if old_header != sheet.header_structure:
+                changed.append("header")
+            if old_buttons != sheet.button_style_code:
+                changed.append("botones")
+            if old_notes != sheet.notes:
+                changed.append("notas")
+            log_activity(
+                request.user,
+                "development",
+                "production_configuration_save",
+                sheet,
+                description="Configuración del proyecto actualizada: " + (", ".join(changed) if changed else "sin cambios de contenido"),
+                metadata={"changed_sections": changed},
+            )
+            messages.success(request, "Configuración del proyecto guardada.")
+            return redirect("operations:web_production_sheet", project_pk=project.pk)
 
         elif action == "save_general":
             sheet.notes = (
@@ -2756,6 +2918,7 @@ def web_production_sheet(
 
     pages = list(
         sheet.pages.select_related(
+            "parent",
             "responsible",
             "reviewer",
             "updated_by",
@@ -2804,9 +2967,13 @@ def web_production_sheet(
     ]
 
     developers = project_developers
+    work_pages = [
+        page for page in pages
+        if page.entry_type != WebProductionPage.EntryType.GROUP
+    ]
 
     all_rows = (
-        pages
+        work_pages
         + counties
         + [
             service
@@ -3030,8 +3197,8 @@ def web_production_sheet(
     )
 
     # Mantener puntos siempre sincronizados con la complejidad, incluso
-    # para registros creados antes de la regla S=1, M=2, C=3.
-    complexity_points = {"S": 1, "M": 2, "C": 3}
+    # para registros creados antes de la regla actual de niveles 1 a 5.
+    complexity_points = {str(level): level for level in range(1, 6)}
     for row in production_rows:
         expected_points = complexity_points.get(row.complexity)
         if expected_points is not None and row.points != expected_points:
@@ -3729,6 +3896,7 @@ def web_production_quick_toggle(
 @role_required("developer")
 def development_tasks(request):
     from django.utils import timezone
+    from apps.audit.models import ManagementTask
     from .models import DevelopmentTask
 
     can_assign = bool(
@@ -3758,28 +3926,28 @@ def development_tasks(request):
             return redirect("operations:development_tasks")
 
         if action == "create":
-            if not can_assign:
-                raise PermissionDenied("No tienes permiso para asignar tareas.")
-
             title = (request.POST.get("title") or "").strip()
-            assigned_to_id = (request.POST.get("assigned_to") or "").strip()
             assigned_date = (request.POST.get("assigned_date") or "").strip()
 
-            if not title or not assigned_to_id or not assigned_date:
-                payload = {"ok": False, "message": "Completa tarea, desarrollador y fecha de asignación."}
-                return JsonResponse(payload, status=400) if request.headers.get("x-requested-with") == "XMLHttpRequest" else redirect("operations:development_tasks")
-
-            assigned_to = get_object_or_404(
-                UserAccount,
-                pk=assigned_to_id,
-                role="developer",
-                is_active=True,
-            )
+            if can_assign:
+                assigned_to_id = (request.POST.get("assigned_to") or "").strip()
+                if not title or not assigned_to_id or not assigned_date:
+                    payload = {"ok": False, "message": "Completa tarea, desarrollador y fecha de asignación."}
+                    return JsonResponse(payload, status=400) if request.headers.get("x-requested-with") == "XMLHttpRequest" else redirect("operations:development_tasks")
+                assigned_to = get_object_or_404(UserAccount, pk=assigned_to_id, role="developer", is_active=True)
+            else:
+                if not title or not assigned_date:
+                    payload = {"ok": False, "message": "Completa la actividad y la fecha."}
+                    return JsonResponse(payload, status=400) if request.headers.get("x-requested-with") == "XMLHttpRequest" else redirect("operations:development_tasks")
+                assigned_to = request.user
 
             project = None
             project_id = (request.POST.get("project_id") or "").strip()
             if project_id:
-                project = get_object_or_404(Project, pk=project_id)
+                project_qs = Project.objects.filter(pk=project_id)
+                if not can_assign:
+                    project_qs = project_qs.filter(assignments__user=request.user, assignments__area="development")
+                project = get_object_or_404(project_qs.distinct())
 
             due_date = (request.POST.get("due_date") or "").strip() or None
             priority = (request.POST.get("priority") or "medium").strip()
@@ -3809,6 +3977,12 @@ def development_tasks(request):
                 "operations",
                 "development_task_create",
                 task,
+                description=(
+                    f"Tarea asignada a {assigned_to.display_name}."
+                    if can_assign
+                    else "Actividad propia registrada por el desarrollador."
+                ),
+                metadata={"project_id": project.pk if project else None, "self_registered": not can_assign},
             )
 
             if assigned_to.pk != request.user.pk:
@@ -3885,9 +4059,9 @@ def development_tasks(request):
                 return JsonResponse({
                     "ok": True,
                     "task_id": task.pk,
-                    "message": "Tarea asignada correctamente.",
+                    "message": "Tarea asignada correctamente." if can_assign else "Actividad registrada correctamente.",
                 })
-            messages.success(request, "Tarea asignada.")
+            messages.success(request, "Tarea asignada." if can_assign else "Actividad registrada.")
             return redirect("operations:development_tasks")
 
         if action == "update":
@@ -3939,8 +4113,15 @@ def development_tasks(request):
         "completed": base_stats.filter(status="completed").count(),
     }
 
+    management_tasks = ManagementTask.objects.select_related("assigned_to", "project", "client", "created_by").filter(area=ManagementTask.Area.DEVELOPMENT)
+    if not can_assign:
+        management_tasks = management_tasks.filter(assigned_to=request.user)
+    management_tasks = list(management_tasks.order_by("status", "due_date", "-created_at")[:100])
+    management_open_count = sum(1 for item in management_tasks if item.status != ManagementTask.Status.DONE)
+    management_done_count = sum(1 for item in management_tasks if item.status == ManagementTask.Status.DONE)
+
     developers = UserAccount.objects.filter(role="developer", is_active=True).order_by("first_name", "last_name", "email") if can_assign else UserAccount.objects.none()
-    projects = Project.objects.order_by("-created_at")[:300] if can_assign else Project.objects.filter(assignments__user=request.user).distinct().order_by("-created_at")[:300]
+    projects = Project.objects.order_by("-created_at")[:300] if can_assign else Project.objects.filter(assignments__user=request.user, assignments__area="development").distinct().order_by("-created_at")[:300]
 
     task_notifications = list(
         DevelopmentTaskNotification.objects
@@ -3965,6 +4146,9 @@ def development_tasks(request):
         "today": today,
         "task_notifications": task_notifications,
         "task_notification_unread_count": task_notification_unread_count,
+        "management_tasks": management_tasks,
+        "management_open_count": management_open_count,
+        "management_done_count": management_done_count,
         "active_nav_group": "development",
         "current_page_label": "Tareas",
     })

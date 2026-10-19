@@ -1,3261 +1,513 @@
-{% extends 'base.html' %}{% load questionnaire_tags %}
-{% block page_heading %}Ficha técnica{% endblock %}
+{% extends "base.html" %}
+{% load questionnaire_tags %}
+{% block title %}Ficha de información · {{ questionnaire.project.project_code }}{% endblock %}
 {% block content %}
-<div class="page-intro technical-intro">  <div>
-    <span class="eyebrow">
-      Desarrollo · {{ questionnaire.project.project_code }}
-      {% if questionnaire.project.purchased_plan and questionnaire.project.purchased_plan.plan %}
-        · {{ questionnaire.project.purchased_plan.plan.name|upper }}
-      {% endif %}
-    </span>
-
-    <h2>
-      {{ questionnaire.project.client.business_name }}
-    </h2>
-
-    <p>
-      Completa y administra la información general del proyecto.
-    </p>
-  </div>
-  <div class="actions"><a class="btn btn-secondary" href="{% url 'questionnaires:development_dashboard' %}">Desarrollo</a><a class="btn btn-secondary" href="{% url 'projects:detail' questionnaire.project.pk %}">Proyecto</a><a class="btn btn-primary" href="{% url 'handoff:summary' questionnaire.project.pk %}">Resumen</a></div>
-</div>
-
-<form method="post" id="technical-form" class="technical-form">
-  {% csrf_token %}
-
-  <div class="requirement-accordion">
-    <section class="requirement-card" data-requirement-section="business">
-      <button type="button" class="requirement-card-head" data-requirement-toggle>
-        <span class="requirement-number">01</span>
-        <span class="requirement-copy">
-          <strong>Lógica del negocio</strong>
-          <small>Actividad, tipo de cliente y objetivo comercial.</small>
-        </span>
-        <span class="requirement-toggle-text">Ver más</span>
-      </button>
-      <div class="requirement-card-body">
-        <div class="business-logic-grid">
-          <div class="tech-card business-description-card {% if data.company_description.complete %}complete{% endif %}" id="block-company">
-            <div class="tech-head"><div>
-              <strong>Breve descripción de la empresa</strong>
-              <small>¿A qué se dedica la empresa?</small>
-            </div></div>
-            <textarea name="company_description" rows="8" placeholder="Descripción de la actividad...">{{ data.company_description.text }}</textarea>
-          </div>
-          <div class="business-logic-side">
-            <div class="tech-card">
-              <div class="tech-head"><div>
-                <strong>Tipo de cliente</strong>
-                <small>Selecciona a quién atiende la empresa.</small>
-              </div></div>
-              <div class="choice-pills">
-                <label><input type="radio" name="customer_type" value="residential" {% if data.business_logic.json.customer_type == 'residential' %}checked{% endif %}> Residencial</label>
-                <label><input type="radio" name="customer_type" value="commercial" {% if data.business_logic.json.customer_type == 'commercial' %}checked{% endif %}> Comercial</label>
-                <label><input type="radio" name="customer_type" value="both" {% if data.business_logic.json.customer_type == 'both' %}checked{% endif %}> Ambos</label>
-                <label><input type="radio" name="customer_type" value="na" {% if data.business_logic.json.customer_type == 'na' %}checked{% endif %}> No aplica</label>
-              </div>
-            </div>
-            <div class="tech-card business-action-card">
-              <div class="tech-head"><div>
-                <strong>Qué acción queremos que realice el visitante</strong>
-                <small>Selecciona la acción principal esperada en el sitio web.</small>
-              </div></div>
-              <select name="visitor_action">
-                <option value="">Seleccionar</option>
-                <option value="call" {% if data.business_logic.json.visitor_action == 'call' %}selected{% endif %}>Llamar</option>
-                <option value="quote" {% if data.business_logic.json.visitor_action == 'quote' %}selected{% endif %}>Solicitar cotización</option>
-                <option value="estimate" {% if data.business_logic.json.visitor_action == 'estimate' %}selected{% endif %}>Solicitar estimado</option>
-                <option value="other" {% if data.business_logic.json.visitor_action == 'other' %}selected{% endif %}>Otro</option>
-              </select>
-              <div class="conditional-panel" data-show-when="visitor_action:other">
-                <label>Especifique otra acción</label>
-                <input type="text" name="visitor_action_other" value="{{ data.business_logic.json.visitor_action_other|default:'' }}" placeholder="Ej.: Enviar mensaje, solicitar inspección...">
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="section-save-actions">
-          <button type="submit" class="btn btn-secondary">Guardar sección</button>
-          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
-        </div>
-      </div>
-    </section>
-
-
-
-
-    <section class="requirement-card" data-requirement-section="brand">
-
-      <button type="button" class="requirement-card-head" data-requirement-toggle>
-
-        <span class="requirement-number">02</span>
-
-        <span class="requirement-copy">
-          <strong>Misión, visión y marca</strong>
-          <small>
-            Misión, visión, slogan e información de marca.
-          </small>
-        </span>
-        <span class="requirement-toggle-text">Ver más</span>
-
-      </button>
-
-
-      <div class="requirement-card-body">
-
-        <div class="tech-grid two">
-
-          <div class="tech-card {% if data.slogan.complete %}complete{% endif %}" id="block-slogan">
-
-            <strong>Slogan</strong>
-
-            <div class="choice-pills">
-              <label><input type="radio" name="slogan_mode" value="existing" {% if data.slogan.json.mode == 'existing' %}checked{% endif %}> Ya tiene</label>
-              <label><input type="radio" name="slogan_mode" value="create" {% if data.slogan.json.mode == 'create' %}checked{% endif %}> Crear uno</label>
-              <label><input type="radio" name="slogan_mode" value="none" {% if data.slogan.json.mode == 'none' %}checked{% endif %}> No crear</label>
-            </div>
-
-            <div id="slogan-detail" class="conditional-panel">
-              <input
-                type="text"
-                name="slogan_text"
-                value="{{ data.slogan.json.text|default:'' }}"
-              >
-            </div>
-
-          </div>
-
-
-          <div class="tech-card {% if data.has_mission_vision.complete %}complete{% endif %}" id="block-mission">
-
-            <strong>¿La empresa tiene misión y visión?</strong>
-
-            <div class="choice-pills">
-              <label><input type="radio" name="mission_has" value="yes" {% if data.has_mission_vision.json.has == 'yes' %}checked{% endif %}> Sí</label>
-              <label><input type="radio" name="mission_has" value="no" {% if data.has_mission_vision.json.has == 'no' %}checked{% endif %}> No</label>
-            </div>
-
-            <div class="conditional-panel" data-show-when="mission_has:yes">
-
-              <label>Misión original</label>
-              <textarea name="mission_text" rows="3">{{ data.has_mission_vision.json.mission|default:'' }}</textarea>
-
-              <label>Visión original</label>
-              <textarea name="vision_text" rows="3">{{ data.has_mission_vision.json.vision|default:'' }}</textarea>
-
-            </div>
-
-
-            <div class="conditional-panel" data-show-when="mission_has:no">
-
-              <label>¿Por qué nació la empresa?</label>
-              <textarea name="mission_origin" rows="2">{{ data.has_mission_vision.json.mission_origin|default:'' }}</textarea>
-
-              <label>¿A quién ayuda y qué la hace diferente?</label>
-              <textarea name="mission_clients" rows="2">{{ data.has_mission_vision.json.mission_clients|default:'' }}</textarea>
-
-              <label>¿Cómo imagina la empresa en 5 a 10 años?</label>
-              <textarea name="vision_future" rows="2">{{ data.has_mission_vision.json.vision_future|default:'' }}</textarea>
-
-              <label>¿Qué huella quiere dejar?</label>
-              <textarea name="vision_legacy" rows="2">{{ data.has_mission_vision.json.vision_legacy|default:'' }}</textarea>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <div class="section-save-actions">
-          <button type="submit" class="btn btn-secondary">Guardar sección</button>
-          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
-        </div>
-
-      </div>
-
-    </section>
-
-
-
-
-<section class="requirement-card" data-requirement-section="team">
-
-  <button
-    type="button"
-    class="requirement-card-head"
-    data-requirement-toggle
-  >
-
-    <span class="requirement-number">03</span>
-
-    <span class="requirement-copy">
-      <strong>About y Team</strong>
-      <small>
-        Define si se mostrará al dueño, al equipo o contenido relacionado.
-      </small>
-    </span>
-
-    <span class="requirement-toggle-text">
-      Ver más
-    </span>
-
-  </button>
-
-
-  <div class="requirement-card-body">
-
-    <div
-      class="tech-card {% if data.show_team.complete %}complete{% endif %}"
-      id="block-team"
-    >
-
-      <strong>
-        ¿Desea incluir contenido de About / Team?
-      </strong>
-
-      <div class="choice-pills">
-
-        <label>
-          <input
-            type="radio"
-            name="team_include"
-            value="yes"
-            {% if data.show_team.json.include == 'yes' %}checked{% endif %}
-          >
-          Sí
-        </label>
-
-        <label>
-          <input
-            type="radio"
-            name="team_include"
-            value="no"
-            {% if data.show_team.json.include == 'no' %}checked{% endif %}
-          >
-          No
-        </label>
-
-      </div>
-
-
-      <div
-        class="conditional-panel"
-        data-show-when="team_include:yes"
-      >
-
-        <strong>
-          ¿Qué contenido desea mostrar?
-        </strong>
-
-        <div class="choice-cards team-scope-grid">
-
-          <label>
-            <input type="radio" name="team_scope" value="owner_photo" {% if data.show_team.json.scope == 'owner_photo' %}checked{% endif %}>
-            <span><b>Foto del dueño</b><small>Mostrar al propietario o representante principal.</small></span>
-          </label>
-
-          <label>
-            <input type="radio" name="team_scope" value="team_photo" {% if data.show_team.json.scope == 'team_photo' %}checked{% endif %}>
-            <span><b>Foto con el team</b><small>Mostrar una fotografía general con el equipo.</small></span>
-          </label>
-
-          <label>
-            <input type="radio" name="team_scope" value="group_photos" {% if data.show_team.json.scope == 'group_photos' %}checked{% endif %}>
-            <span><b>Fotos por grupos</b><small>Mostrar distintas fotografías por equipo o área.</small></span>
-          </label>
-
-          <label>
-            <input type="radio" name="team_scope" value="no_photo" {% if data.show_team.json.scope == 'no_photo' %}checked{% endif %}>
-            <span><b>Sin foto</b><small>Incluir contenido de About / Team únicamente con texto.</small></span>
-          </label>
-
-          <label class="team-other-choice">
-            <input type="radio" name="team_scope" value="other" {% if data.show_team.json.scope == 'other' %}checked{% endif %}>
-            <span><b>Otro</b><small>Registrar una opción diferente.</small></span>
-          </label>
-
-          <div class="conditional-panel team-other-field" data-show-when="team_scope:other">
-            <label>Especifique otra opción</label>
-            <input
-              type="text"
-              name="team_other"
-              value="{{ data.show_team.json.other|default:'' }}"
-              placeholder="Escriba cómo desea presentar esta sección"
-            >
-          </div>
-
-        </div>
-
-
-        <label>
-          Notas adicionales
-        </label>
-
-        <textarea
-          name="team_notes"
-          rows="3"
-          placeholder="Información adicional sobre About, dueño o equipo..."
-        >{{ data.show_team.json.notes|default:'' }}</textarea>
-
-      </div>
-
-    </div>
-
-
-    <div class="section-save-actions">
-
-      <button
-        type="submit"
-        class="btn btn-secondary"
-      >
-        Guardar sección
-      </button>
-
-      <button
-        type="button"
-        class="btn btn-primary requirement-save-close"
-      >
-        Guardar y cerrar
-      </button>
-
-    </div>
-
-  </div>
-
-</section>
-
-    <section class="requirement-card" data-requirement-section="services">
-      <button type="button" class="requirement-card-head" data-requirement-toggle>
-        <span class="requirement-number">04</span>
-        <span class="requirement-copy">
-          <strong>Servicios</strong>
-          <small>Selecciona los servicios y define uno como principal.</small>
-        </span>
-        <span class="requirement-toggle-text">Ver más</span>
-      </button>
-      <div class="requirement-card-body">
-        <div class="tech-card important-card {% if data.main_services.complete %}complete{% endif %}" id="block-services">
-          <div class="tech-head"><div>
-            <strong>Servicios de la empresa</strong>
-            <small>Agrega los servicios que ofrece la empresa y marca uno como principal.</small>
-          </div></div>
-          <div class="business-template-selector">
-            <label>Tipo de negocio</label>
-            <div class="choice-cards business-type-cards">
-              <label><input type="radio" name="business_type" value="tree_service" {% if data.main_services.json.business_type == 'tree_service' %}checked{% endif %}><span><b>Tree Service</b><small>Servicios de árboles.</small></span></label>
-              <label><input type="radio" name="business_type" value="roofing" {% if data.main_services.json.business_type == 'roofing' %}checked{% endif %}><span><b>Roofing</b><small>Servicios de techos.</small></span></label>
-              <label><input type="radio" name="business_type" value="remodeling" {% if data.main_services.json.business_type == 'remodeling' %}checked{% endif %}><span><b>Remodeling</b><small>Remodelaciones y construcción.</small></span></label>
-              <label><input type="radio" name="business_type" value="other" {% if data.main_services.json.business_type == 'other' %}checked{% endif %}><span><b>Otro</b><small>Agregar servicios manualmente.</small></span></label>
-            </div>
-            <div class="conditional-panel" data-show-when="business_type:other">
-              <label>Tipo de negocio</label>
-              <input type="text" name="business_type_other" value="{{ data.main_services.json.business_type_other|default:'' }}" placeholder="Ej.: Masonry">
-            </div>
-          </div>
-          <div class="service-suggestions-area">
-            <div class="service-block-heading"><div><strong>Servicios sugeridos</strong><small>Aparecen según el tipo de negocio. Selecciona los que ofrece la empresa.</small></div></div>
-            <div id="service-suggestions" class="service-suggestions"><div class="service-suggestions-empty">Selecciona el tipo de negocio.</div></div>
-          </div>
-          <div class="service-selected-area">
-            <div class="service-block-heading">
-              <div><strong>Servicios seleccionados</strong><small>Puedes editar, marcar como principal o eliminar cada servicio.</small></div>
-              <button type="button" class="btn btn-secondary btn-sm" id="add-service-item">Agregar servicio</button>
-            </div>
-            <div id="service-pool" class="service-category-items service-pool">
-              <div class="service-pool-empty">Todavía no has seleccionado servicios.</div>
-            </div>
-          </div>
-          <div class="service-primary-summary" id="primary-service-summary">
-            <strong>Servicio principal</strong>
-            <span id="primary-service-name">Selecciona “Principal” en uno de los servicios.</span>
-          </div>
-          {{ data.main_services.json|json_script:"saved-services-data" }}
-        </div>
-        <div class="section-save-actions">
-          <button type="submit" class="btn btn-secondary">Guardar sección</button>
-          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
-        </div>
-      </div>
-    </section>
-
-
-
-
-
-
-    <section class="requirement-card" data-requirement-section="coverage">
-
-      <button type="button" class="requirement-card-head" data-requirement-toggle>
-
-        <span class="requirement-number">05</span>
-
-        <span class="requirement-copy">
-          <strong>Cobertura geográfica</strong>
-          <small>
-            Dirección, radio, estados, counties y ciudades.
-          </small>
-        </span>
-        <span class="requirement-toggle-text">Ver más</span>
-
-      </button>
-
-
-      <div class="requirement-card-body">
-
-        <div class="tech-card {% if data.service_areas.complete %}complete{% endif %}" id="block-areas">
-
-          <div class="tech-head">
-            <div>
-              <strong>Áreas donde trabaja</strong>
-              <small>
-                Registra estados, counties y ciudades.
-              </small>
-            </div>
-          </div>
-
-          <div class="dynamic-list" id="areas-list">
-
-            {% for item in data.service_areas.json.items %}
-
-            <div class="dynamic-row area-row">
-
-              <select name="area_type">
-                <option value="state" {% if item.type == 'state' %}selected{% endif %}>Estado</option>
-                <option value="county" {% if item.type == 'county' %}selected{% endif %}>County</option>
-                <option value="city" {% if item.type == 'city' %}selected{% endif %}>Ciudad</option>
-              </select>
-
-              <input
-                type="text"
-                name="area_name"
-                value="{{ item.name }}"
-              >
-
-              <button type="button" class="row-remove">
-                Eliminar
-              </button>
-
-            </div>
-
-            {% empty %}
-
-            <div class="dynamic-row area-row">
-
-              <select name="area_type">
-                <option value="state">Estado</option>
-                <option value="county">County</option>
-                <option value="city">Ciudad</option>
-              </select>
-
-              <input
-                type="text"
-                name="area_name"
-                placeholder="Nombre del área"
-              >
-
-              <button type="button" class="row-remove">
-                Eliminar
-              </button>
-
-            </div>
-
-            {% endfor %}
-
-          </div>
-
-          <button
-            type="button"
-            class="btn btn-secondary btn-sm"
-            data-add-row="area"
-          >
-            Añadir área
-          </button>
-
-        </div>
-
-
-        <div class="tech-card {% if data.coverage.complete %}complete{% endif %}" id="block-coverage">
-
-          <label>Radio de servicio</label>
-
-          <div class="input-suffix">
-            <input
-              type="number"
-              min="0"
-              name="coverage_miles"
-              value="{{ data.coverage.json.miles|default:'' }}"
-            >
-            <span>millas</span>
-          </div>
-
-        </div>
-
-
-        <div class="section-save-actions">
-          <button type="submit" class="btn btn-secondary">
-            Guardar sección
-          </button>
-
-          <button type="button" class="btn btn-primary requirement-save-close">
-            Guardar y cerrar
-          </button>
-        </div>
-
-      </div>
-
-    </section>
-
-
-
-
-    <section class="requirement-card" data-requirement-section="contact">
-
-      <button type="button" class="requirement-card-head" data-requirement-toggle>
-
-        <span class="requirement-number">06</span>
-
-        <span class="requirement-copy">
-          <strong>Horarios y contacto</strong>
-          <small>
-            Horarios, teléfonos y disponibilidad.
-          </small>
-        </span>
-        <span class="requirement-toggle-text">Ver más</span>
-
-      </button>
-
-
-      <div class="requirement-card-body">
-
-        <div class="tech-grid two contact-hours-grid">
-
-          <div class="tech-card {% if data.business_hours.complete %}complete{% endif %}" id="block-hours">
-
-            <strong>Horario de trabajo</strong>
-
-            <div class="time-range">
-
-              <div>
-                <label>Desde</label>
-                <div>
-                  <input
-                    type="number"
-                    name="hours_start"
-                    min="1"
-                    max="12"
-                    step="1"
-                    inputmode="numeric"
-                    value="{{ data.business_hours.json.start|default:'' }}"
-                  >
-
-                  <select name="hours_start_period">
-                    <option {% if data.business_hours.json.start_period != 'PM' %}selected{% endif %}>AM</option>
-                    <option {% if data.business_hours.json.start_period == 'PM' %}selected{% endif %}>PM</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label>Hasta</label>
-                <div>
-                  <input
-                    type="number"
-                    name="hours_end"
-                    min="1"
-                    max="12"
-                    step="1"
-                    inputmode="numeric"
-                    value="{{ data.business_hours.json.end|default:'' }}"
-                  >
-
-                  <select name="hours_end_period">
-                    <option {% if data.business_hours.json.end_period == 'AM' %}selected{% endif %}>AM</option>
-                    <option {% if data.business_hours.json.end_period != 'AM' %}selected{% endif %}>PM</option>
-                  </select>
-                </div>
-              </div>
-
-            </div>
-
-          </div>
-
-
-          <div class="tech-card {% if data.is_24_7.complete %}complete{% endif %}" id="block-247">
-
-            <strong>Atención 24/7</strong>
-
-            <div class="choice-pills">
-
-              <label>
-                <input type="radio" name="is_24_7" value="yes" {% if data.is_24_7.json.answer == 'yes' %}checked{% endif %}>
-                Sí
-              </label>
-
-              <label>
-                <input type="radio" name="is_24_7" value="no" {% if data.is_24_7.json.answer == 'no' %}checked{% endif %}>
-                No
-              </label>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <div class="tech-card {% if data.contact_numbers.complete %}complete{% endif %}" id="block-phones">
-
-          <div class="tech-head">
-            <div>
-              <strong>Teléfonos</strong>
-              <small>
-                Cada número puede indicar si también usa WhatsApp.
-              </small>
-            </div>
-          </div>
-
-          <div class="dynamic-list" id="phones-list">
-
-            {% for item in data.contact_numbers.json.numbers %}
-
-            <div class="dynamic-row phone-row">
-
-              <input
-                type="tel"
-                name="phone_number"
-                value="{{ item.number }}"
-              >
-
-              <label class="mini-choice">
-                <input
-                  type="radio"
-                  name="phone_primary"
-                  value="{{ forloop.counter0 }}"
-                  {% if item.primary %}checked{% endif %}
-                >
-                Principal
-              </label>
-
-              <label class="mini-choice">
-                <input
-                  type="checkbox"
-                  name="phone_whatsapp"
-                  value="{{ forloop.counter0 }}"
-                  {% if item.whatsapp %}checked{% endif %}
-                >
-                WhatsApp
-              </label>
-
-              <button type="button" class="row-remove">
-                Eliminar
-              </button>
-
-            </div>
-
-            {% empty %}
-
-            <div class="dynamic-row phone-row">
-
-              <input
-                type="tel"
-                name="phone_number"
-                placeholder="Número"
-              >
-
-              <label class="mini-choice">
-                <input
-                  type="radio"
-                  name="phone_primary"
-                  value="0"
-                  checked
-                >
-                Principal
-              </label>
-
-              <label class="mini-choice">
-                <input
-                  type="checkbox"
-                  name="phone_whatsapp"
-                  value="0"
-                >
-                WhatsApp
-              </label>
-
-              <button type="button" class="row-remove">
-                Eliminar
-              </button>
-
-            </div>
-
-            {% endfor %}
-
-          </div>
-
-          <button
-            type="button"
-            class="btn btn-secondary btn-sm"
-            data-add-row="phone"
-          >
-            Añadir teléfono
-          </button>
-
-        </div>
-
-
-        <div class="section-save-actions">
-          <button type="submit" class="btn btn-secondary">
-            Guardar sección
-          </button>
-
-          <button type="button" class="btn btn-primary requirement-save-close">
-            Guardar y cerrar
-          </button>
-        </div>
-
-      </div>
-
-    </section>
-
-    <section class="requirement-card" data-requirement-section="marketing">
-      <button type="button" class="requirement-card-head" data-requirement-toggle>
-        <span class="requirement-number">07</span>
-        <span class="requirement-copy"><strong>Redes sociales</strong><small>Selecciona las redes que utiliza la empresa.</small></span>
-        <span class="requirement-toggle-text">Ver más</span>
-      </button>
-      <div class="requirement-card-body">
-        <div class="tech-card {% if data.has_social.complete %}complete{% endif %}" id="block-social">
-          {{ data.has_social.json|json_script:"saved-social-data" }}
-          <strong>Redes sociales</strong>
-          <div class="choice-pills">
-            <label><input type="radio" name="social_has" value="yes" {% if data.has_social.json.has == 'yes' %}checked{% endif %}> Sí</label>
-            <label><input type="radio" name="social_has" value="no" {% if data.has_social.json.has == 'no' %}checked{% endif %}> No</label>
-          </div>
-          <div class="conditional-panel" data-show-when="social_has:yes">
-            <div class="social-network-grid">
-              {% for key,label in social_networks %}
-              {% with url=data.has_social.json.networks|get_item:key %}
-              <div class="social-network-item" data-social-key="{{ key }}">
-                <label class="network-check"><input type="checkbox" name="social_enabled_{{ key }}" value="1"> {{ label }}</label>
-                <input class="social-url" type="url" name="social_url_{{ key }}" value="{{ url|default:'' }}" placeholder="https://...">
-              </div>
-              {% endwith %}
-              {% endfor %}
-            </div>
-          </div>
-        </div>
-        <div class="section-save-actions">
-          <button type="submit" class="btn btn-secondary">Guardar sección</button>
-          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
-        </div>
-      </div>
-    </section>
-
-    <section class="requirement-card" data-requirement-section="forms">
-      <button type="button" class="requirement-card-head" data-requirement-toggle>
-        <span class="requirement-number">08</span>
-        <span class="requirement-copy"><strong>Formularios</strong><small>Campos y configuración del formulario web.</small></span>
-        <span class="requirement-toggle-text">Ver más</span>
-      </button>
-      <div class="requirement-card-body">
-        <div class="tech-card">
-          {{ data.website_forms.json|json_script:"saved-form-data" }}
-          <strong>Campos del formulario</strong>
-          <div class="choice-pills">
-            <label><input type="checkbox" name="form_fields" value="name"> Nombre</label>
-            <label><input type="checkbox" name="form_fields" value="phone"> Teléfono</label>
-            <label><input type="checkbox" name="form_fields" value="email"> Email</label>
-            <label><input type="checkbox" name="form_fields" value="address"> Dirección</label>
-            <label><input type="checkbox" name="form_fields" value="city"> Ciudad</label>
-            <label><input type="checkbox" name="form_fields" value="zip"> ZIP</label>
-            <label><input type="checkbox" name="form_fields" value="service"> Servicio</label>
-            <label><input type="checkbox" name="form_fields" value="date"> Fecha</label>
-            <label><input type="checkbox" name="form_fields" value="description"> Descripción</label>
-            <label><input type="checkbox" name="form_fields" value="photos"> Fotografías</label>
-            <label><input type="checkbox" name="form_fields" value="other"> Otro</label>
-          </div>
-          <label>Email receptor</label>
-          <input type="email" name="form_receiver_email" value="{{ data.website_forms.json.receiver_email|default:'' }}">
-        </div>
-        <div class="section-save-actions">
-          <button type="submit" class="btn btn-secondary">Guardar sección</button>
-          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
-        </div>
-      </div>
-    </section>
-
-
-
-
-    <section class="requirement-card" data-requirement-section="quotes">
-
-      <button type="button" class="requirement-card-head" data-requirement-toggle>
-
-        <span class="requirement-number">09</span>
-
-        <span class="requirement-copy">
-          <strong>Cotizaciones</strong>
-          <small>
-            Estimados gratuitos, canales y proceso.
-          </small>
-        </span>
-        <span class="requirement-toggle-text">Ver más</span>
-
-      </button>
-
-
-      <div class="requirement-card-body">
-
-        <div class="tech-card">
-
-          <strong>Estimados gratuitos</strong>
-
-          <div class="choice-pills">
-
-  <label>
-    <input
-      type="radio"
-      name="free_estimates"
-      value="yes"
-      {% if data.quotes.json.free_estimates == 'yes' %}checked{% endif %}
-    >
-    Sí
-  </label>
-
-  <label>
-    <input
-      type="radio"
-      name="free_estimates"
-      value="no"
-      {% if data.quotes.json.free_estimates == 'no' %}checked{% endif %}
-    >
-    No
-  </label>
-
-  <label>
-    <input
-      type="radio"
-      name="free_estimates"
-      value="pending"
-      {% if data.quotes.json.free_estimates == 'pending' %}checked{% endif %}
-    >
-    Sin confirmar
-  </label>
-
-</div>
-
-        </div>
-
-
-
-        <div class="tech-card">
-          <label>Proceso / notas</label>
-          <textarea
-            name="quote_notes"
-            rows="4"
-          >{{ data.quotes.json.notes|default:'' }}</textarea>
-        </div>
-
-
-        <div class="section-save-actions">
-          <button type="submit" class="btn btn-secondary">Guardar sección</button>
-          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
-        </div>
-
-      </div>
-
-    </section>
-
-
-
-
-    <section class="requirement-card" data-requirement-section="certifications">
-
-      <button type="button" class="requirement-card-head" data-requirement-toggle>
-
-        <span class="requirement-number">10</span>
-
-        <span class="requirement-copy">
-          <strong>Certificaciones y garantías</strong>
-          <small>
-            Experiencia, certificaciones y garantías.
-          </small>
-        </span>
-        <span class="requirement-toggle-text">Ver más</span>
-
-      </button>
-
-
-      <div class="requirement-card-body">
-
-        <div class="tech-grid three">
-
-          <div class="tech-card {% if data.certifications.complete %}complete{% endif %}" id="block-certifications">
-            <strong>Certificaciones profesionales</strong>
-
-            <div class="choice-pills">
-              <label><input type="radio" name="certifications_has" value="yes" {% if data.certifications.json.has == 'yes' %}checked{% endif %}> Sí</label>
-              <label><input type="radio" name="certifications_has" value="no" {% if data.certifications.json.has == 'no' %}checked{% endif %}> No</label>
-            </div>
-
-            <div class="conditional-panel" data-show-when="certifications_has:yes">
-              <textarea name="certifications_detail" rows="3">{{ data.certifications.json.detail|default:'' }}</textarea>
-            </div>
-          </div>
-
-
-          <div class="tech-card {% if data.warranties.complete %}complete{% endif %}" id="block-warranties">
-
-            <strong>Garantías</strong>
-
-            <div class="choice-pills">
-              <label><input type="radio" name="warranties_has" value="yes" {% if data.warranties.json.has == 'yes' %}checked{% endif %}> Sí</label>
-              <label><input type="radio" name="warranties_has" value="no" {% if data.warranties.json.has == 'no' %}checked{% endif %}> No</label>
-            </div>
-
-            <div class="conditional-panel" data-show-when="warranties_has:yes">
-              <textarea name="warranties_detail" rows="3">{{ data.warranties.json.detail|default:'' }}</textarea>
-            </div>
-          </div>
-
-
-          <div class="tech-card {% if data.experience_years.complete %}complete{% endif %}" id="block-experience">
-
-            <label>Años de experiencia</label>
-
-            <input
-              type="number"
-              min="0"
-              name="experience_years"
-              value="{{ data.experience_years.text|default:'' }}"
-            >
-
-          </div>
-
-        </div>
-
-
-        <div class="section-save-actions">
-          <button type="submit" class="btn btn-secondary">Guardar sección</button>
-          <button type="button" class="btn btn-primary requirement-save-close">Guardar y cerrar</button>
-        </div>
-
-      </div>
-
-    </section>
-
-
-
-
-
-
-
-
-
-  </div>
-
-
-  <div class="technical-savebar card">
-
+<div class="info-quick-page">
+  <header class="info-quick-header">
     <div>
-      <strong>Ficha técnica</strong>
-
-      <span>
-        La información guardada se utilizará en las siguientes etapas del proyecto.
-      </span>
+      <span class="eyebrow">DESARROLLO · INFORMACIÓN</span>
+      <h1>Ficha de información</h1>
+      <p>{{ questionnaire.project.project_code }} · {{ questionnaire.project.client.business_name }}</p>
     </div>
+    <div class="info-progress-box">
+      <strong id="infoProgressValue">{{ progress.percent }}%</strong>
+      <span id="infoProgressLabel">{{ progress.complete }}/{{ progress.total }} fases completas</span>
+      <div class="info-progress-track"><i id="infoProgressBar" style="width:{{ progress.percent }}%"></i></div>
+    </div>
+  </header>
 
-    <button
-      class="btn btn-primary btn-lg"
-      type="submit"
-    >
-      Guardar ficha técnica
-    </button>
-
+  <div class="info-autosave-bar">
+    <div>
+      <span class="info-autosave-dot"></span>
+      <strong id="autosaveStatus">Borrador guardado automáticamente</strong>
+      <small>Los cambios se registran sin usar botones por sección.</small>
+    </div>
+    <a class="info-back-link" href="{% url 'questionnaires:development_information' %}">Volver a fichas</a>
   </div>
 
-</form>
+  <form method="post" id="technicalForm" class="info-quick-form" autocomplete="off">
+    {% csrf_token %}
+    <input type="hidden" name="areas_touched" id="areasTouched" value="0">
+
+    <details class="quick-phase" data-phase="business" open>
+      <summary>
+        <span class="phase-number">01</span>
+        <span class="phase-title"><strong>Información del negocio</strong><small>Actividad, tipo de cliente y objetivo principal.</small></span>
+        <span class="phase-state {% if data.company_description.complete and data.business_logic.complete %}done{% endif %}">{% if data.company_description.complete and data.business_logic.complete %}Completo{% else %}Pendiente{% endif %}</span>
+        <span class="phase-chevron">⌄</span>
+      </summary>
+      <div class="phase-body">
+        <div class="quick-grid two">
+          <label class="quick-field wide">
+            <span>Breve descripción de la empresa</span>
+            <textarea name="company_description" rows="3" placeholder="¿A qué se dedica la empresa?">{{ data.company_description.text }}</textarea>
+          </label>
+          <div class="quick-field">
+            <span>Tipo de cliente</span>
+            <div class="choice-row">
+              <label><input type="radio" name="customer_type" value="residential" {% if data.business_logic.json.customer_type == 'residential' %}checked{% endif %}> Residencial</label>
+              <label><input type="radio" name="customer_type" value="commercial" {% if data.business_logic.json.customer_type == 'commercial' %}checked{% endif %}> Comercial</label>
+              <label><input type="radio" name="customer_type" value="both" {% if data.business_logic.json.customer_type == 'both' %}checked{% endif %}> Ambos</label>
+              <label><input type="radio" name="customer_type" value="na" {% if data.business_logic.json.customer_type == 'na' %}checked{% endif %}> No aplica</label>
+            </div>
+          </div>
+          <label class="quick-field">
+            <span>Acción principal que esperamos del visitante</span>
+            <select name="visitor_action">
+              <option value="">Seleccionar</option>
+              <option value="call" {% if data.business_logic.json.visitor_action == 'call' %}selected{% endif %}>Llamar</option>
+              <option value="quote" {% if data.business_logic.json.visitor_action == 'quote' %}selected{% endif %}>Solicitar cotización</option>
+              <option value="estimate" {% if data.business_logic.json.visitor_action == 'estimate' %}selected{% endif %}>Solicitar estimado</option>
+              <option value="other" {% if data.business_logic.json.visitor_action == 'other' %}selected{% endif %}>Otra</option>
+            </select>
+          </label>
+          <label class="quick-field conditional-panel" data-show-when="visitor_action:other">
+            <span>Otra acción</span>
+            <input type="text" name="visitor_action_other" value="{{ data.business_logic.json.visitor_action_other|default:'' }}" placeholder="Especificar">
+          </label>
+        </div>
+      </div>
+    </details>
+
+    <details class="quick-phase" data-phase="brand">
+      <summary>
+        <span class="phase-number">02</span>
+        <span class="phase-title"><strong>Misión y visión</strong><small>Datos existentes o información breve para redactarlas.</small></span>
+        <span class="phase-state {% if data.has_mission_vision.complete %}done{% endif %}">{% if data.has_mission_vision.complete %}Completo{% else %}Pendiente{% endif %}</span>
+        <span class="phase-chevron">⌄</span>
+      </summary>
+      <div class="phase-body">
+        <div class="quick-field inline-question">
+          <span>¿La empresa ya tiene misión y visión?</span>
+          <div class="choice-row">
+            <label><input type="radio" name="mission_has" value="yes" {% if data.has_mission_vision.json.has == 'yes' %}checked{% endif %}> Sí</label>
+            <label><input type="radio" name="mission_has" value="no" {% if data.has_mission_vision.json.has == 'no' %}checked{% endif %}> No</label>
+          </div>
+        </div>
+        <div class="quick-grid two conditional-panel" data-show-when="mission_has:yes">
+          <label class="quick-field"><span>Misión</span><textarea name="mission_text" rows="3">{{ data.has_mission_vision.json.mission|default:'' }}</textarea></label>
+          <label class="quick-field"><span>Visión</span><textarea name="vision_text" rows="3">{{ data.has_mission_vision.json.vision|default:'' }}</textarea></label>
+        </div>
+        <div class="quick-grid two conditional-panel" data-show-when="mission_has:no">
+          <label class="quick-field"><span>¿Cómo nació la empresa?</span><textarea name="mission_origin" rows="2">{{ data.has_mission_vision.json.mission_origin|default:'' }}</textarea></label>
+          <label class="quick-field"><span>¿A quién ayuda y qué resuelve?</span><textarea name="mission_clients" rows="2">{{ data.has_mission_vision.json.mission_clients|default:'' }}</textarea></label>
+          <label class="quick-field"><span>¿Dónde quiere estar en algunos años?</span><textarea name="vision_future" rows="2">{{ data.has_mission_vision.json.vision_future|default:'' }}</textarea></label>
+          <label class="quick-field"><span>¿Qué quiere que recuerden de la empresa?</span><textarea name="vision_legacy" rows="2">{{ data.has_mission_vision.json.vision_legacy|default:'' }}</textarea></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="quick-phase" data-phase="team">
+      <summary>
+        <span class="phase-number">03</span>
+        <span class="phase-title"><strong>About y equipo</strong><small>Define si se mostrará al dueño, equipo o fotografías.</small></span>
+        <span class="phase-state {% if data.show_team.complete %}done{% endif %}">{% if data.show_team.complete %}Completo{% else %}Pendiente{% endif %}</span>
+        <span class="phase-chevron">⌄</span>
+      </summary>
+      <div class="phase-body">
+        <div class="quick-field inline-question">
+          <span>¿Se incluirá contenido del dueño o equipo?</span>
+          <div class="choice-row">
+            <label><input type="radio" name="team_include" value="yes" {% if data.show_team.json.include == 'yes' %}checked{% endif %}> Sí</label>
+            <label><input type="radio" name="team_include" value="no" {% if data.show_team.json.include == 'no' %}checked{% endif %}> No</label>
+          </div>
+        </div>
+        <div class="quick-grid two conditional-panel" data-show-when="team_include:yes">
+          <label class="quick-field"><span>Qué se mostrará</span>
+            <select name="team_scope">
+              <option value="">Seleccionar</option>
+              <option value="owner_photo" {% if data.show_team.json.scope == 'owner_photo' %}selected{% endif %}>Foto del dueño</option>
+              <option value="team_photo" {% if data.show_team.json.scope == 'team_photo' %}selected{% endif %}>Foto del equipo</option>
+              <option value="group_photos" {% if data.show_team.json.scope == 'group_photos' %}selected{% endif %}>Fotos por grupos</option>
+              <option value="no_photo" {% if data.show_team.json.scope == 'no_photo' %}selected{% endif %}>Sin fotografías</option>
+              <option value="other" {% if data.show_team.json.scope == 'other' %}selected{% endif %}>Otro</option>
+            </select>
+          </label>
+          <label class="quick-field conditional-panel" data-show-when="team_scope:other"><span>Otro</span><input name="team_other" value="{{ data.show_team.json.other|default:'' }}"></label>
+          <label class="quick-field wide"><span>Notas opcionales</span><textarea name="team_notes" rows="2">{{ data.show_team.json.notes|default:'' }}</textarea></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="quick-phase" data-phase="services">
+      <summary>
+        <span class="phase-number">04</span>
+        <span class="phase-title"><strong>Servicios</strong><small>Tipo de negocio, servicios seleccionados y servicio principal.</small></span>
+        <span class="phase-state {% if data.main_services.complete %}done{% endif %}">{% if data.main_services.complete %}Completo{% else %}Pendiente{% endif %}</span>
+        <span class="phase-chevron">⌄</span>
+      </summary>
+      <div class="phase-body">
+        {{ data.main_services.json|json_script:"savedServicesData" }}
+        <div class="service-compact-head">
+          <div class="quick-field">
+            <span>Tipo de negocio</span>
+            <div class="choice-row service-type-row">
+              <label><input type="radio" name="services_business_type" value="tree_service" {% if data.main_services.json.business_type == 'tree_service' %}checked{% endif %}> Servicios de árboles</label>
+              <label><input type="radio" name="services_business_type" value="roofing" {% if data.main_services.json.business_type == 'roofing' %}checked{% endif %}> Servicios de techos</label>
+              <label><input type="radio" name="services_business_type" value="remodeling" {% if data.main_services.json.business_type == 'remodeling' %}checked{% endif %}> Remodelación y construcción</label>
+              <label><input type="radio" name="services_business_type" value="other" {% if data.main_services.json.business_type == 'other' %}checked{% endif %}> Otro</label>
+            </div>
+          </div>
+          <label class="quick-field conditional-panel" data-show-when="services_business_type:other"><span>Tipo de negocio</span><input name="business_type_other" value="{{ data.main_services.json.business_type_other|default:'' }}" placeholder="Ej.: Masonry"></label>
+        </div>
+        <div class="service-compact-layout">
+          <div>
+            <div class="compact-subhead"><strong>Servicios sugeridos</strong><small>Haz clic para añadir.</small></div>
+            <div id="serviceSuggestions" class="suggestion-pills"></div>
+          </div>
+          <div>
+            <div class="compact-subhead"><strong>Servicios seleccionados</strong><button type="button" class="mini-action" id="addServiceButton">＋ Añadir servicio</button></div>
+            <div id="serviceRows" class="compact-rows"></div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="quick-phase" data-phase="coverage">
+      <summary>
+        <span class="phase-number">05</span>
+        <span class="phase-title"><strong>Cobertura geográfica</strong><small>Define el criterio y registra estados, condados y ciudades.</small></span>
+        <span class="phase-state {% if data.service_areas.complete and data.coverage.complete %}done{% endif %}">{% if data.service_areas.complete and data.coverage.complete %}Completo{% else %}Pendiente{% endif %}</span>
+        <span class="phase-chevron">⌄</span>
+      </summary>
+      <div class="phase-body">
+        <div class="area-strategy-grid">
+          <label class="strategy-option"><input type="radio" name="area_strategy" value="client" {% if data.service_areas.json.strategy == 'client' %}checked{% endif %}><span><strong>Localidades definidas por el cliente</strong><small>El cliente nos envía las localidades específicas y se respetan sin importar la tendencia.</small></span></label>
+          <label class="strategy-option"><input type="radio" name="area_strategy" value="study" {% if data.service_areas.json.strategy == 'study' %}checked{% endif %}><span><strong>Localidades según estudio de demanda</strong><small>Realizamos el estudio y colocamos áreas según la demanda y oportunidad detectada.</small></span></label>
+        </div>
+        <div class="coverage-toolbar">
+          <div><strong>Áreas de servicio</strong><small>Condados y ciudades quedan vinculados con la ficha de producción.</small></div>
+          <button type="button" class="mini-action" id="addAreaButton">＋ Añadir área</button>
+        </div>
+        <div id="areaRows" class="compact-rows">
+          {% for item in data.service_areas.json.items %}
+          <div class="area-row compact-row">
+            <select name="area_type" class="area-watch">
+              <option value="state" {% if item.type == 'state' %}selected{% endif %}>Estado</option>
+              <option value="county" {% if item.type == 'county' %}selected{% endif %}>Condado</option>
+              <option value="city" {% if item.type == 'city' %}selected{% endif %}>Ciudad</option>
+            </select>
+            <input name="area_name" class="area-watch" value="{{ item.name }}" placeholder="Nombre">
+            <input name="area_parent" class="area-watch" value="{{ item.parent|default:'' }}" placeholder="Condado relacionado (si es ciudad)">
+            <button type="button" class="row-remove area-remove" aria-label="Eliminar">×</button>
+          </div>
+          {% empty %}
+          {% endfor %}
+        </div>
+        <div class="coverage-radius">
+          <label class="quick-field"><span>Radio de servicio</span><div class="inline-input"><input type="number" min="0" name="coverage_miles" value="{{ data.coverage.json.miles|default:'' }}" placeholder="30"><b>millas</b></div></label>
+        </div>
+      </div>
+    </details>
+
+    <details class="quick-phase" data-phase="contact">
+      <summary>
+        <span class="phase-number">06</span>
+        <span class="phase-title"><strong>Contacto</strong><small>Horario, teléfonos, WhatsApp y correo que recibirá los leads.</small></span>
+        <span class="phase-state {% if data.business_hours.complete and data.is_24_7.complete and data.contact_numbers.complete and data.website_forms.complete %}done{% endif %}">{% if data.business_hours.complete and data.is_24_7.complete and data.contact_numbers.complete and data.website_forms.complete %}Completo{% else %}Pendiente{% endif %}</span>
+        <span class="phase-chevron">⌄</span>
+      </summary>
+      <div class="phase-body">
+        <div class="quick-grid two">
+          <div class="quick-field"><span>¿Atiende 24/7?</span><div class="choice-row"><label><input type="radio" name="is_24_7" value="yes" {% if data.is_24_7.json.answer == 'yes' %}checked{% endif %}> Sí</label><label><input type="radio" name="is_24_7" value="no" {% if data.is_24_7.json.answer == 'no' %}checked{% endif %}> No</label></div></div>
+          <div class="quick-field conditional-panel" data-show-when="is_24_7:no"><span>Horario</span><div class="time-inline"><input name="hours_start" value="{{ data.business_hours.json.start|default:'' }}" placeholder="8:00"><select name="hours_start_period"><option value="AM" {% if data.business_hours.json.start_period != 'PM' %}selected{% endif %}>AM</option><option value="PM" {% if data.business_hours.json.start_period == 'PM' %}selected{% endif %}>PM</option></select><span>a</span><input name="hours_end" value="{{ data.business_hours.json.end|default:'' }}" placeholder="5:00"><select name="hours_end_period"><option value="AM" {% if data.business_hours.json.end_period == 'AM' %}selected{% endif %}>AM</option><option value="PM" {% if data.business_hours.json.end_period != 'AM' %}selected{% endif %}>PM</option></select></div></div>
+          <label class="quick-field"><span>Correo de recepción de leads</span><input type="email" name="lead_receiver_email" value="{{ data.website_forms.json.receiver_email|default:'' }}" placeholder="leads@empresa.com"></label>
+        </div>
+        <div class="coverage-toolbar"><div><strong>Teléfonos</strong><small>Marca uno como principal y los que usan WhatsApp.</small></div><button type="button" class="mini-action" id="addPhoneButton">＋ Añadir teléfono</button></div>
+        <div id="phoneRows" class="compact-rows">
+          {% for phone in data.contact_numbers.json.numbers %}
+          <div class="phone-row compact-row">
+            <input name="phone_number" value="{{ phone.number }}" placeholder="Teléfono">
+            <label class="mini-check"><input type="radio" name="phone_primary" value="{{ forloop.counter0 }}" {% if phone.primary %}checked{% endif %}> Principal</label>
+            <label class="mini-check"><input type="checkbox" name="phone_whatsapp" value="{{ forloop.counter0 }}" {% if phone.whatsapp %}checked{% endif %}> WhatsApp</label>
+            <button type="button" class="row-remove phone-remove" aria-label="Eliminar">×</button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </details>
+
+    <details class="quick-phase" data-phase="marketing">
+      <summary>
+        <span class="phase-number">07</span>
+        <span class="phase-title"><strong>Redes sociales</strong><small>Registra redes existentes y añade cualquier otra que necesites.</small></span>
+        <span class="phase-state {% if data.has_social.complete %}done{% endif %}">{% if data.has_social.complete %}Completo{% else %}Pendiente{% endif %}</span>
+        <span class="phase-chevron">⌄</span>
+      </summary>
+      <div class="phase-body">
+        {{ data.has_social.json|json_script:"savedSocialData" }}
+        <div class="quick-field inline-question"><span>¿La empresa tiene redes sociales?</span><div class="choice-row"><label><input type="radio" name="social_has" value="yes" {% if data.has_social.json.has == 'yes' %}checked{% endif %}> Sí</label><label><input type="radio" name="social_has" value="no" {% if data.has_social.json.has == 'no' %}checked{% endif %}> No</label></div></div>
+        <div class="conditional-panel social-panel" data-show-when="social_has:yes">
+          <div class="coverage-toolbar social-toolbar">
+            <div><strong>Redes sociales registradas</strong><small>Selecciona la red y pega su enlace. Puedes añadir todas las que necesites.</small></div>
+            <button type="button" class="mini-action" id="addSocialButton">＋ Añadir red</button>
+          </div>
+          <div id="socialRows" class="compact-rows social-list">
+            {% for key,label in social_networks %}
+              {% with url=data.has_social.json.networks|get_item:key %}
+                {% if url %}
+                <div class="social-link-row compact-row">
+                  <select name="social_network_name" class="social-network-select" aria-label="Red social">
+                    <option value="">Seleccionar red</option>
+                    {% for option_key,option_label in social_networks %}<option value="{{ option_key }}" {% if option_key == key %}selected{% endif %}>{{ option_label }}</option>{% endfor %}
+                    <option value="other">Otra red</option>
+                  </select>
+                  <input name="social_network_custom_name" class="social-custom-name" value="" placeholder="Nombre de la red" hidden>
+                  <input type="url" name="social_network_url" value="{{ url }}" placeholder="https://..." aria-label="Enlace de la red social">
+                  <button type="button" class="row-remove social-remove" aria-label="Eliminar red">×</button>
+                </div>
+                {% endif %}
+              {% endwith %}
+            {% endfor %}
+            {% for item in data.has_social.json.custom %}
+            <div class="social-link-row compact-row">
+              <select name="social_network_name" class="social-network-select" aria-label="Red social">
+                <option value="">Seleccionar red</option>
+                {% for option_key,option_label in social_networks %}<option value="{{ option_key }}">{{ option_label }}</option>{% endfor %}
+                <option value="other" selected>Otra red</option>
+              </select>
+              <input name="social_network_custom_name" class="social-custom-name" value="{{ item.name }}" placeholder="Nombre de la red">
+              <input type="url" name="social_network_url" value="{{ item.url }}" placeholder="https://..." aria-label="Enlace de la red social">
+              <button type="button" class="row-remove social-remove" aria-label="Eliminar red">×</button>
+            </div>
+            {% endfor %}
+          </div>
+          <p class="social-empty-hint" id="socialEmptyHint">Usa “Añadir red” para registrar Facebook, Instagram, TikTok, YouTube u otra plataforma.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="quick-phase" data-phase="certifications">
+      <summary>
+        <span class="phase-number">08</span>
+        <span class="phase-title"><strong>Certificaciones y garantías</strong><small>Certificaciones, garantía ofrecida y trayectoria.</small></span>
+        <span class="phase-state {% if data.certifications.complete and data.warranties.complete and data.experience_years.complete %}done{% endif %}">{% if data.certifications.complete and data.warranties.complete and data.experience_years.complete %}Completo{% else %}Pendiente{% endif %}</span>
+        <span class="phase-chevron">⌄</span>
+      </summary>
+      <div class="phase-body">
+        <div class="quick-grid two">
+          <div class="quick-field"><span>¿Tiene certificaciones?</span><div class="choice-row"><label><input type="radio" name="certifications_has" value="yes" {% if data.certifications.json.has == 'yes' %}checked{% endif %}> Sí</label><label><input type="radio" name="certifications_has" value="no" {% if data.certifications.json.has == 'no' %}checked{% endif %}> No</label></div></div>
+          <label class="quick-field conditional-panel" data-show-when="certifications_has:yes"><span>Certificaciones</span><textarea name="certifications_detail" rows="2">{{ data.certifications.json.detail|default:'' }}</textarea></label>
+          <div class="quick-field"><span>¿Ofrece garantía?</span><div class="choice-row"><label><input type="radio" name="warranties_has" value="yes" {% if data.warranties.json.has == 'yes' %}checked{% endif %}> Sí</label><label><input type="radio" name="warranties_has" value="no" {% if data.warranties.json.has == 'no' %}checked{% endif %}> No</label></div></div>
+          <label class="quick-field conditional-panel" data-show-when="warranties_has:yes"><span>Detalle de la garantía</span><textarea name="warranties_detail" rows="2">{{ data.warranties.json.detail|default:'' }}</textarea></label>
+          <label class="quick-field"><span>Años de experiencia</span><input type="number" min="0" name="experience_years" value="{{ data.experience_years.json.years|default:data.experience_years.text }}"></label>
+        </div>
+      </div>
+    </details>
+
+    <div class="info-final-save">
+      <div><strong>Ficha de información</strong><span>El borrador ya está guardado. Usa este botón cuando quieras cerrar la captura de información.</span></div>
+      <button type="submit" name="finalize" value="1" class="btn btn-primary info-final-button">Guardar ficha</button>
+    </div>
+  </form>
+</div>
 
 <style>
-
-.requirement-accordion{
-  width:100%;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-
-
-/* CARD */
-
-.requirement-card{
-  width:100%;
-  margin:0;
-  overflow:hidden;
-  border:1px solid #e1e6ee;
-  border-radius:14px;
-  background:#fff;
-  box-shadow:0 1px 2px rgba(17,29,52,.03);
-}
-
-
-/* HEADER */
-
-.requirement-card-head{
-  appearance:none;
-  -webkit-appearance:none;
-  width:100%;
-  min-height:74px;
-  margin:0;
-  padding:14px 18px;
-  border:0;
-  outline:0;
-  background:#fff;
-  display:grid;
-  grid-template-columns:
-    38px
-    minmax(280px,1fr)
-    170px
-    120px
-    82px;
-  align-items:center;
-  gap:14px;
-  text-align:left;
-  cursor:pointer;
-  font:inherit;
-}
-
-.requirement-card-head:hover{
-  background:#fafbfd;
-}
-
-
-/* NUMBER */
-
-.requirement-number{
-  width:32px;
-  height:32px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border-radius:50%;
-  background:#edf4ff;
-  color:#2567d8;
-  font-size:11px;
-  font-weight:800;
-}
-
-
-/* COPY */
-
-.requirement-copy{
-  min-width:0;
-  display:flex;
-  flex-direction:column;
-  gap:3px;
-}
-
-.requirement-copy strong{
-  color:#17243a;
-  font-size:14px;
-  line-height:1.25;
-  font-weight:800;
-}
-
-.requirement-copy small{
-  color:#7e899a;
-  font-size:11px;
-  line-height:1.4;
-  font-weight:500;
-}
-
-
-/* PROGRESS */
-
-.requirement-progress-wrap{
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:8px;
-}
-
-.requirement-progress{
-  width:110px;
-  height:6px;
-  display:block;
-  overflow:hidden;
-  border-radius:999px;
-  background:#e7ecf2;
-}
-
-.requirement-progress i{
-  width:0;
-  height:100%;
-  display:block;
-  border-radius:inherit;
-  background:#2678ef;
-  transition:width .2s ease;
-}
-
-.requirement-percent{
-  min-width:32px;
-  color:#66758b;
-  font-size:11px;
-  font-weight:800;
-}
-
-
-/* STATUS */
-
-.requirement-status{
-  min-height:30px;
-  padding:6px 10px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  border:1px solid #dfe5ec;
-  border-radius:999px;
-  background:#f2f4f7;
-  color:#6d7889;
-  font-size:10px;
-  font-weight:800;
-  white-space:nowrap;
-}
-
-
-/* TOGGLE */
-
-.requirement-toggle-text{
-  color:#286bc8;
-  text-align:right;
-  font-size:11px;
-  font-weight:800;
-  white-space:nowrap;
-}
-
-
-/* BODY: CLOSED BY DEFAULT */
-
-.requirement-card-body{
-  display:none !important;
-  padding:20px;
-  border-top:1px solid #e6eaf0;
-  background:#fbfcfe;
-}
-
-
-/* ONLY OPEN CARD */
-
-.requirement-card.is-open
-.requirement-card-body{
-  display:block !important;
-}
-
-
-/* OPEN HEADER */
-
-.requirement-card.is-open
-.requirement-card-head{
-  background:#f8faff;
-}
-
-
-/* SECTION ACTIONS */
-
-.section-save-actions{
-  margin-top:18px;
-  padding-top:16px;
-  border-top:1px solid #e2e7ee;
-  display:flex;
-  justify-content:flex-end;
-  align-items:center;
-  gap:10px;
-}
-
-
-/* SERVICES */
-.service-suggestions-area{
-  margin-bottom:22px;
-}
-
-.service-suggestions{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-}
-
-.service-suggestions-empty{
-  width:100%;
-  padding:14px;
-  border:1px dashed #dce3ec;
-  border-radius:10px;
-  background:#fafbfd;
-  color:#8491a3;
-  font-size:12px;
-  text-align:center;
-}
-
-.service-suggestion{
-  min-height:38px;
-  padding:8px 12px;
-  border:1px solid #d9e2ee;
-  border-radius:9px;
-  background:#fff;
-  color:#34445c;
-  font-family:inherit;
-  font-size:11px;
-  font-weight:700;
-  cursor:pointer;
-  transition:
-    background .15s ease,
-    border-color .15s ease;
-}
-
-.service-suggestion:hover{
-  border-color:#aac4e8;
-  background:#f4f8ff;
-}
-
-.service-suggestion.is-added{
-  border-color:#badcca;
-  background:#eff9f3;
-  color:#26734d;
-  cursor:default;
-}
-
-.service-selected-area{
-  margin-bottom:22px;
-}
-
-.service-pool{
-  min-height:66px;
-}
-
-.service-pool-empty{
-  min-height:46px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#8995a6;
-  font-size:11px;
-}
-.business-template-selector{
-  margin-bottom:18px;
-}
-
-.business-type-cards{
-  margin-top:10px;
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:10px;
-}
-
-.service-template-actions{
-  margin:14px 0 20px;
-  display:flex;
-  align-items:center;
-  gap:12px;
-  flex-wrap:wrap;
-}
-
-.service-main-area{
-  margin-bottom:22px;
-}
-
-.service-block-heading{
-  margin-bottom:10px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:15px;
-}
-
-.service-block-heading > div{
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-}
-
-.service-block-heading strong{
-  color:#17243a;
-  font-size:14px;
-}
-
-.service-block-heading small{
-  color:#7d899b;
-  font-size:11px;
-}
-
-
-
-
-/* PRIMARY ZONE */
-
-.primary-service-zone{
-  min-height:76px;
-  padding:12px;
-  border:1px dashed #95acd0;
-  border-radius:12px;
-  background:#f7faff;
-}
-
-.service-zone-empty{
-  min-height:48px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#8693a6;
-  font-size:12px;
-}
-
-
-/* CATEGORIES */
-
-.service-categories{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  margin-bottom:22px;
-}
-
-.service-category{
-  padding:14px;
-  border:1px solid #dfe5ed;
-  border-radius:12px;
-  background:#fff;
-}
-
-.service-category-header{
-  display:grid;
-  grid-template-columns:
-    30px
-    minmax(220px,1fr)
-    110px
-    auto;
-  gap:10px;
-  align-items:center;
-  margin-bottom:12px;
-}
-
-.service-category-drag,
-.service-item-handle{
-  width:28px;
-  height:32px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:3px;
-  border:1px solid #dce3ec;
-  border-radius:7px;
-  cursor:grab;
-  background:#f6f8fb;
-}
-
-.service-category-drag span,
-.service-item-handle span{
-  width:12px;
-  height:2px;
-  display:block;
-  border-radius:99px;
-  background:#7f8da2;
-}
-
-.service-category-drag:active,
-.service-item-handle:active{
-  cursor:grabbing;
-}
-
-
-/* SERVICE ITEMS */
-
-.service-category-items{
-  min-height:48px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  margin-bottom:10px;
-  padding:8px;
-  border:1px dashed #dde4ed;
-  border-radius:9px;
-  background:#fafbfd;
-}
-
-.service-item{
-  display:grid;
-  grid-template-columns:
-    30px
-    minmax(200px,1fr)
-    auto
-    auto;
-  align-items:center;
-  gap:9px;
-  padding:9px;
-  border:1px solid #e0e5ec;
-  border-radius:9px;
-  background:#fff;
-}
-
-.service-item.dragging{
-  opacity:.45;
-}
-
-.service-category.category-dragging{
-  opacity:.45;
-}
-
-
-/* EXCLUDED */
-
-.excluded-services-area{
-  margin-top:22px;
-  padding-top:18px;
-  border-top:1px solid #e4e8ef;
-}
-
-.excluded-services-list{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-
-.excluded-service-row{
-  display:grid;
-  grid-template-columns:minmax(220px,1fr) auto;
-  gap:10px;
-  align-items:center;
-}
-
-
-/* BUTTONS INSIDE SERVICES */
-
-.service-remove,
-.service-category-remove,
-.service-make-primary,
-.excluded-service-row .row-remove{
-  min-height:36px;
-  padding:7px 11px;
-  border:1px solid #dce3ec;
-  border-radius:8px;
-  background:#fff;
-  color:#34445c;
-  font-family:inherit;
-  font-size:11px;
-  font-weight:700;
-  cursor:pointer;
-}
-
-.service-make-primary{
-  color:#215db9;
-  border-color:#bed2ef;
-  background:#f5f9ff;
-}
-
-.service-make-primary:disabled{
-  color:#176b45;
-  border-color:#c4e5d4;
-  background:#eef9f3;
-  cursor:default;
-}
-
-.validation-totals{
-  margin:14px 0 18px;
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:10px;
-}
-
-.validation-totals > div{
-  padding:12px 14px;
-  border:1px solid #e0e6ee;
-  border-radius:10px;
-  background:#fff;
-  color:#34445c;
-  font-size:12px;
-  font-weight:700;
-}
-
-.validation-pending-list{
-  margin-top:10px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-
-.validation-pending-item{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:12px;
-  padding:10px 12px;
-  border:1px solid #e1e6ee;
-  border-radius:9px;
-  background:#fff;
-}
-
-.validation-pending-item span{
-  color:#425168;
-  font-size:12px;
-}
-
-.validation-pending-item b{
-  color:#286bc8;
-  font-size:12px;
-}
-
-@media(max-width:650px){
-  .validation-totals{
-    grid-template-columns:1fr;
-  }
-}
-/* RESPONSIVE */
-
-@media(max-width:1100px){
-
-  .requirement-card-head{
-    grid-template-columns:
-      38px
-      minmax(220px,1fr)
-      150px
-      110px
-      75px;
-  }
-
-  .business-type-cards{
-    grid-template-columns:repeat(2,minmax(0,1fr));
-  }
-
-}
-
-
-@media(max-width:850px){
-
-  .requirement-card-head{
-    grid-template-columns:38px 1fr auto;
-  }
-
-  .requirement-progress-wrap{
-    grid-column:2;
-    justify-content:flex-start;
-  }
-
-  .requirement-status{
-    grid-column:3;
-    grid-row:1;
-  }
-
-  .requirement-toggle-text{
-    grid-column:3;
-    text-align:right;
-  }
-
-  .service-category-header{
-    grid-template-columns:30px 1fr;
-  }
-
-  .service-category-header select,
-  .service-category-remove{
-    grid-column:2;
-  }
-
-}
-
-
-@media(max-width:650px){
-
-  .requirement-card-head{
-    grid-template-columns:34px 1fr;
-  }
-
-  .requirement-status,
-  .requirement-toggle-text,
-  .requirement-progress-wrap{
-    grid-column:2;
-  }
-
-  .requirement-status{
-    width:max-content;
-  }
-
-  .requirement-toggle-text{
-    text-align:left;
-  }
-
-  .business-type-cards{
-    grid-template-columns:1fr;
-  }
-
-  .service-item{
-    grid-template-columns:28px 1fr;
-  }
-
-  .service-item
-  .service-make-primary,
-  .service-item
-  .service-remove{
-    grid-column:2;
-  }
-
-  .section-save-actions{
-    flex-direction:column;
-    align-items:stretch;
-  }
-
-}
-
-
-/* CEOJA — Ficha técnica responsive fixes */
-.team-scope-grid{
-  display:grid !important;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:10px;
-  align-items:stretch;
-}
-.team-scope-grid > label{
-  width:100%;
-  min-width:0;
-}
-.team-scope-grid .team-other-choice{
-  grid-column:1;
-}
-.team-scope-grid .team-other-field{
-  grid-column:2;
-  margin:0 !important;
-  align-self:stretch;
-}
-.team-scope-grid .team-other-field.visible{
-  display:flex !important;
-  flex-direction:column;
-  justify-content:center;
-}
-
-#block-areas .area-row{
-  display:grid !important;
-  grid-template-columns:120px minmax(0,1fr) auto !important;
-  gap:10px !important;
-  align-items:center !important;
-}
-#block-areas .area-row select,
-#block-areas .area-row input{
-  width:100% !important;
-  min-width:0 !important;
-}
-#block-areas .area-row .row-remove{
-  width:auto !important;
-  min-width:108px;
-  white-space:nowrap;
-}
-
-.contact-hours-grid{
-  display:grid !important;
-  grid-template-columns:minmax(0,2fr) minmax(220px,.7fr) !important;
-  gap:12px !important;
-}
-#block-hours .time-range{
-  display:grid !important;
-  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-  gap:12px !important;
-  align-items:end !important;
-}
-#block-hours .time-range > div > div{
-  display:grid !important;
-  grid-template-columns:minmax(0,1fr) 82px !important;
-  gap:8px !important;
-  align-items:center !important;
-}
-#block-hours .time-range input,
-#block-hours .time-range select{
-  width:100% !important;
-  min-width:0 !important;
-}
-
-#block-phones .phone-row{
-  display:grid !important;
-  grid-template-columns:minmax(220px,1fr) auto auto auto !important;
-  gap:8px !important;
-  align-items:center !important;
-}
-#block-phones .phone-row > input[type="tel"]{
-  width:100% !important;
-  min-width:0 !important;
-}
-#block-phones .phone-row .row-remove{
-  width:auto !important;
-  min-width:100px;
-  white-space:nowrap;
-}
-
+.info-quick-page{max-width:1500px;margin:0 auto;padding:4px 0 48px}.info-quick-header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:16px}.info-quick-header h1{margin:5px 0 4px;font-size:29px;line-height:1.08}.info-quick-header p{margin:0;color:#65748a;font-size:13px}.info-progress-box{width:260px;padding:13px 15px;border:1px solid #dce4ef;border-radius:12px;background:#fff}.info-progress-box strong{font-size:22px;color:#234a87}.info-progress-box span{display:block;margin-top:2px;color:#76849a;font-size:10px}.info-progress-track{height:5px;margin-top:10px;border-radius:999px;background:#e9edf4;overflow:hidden}.info-progress-track i{display:block;height:100%;border-radius:inherit;background:#2a66d9;transition:width .25s}.info-autosave-bar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:10px;padding:9px 13px;border:1px solid #dfe6ef;border-radius:11px;background:rgba(255,255,255,.96);backdrop-filter:blur(8px)}.info-autosave-bar>div{display:grid;grid-template-columns:auto auto;align-items:center;column-gap:7px}.info-autosave-dot{width:8px;height:8px;border-radius:50%;background:#26a269}.info-autosave-bar strong{font-size:10px;color:#344054}.info-autosave-bar small{grid-column:2;color:#8390a2;font-size:9px}.info-back-link{font-size:10px;font-weight:800;color:#315a9d;text-decoration:none}.info-quick-form{display:grid;gap:8px}.quick-phase{border:1px solid #dfe5ee;border-radius:12px;background:#fff;overflow:hidden}.quick-phase>summary{list-style:none;display:grid;grid-template-columns:34px minmax(0,1fr) auto 22px;align-items:center;gap:10px;padding:12px 15px;cursor:pointer;background:#fbfcfe}.quick-phase>summary::-webkit-details-marker{display:none}.phase-number{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#edf3ff;color:#2f65c8;font-size:10px;font-weight:900}.phase-title strong,.phase-title small{display:block}.phase-title strong{color:#17243a;font-size:13px}.phase-title small{margin-top:2px;color:#7b8798;font-size:9px}.phase-state{min-width:66px;padding:5px 8px;border-radius:999px;background:#f1f3f6;color:#7a8595;text-align:center;font-size:8px;font-weight:900;text-transform:uppercase}.phase-state.done{background:#e9f7ef;color:#18734d}.phase-chevron{font-size:18px;color:#6e7c91;transition:transform .18s}.quick-phase[open] .phase-chevron{transform:rotate(180deg)}.phase-body{padding:14px 16px;border-top:1px solid #edf0f4}.quick-grid{display:grid;gap:10px}.quick-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.quick-field{display:flex;flex-direction:column;gap:5px;min-width:0}.quick-field.wide{grid-column:1/-1}.quick-field>span,.inline-question>span{color:#25344b;font-size:10px;font-weight:850}.quick-field input:not([type=radio]):not([type=checkbox]),.quick-field select,.quick-field textarea,.compact-row input,.compact-row select,.social-row input[type=url]{width:100%;min-height:38px;border:1px solid #d8e1ec;border-radius:9px;background:#fff;padding:8px 10px;color:#1e2c40;font:inherit;font-size:11px;outline:none;box-sizing:border-box}.quick-field textarea{resize:vertical;min-height:62px}.quick-field input:focus,.quick-field select:focus,.quick-field textarea:focus,.compact-row input:focus,.compact-row select:focus,.social-row input:focus{border-color:#7aa3ef;box-shadow:0 0 0 2px rgba(55,109,211,.08)}.choice-row{display:flex;flex-wrap:wrap;gap:7px}.choice-row label,.mini-check,.social-toggle{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 9px;border:1px solid #dfe5ed;border-radius:9px;background:#fafbfd;color:#34435b;font-size:9px;font-weight:750;cursor:pointer}.choice-row input,.mini-check input,.social-toggle input{margin:0}.inline-question{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.conditional-panel[hidden]{display:none!important}.compact-subhead,.coverage-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}.compact-subhead strong,.coverage-toolbar strong{display:block;font-size:10px;color:#27364d}.compact-subhead small,.coverage-toolbar small{display:block;margin-top:2px;color:#8490a0;font-size:8px}.mini-action{min-height:30px;border:1px solid #cfd9e7;border-radius:8px;background:#fff;padding:5px 9px;color:#31558d;font-size:8px;font-weight:900;cursor:pointer}.mini-action:hover{background:#f5f8fc}.service-compact-layout{display:grid;grid-template-columns:minmax(280px,.8fr) minmax(420px,1.2fr);gap:14px;margin-top:12px}.suggestion-pills{display:flex;flex-wrap:wrap;gap:6px}.suggestion-pill{border:1px solid #d9e2ed;border-radius:999px;background:#f8fafc;padding:6px 9px;color:#47566d;font-size:8px;font-weight:800;cursor:pointer}.suggestion-pill:hover{border-color:#9bb7e5;background:#f2f6fd}.suggestion-pill.is-added{opacity:.45;cursor:default}.compact-rows{display:grid;gap:6px}.compact-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:7px;padding:6px;border:1px solid #e0e6ee;border-radius:9px;background:#fbfcfd}.service-row{grid-template-columns:minmax(0,1fr) auto auto}.service-primary-label{display:flex;align-items:center;gap:5px;white-space:nowrap;color:#3b4a5f;font-size:8px;font-weight:850}.row-remove{width:30px;height:30px;border:1px solid #efc5c5;border-radius:8px;background:#fff6f6;color:#c24040;font-size:16px;line-height:1;cursor:pointer}.area-strategy-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}.strategy-option{display:grid;grid-template-columns:auto 1fr;align-items:flex-start;gap:9px;padding:10px 11px;border:1px solid #dfe5ed;border-radius:10px;background:#fafbfd;cursor:pointer}.strategy-option input{margin-top:3px}.strategy-option strong,.strategy-option small{display:block}.strategy-option strong{font-size:10px;color:#25344b}.strategy-option small{margin-top:3px;font-size:8px;line-height:1.45;color:#788598}.area-row{grid-template-columns:120px minmax(160px,.8fr) minmax(220px,1.2fr) 34px}.coverage-radius{max-width:260px;margin-top:10px}.inline-input{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px}.inline-input b{font-size:9px;color:#6f7c8f}.time-inline{display:grid;grid-template-columns:minmax(70px,1fr) 70px auto minmax(70px,1fr) 70px;align-items:center;gap:6px}.time-inline input,.time-inline select{min-width:0}.phone-row{grid-template-columns:minmax(180px,1fr) auto auto 34px}.social-compact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0 12px}.social-row{display:grid;grid-template-columns:130px minmax(0,1fr);gap:7px;align-items:center}.social-custom-row{grid-template-columns:minmax(150px,.4fr) minmax(240px,1fr) 34px}.info-final-save{position:sticky;bottom:10px;z-index:35;display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:10px;padding:12px 14px;border:1px solid #d7e0ec;border-radius:12px;background:rgba(255,255,255,.97);box-shadow:0 10px 28px rgba(22,39,69,.08)}.info-final-save strong,.info-final-save span{display:block}.info-final-save strong{font-size:11px;color:#25344b}.info-final-save span{margin-top:2px;color:#7c899b;font-size:9px}.info-final-button{min-width:145px}.service-type-row label{flex:1 1 160px}.autosave-saving .info-autosave-dot{background:#e6a522;animation:infoPulse .8s infinite alternate}.autosave-error .info-autosave-dot{background:#cf4d4d}@keyframes infoPulse{to{opacity:.35}}@media(max-width:900px){.info-quick-header{flex-direction:column}.info-progress-box{width:100%}.quick-grid.two,.service-compact-layout,.area-strategy-grid,.social-compact-grid{grid-template-columns:1fr}.area-row{grid-template-columns:110px minmax(0,1fr) 34px}.area-row input[name=area_parent]{grid-column:1/3}.phone-row{grid-template-columns:1fr auto}.phone-row .row-remove{grid-column:2}.social-row{grid-template-columns:110px minmax(0,1fr)}}@media(max-width:620px){.info-quick-page{padding-bottom:90px}.quick-phase>summary{grid-template-columns:30px minmax(0,1fr) 18px}.phase-state{display:none}.phase-body{padding:11px}.inline-question{align-items:flex-start;flex-direction:column}.area-row,.compact-row,.service-row,.social-custom-row{grid-template-columns:1fr}.area-row input[name=area_parent],.phone-row .row-remove{grid-column:auto}.time-inline{grid-template-columns:1fr 66px}.time-inline>span{display:none}.info-autosave-bar small{display:none}.info-final-save{align-items:stretch;flex-direction:column}.info-final-button{width:100%}}
+
+/* V3 · legibilidad, cápsulas y redes sociales */
+.info-quick-page .phase-title strong{font-size:14px}
+.info-quick-page .phase-title small{font-size:10px;line-height:1.4}
+.info-quick-page .phase-state{font-size:9px;padding:6px 10px}
+.info-quick-page .quick-field>span,.info-quick-page .inline-question>span{font-size:11px}
+.info-quick-page .quick-field input:not([type=radio]):not([type=checkbox]),
+.info-quick-page .quick-field select,
+.info-quick-page .quick-field textarea,
+.info-quick-page .compact-row input,
+.info-quick-page .compact-row select{font-size:12px;min-height:41px}
+.info-quick-page .choice-row label,
+.info-quick-page .mini-check,
+.info-quick-page .social-toggle{min-height:38px;padding:8px 11px;font-size:10.5px;border-radius:10px}
+.info-quick-page .compact-subhead strong,
+.info-quick-page .coverage-toolbar strong{font-size:11.5px}
+.info-quick-page .compact-subhead small,
+.info-quick-page .coverage-toolbar small{font-size:9.5px;line-height:1.4}
+.info-quick-page .mini-action{min-height:35px;padding:7px 11px;font-size:9.5px;border-radius:9px}
+.info-quick-page .suggestion-pills{gap:8px}
+.info-quick-page .suggestion-pill{padding:8px 12px;font-size:10.5px;line-height:1.15;min-height:34px}
+.info-quick-page .service-primary-label{font-size:10px}
+.info-quick-page .service-row{padding:8px}
+.info-quick-page .row-remove{width:34px;height:34px;font-size:18px}
+
+/* app.css oculta .conditional-panel por defecto; aquí respetamos el estado calculado por esta ficha. */
+.info-quick-page .conditional-panel[hidden]{display:none!important}
+.info-quick-page div.conditional-panel:not([hidden]){display:block}
+.info-quick-page .quick-grid.conditional-panel:not([hidden]){display:grid}
+.info-quick-page label.quick-field.conditional-panel:not([hidden]){display:flex}
+
+.info-quick-page .social-panel{margin-top:10px;padding:12px;border:1px solid #e1e7f0;border-radius:11px;background:#fbfcfe}
+.info-quick-page .social-toolbar{margin-bottom:10px}
+.info-quick-page .social-list{gap:8px}
+.info-quick-page .social-link-row{grid-template-columns:minmax(190px,.45fr) minmax(360px,1.55fr) 36px;padding:8px;background:#fff}
+.info-quick-page .social-link-row.is-custom{grid-template-columns:minmax(170px,.42fr) minmax(150px,.38fr) minmax(300px,1.2fr) 36px}
+.info-quick-page .social-link-row .social-custom-name[hidden]{display:none!important}
+.info-quick-page .social-link-row .social-custom-name:not([hidden]){display:block}
+.info-quick-page .social-empty-hint{margin:8px 2px 0;color:#7b8798;font-size:9.5px}
+.info-quick-page .social-list:not(:empty)+.social-empty-hint{display:none}
 @media(max-width:900px){
-  .contact-hours-grid{
-    grid-template-columns:1fr !important;
-  }
-  #block-areas .area-row{
-    grid-template-columns:110px minmax(0,1fr) !important;
-  }
-  #block-areas .area-row .row-remove{
-    grid-column:1 / -1;
-    justify-self:start;
-  }
-  #block-phones .phone-row{
-    grid-template-columns:minmax(0,1fr) auto auto !important;
-  }
-  #block-phones .phone-row .row-remove{
-    grid-column:1 / -1;
-    justify-self:start;
-  }
+  .info-quick-page .social-link-row,.info-quick-page .social-link-row.is-custom{grid-template-columns:minmax(145px,.5fr) minmax(0,1fr) 36px}
+  .info-quick-page .social-link-row.is-custom .social-custom-name:not([hidden]){grid-column:1/3}
 }
-
-@media(max-width:650px){
-  .team-scope-grid{
-    grid-template-columns:1fr !important;
-  }
-  .team-scope-grid .team-other-choice,
-  .team-scope-grid .team-other-field{
-    grid-column:1 !important;
-  }
-  #block-areas .area-row,
-  #block-phones .phone-row,
-  #block-hours .time-range,
-  #block-hours .time-range > div > div{
-    grid-template-columns:1fr !important;
-  }
-  #block-areas .area-row .row-remove,
-  #block-phones .phone-row .row-remove{
-    grid-column:auto;
-    width:100% !important;
-  }
+@media(max-width:620px){
+  .info-quick-page .social-link-row{grid-template-columns:1fr 36px}
+  .info-quick-page .social-link-row .social-network-select,
+  .info-quick-page .social-link-row input[type=url],
+  .info-quick-page .social-link-row .social-custom-name:not([hidden]){grid-column:1/2}
+  .info-quick-page .social-link-row .row-remove{grid-column:2;grid-row:1}
 }
-
-
-
-.business-logic-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:stretch}
-.business-description-card{height:100%;display:flex;flex-direction:column}.business-description-card textarea{flex:1;min-height:220px;resize:vertical}
-.business-logic-side{display:grid;grid-template-rows:auto 1fr;gap:14px}.business-action-card{height:100%}
-.contact-top-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,.34fr);gap:14px;align-items:stretch}
-#block-hours .time-range{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
-#block-hours .time-range>div>div{display:grid;grid-template-columns:minmax(0,1fr) 86px;gap:8px;align-items:center}
-#block-hours input[type="number"]{width:100%;min-width:0}
-#block-247{min-width:0}
-.service-selected-area .service-category-items{display:flex;flex-direction:column;gap:8px}
-.service-item{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;gap:9px;align-items:center}
-.service-item.is-primary{border-color:#8bc8aa;background:#f3fbf6}
-.service-item.is-primary .service-make-primary{background:#e9f7ef;border-color:#9bd0b3;color:#176b45}
-.service-primary-summary{margin-top:14px;padding:14px 16px;border:1px solid #dfe6ee;border-radius:10px;background:#f8fafc;display:flex;justify-content:space-between;gap:16px;align-items:center}
-.service-primary-summary strong{color:#17243a}.service-primary-summary span{color:#607086;text-align:right}
-@media(max-width:900px){.business-logic-grid,.contact-top-grid{grid-template-columns:1fr}.business-description-card textarea{min-height:160px}}
-@media(max-width:650px){#block-hours .time-range{grid-template-columns:1fr}#block-hours .time-range>div>div{grid-template-columns:minmax(0,1fr) 76px}.service-item{grid-template-columns:1fr!important}.service-item .service-make-primary,.service-item .service-remove{width:100%}.service-primary-summary{align-items:flex-start;flex-direction:column}.service-primary-summary span{text-align:left}}
 
 </style>
-<script>
-document.addEventListener('DOMContentLoaded', function(){
 
-  const cards = [
-    ...document.querySelectorAll(
-      '.requirement-card'
-    )
-  ];
-
-  function closeAll(except = null){
-
-    cards.forEach((card)=>{
-
-      if (card === except) {
-        return;
-      }
-
-      card.classList.remove(
-        'is-open'
-      );
-
-      const text =
-        card.querySelector(
-          '.requirement-toggle-text'
-        );
-
-      if (text) {
-        text.textContent =
-          'Ver más';
-      }
-
-    });
-
-  }
-
-
-  cards.forEach((card)=>{
-
-    const toggle =
-      card.querySelector(
-        '[data-requirement-toggle]'
-      );
-
-    toggle?.addEventListener(
-      'click',
-      ()=>{
-
-        const opening =
-          !card.classList.contains(
-            'is-open'
-          );
-
-        closeAll(
-          opening
-            ? card
-            : null
-        );
-
-        card.classList.toggle(
-          'is-open',
-          opening
-        );
-
-        const text =
-  card.querySelector(
-    '.requirement-toggle-text'
-  );
-
-    if (text) {
-      text.textContent =
-        opening
-          ? 'Ocultar'
-          : 'Ver más';
-    }
-
-      }
-    );
-
-
-
-  });
-
-document
-  .querySelectorAll(
-    '.section-save-actions .btn-secondary[type="submit"]'
-  )
-  .forEach((button)=>{
-
-    button.addEventListener(
-      'click',
-      ()=>{
-
-        const card =
-          button.closest(
-            '.requirement-card'
-          );
-
-        const form =
-          document.getElementById(
-            'technical-form'
-          );
-
-        if (!card || !form) {
-          return;
-        }
-
-        const section =
-          card.dataset.requirementSection || '';
-
-        form
-          .querySelectorAll(
-            '[data-generated-save-control]'
-          )
-          .forEach(
-            field => field.remove()
-          );
-
-        if (!section) {
-          return;
-        }
-
-        const sectionField =
-          document.createElement(
-            'input'
-          );
-
-        sectionField.type =
-          'hidden';
-
-        sectionField.name =
-          'section_focus';
-
-        sectionField.value =
-          section;
-
-        sectionField.dataset.generatedSaveControl =
-          '1';
-
-
-        const actionField =
-          document.createElement(
-            'input'
-          );
-
-        actionField.type =
-          'hidden';
-
-        actionField.name =
-          'save_action';
-
-        actionField.value =
-          'keep';
-
-        actionField.dataset.generatedSaveControl =
-          '1';
-
-
-        form.append(
-          sectionField,
-          actionField
-        );
-
-      }
-    );
-
-  });
-document
-  .querySelectorAll(
-    '.requirement-save-close'
-  )
-  .forEach((button)=>{
-
-    button.addEventListener(
-      'click',
-      ()=>{
-
-        const form =
-          document.getElementById(
-            'technical-form'
-          );
-
-        if (!form) {
-          return;
-        }
-
-
-        form
-          .querySelectorAll(
-            '[data-generated-save-control]'
-          )
-          .forEach(
-            field => field.remove()
-          );
-
-
-        const actionField =
-          document.createElement(
-            'input'
-          );
-
-        actionField.type =
-          'hidden';
-
-        actionField.name =
-          'save_action';
-
-        actionField.value =
-          'close';
-
-        actionField.dataset.generatedSaveControl =
-          '1';
-
-
-        form.appendChild(
-          actionField
-        );
-
-
-        form.requestSubmit();
-
-      }
-    );
-
-  }); 
-document
-  .querySelectorAll(
-    '.requirement-close-only'
-  )
-  .forEach((button)=>{
-
-    button.addEventListener(
-      'click',
-      ()=>{
-
-        const card =
-          button.closest(
-            '.requirement-card'
-          );
-
-        if (!card) return;
-
-        card.classList.remove(
-          'is-open'
-        );
-
-        const text =
-          card.querySelector(
-            '.requirement-toggle-text'
-          );
-
-        if (text) {
-          text.textContent =
-            'Ver más';
-        }
-
-      }
-    );
-
-  });
-
-
-const params =
-  new URLSearchParams(
-    window.location.search
-  );
-
-const requestedSection =
-  params.get(
-    'section'
-  );
-
-if (requestedSection) {
-
-  const targetCard =
-    document.querySelector(
-      `[data-requirement-section="${requestedSection}"]`
-    );
-
-  if (targetCard) {
-
-    closeAll(
-      targetCard
-    );
-
-    targetCard.classList.add(
-      'is-open'
-    );
-
-    const text =
-      targetCard.querySelector(
-        '.requirement-toggle-text'
-      );
-
-    if (text) {
-      text.textContent =
-        'Ocultar';
-    }
-
-    requestAnimationFrame(
-      ()=>{
-
-        targetCard.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start'
-        });
-
-      }
-    );
-
-  }
-
-}
-
-});
-</script>
 <script>
 (function(){
+  const form=document.getElementById('technicalForm');
+  if(!form)return;
+  const autosaveBar=document.querySelector('.info-autosave-bar');
+  const autosaveStatus=document.getElementById('autosaveStatus');
+  const areasTouched=document.getElementById('areasTouched');
+  let dirty=false, finalSubmitting=false, timer=null, controller=null, lastPhase='';
 
-  const form = document.getElementById('technical-form');
-
-  if (!form) return;
-
-
-  const q = (name) =>
-    form.querySelector(`[name="${name}"]`);
-
-  const qa = (name) =>
-    [...form.querySelectorAll(`[name="${name}"]`)];
-
-  const radio = (name) => {
-    const el = form.querySelector(
-      `[name="${name}"]:checked`
-    );
-
-    return el ? el.value : '';
-  };
-
-  const val = (name) =>
-    (q(name)?.value || '').trim();
-
-
-  const setDone = (id, done) => {
-
-    document
-      .getElementById(id)
-      ?.classList.toggle(
-        'complete',
-        Boolean(done)
-      );
-
-  };
-
-
-  /* ==========================================
-     CONDICIONALES
-  ========================================== */
-
-  function updateConditionals(){
-
-    form
-      .querySelectorAll('[data-show-when]')
-      .forEach((el)=>{
-
-        const condition =
-          el.dataset.showWhen || '';
-
-        const separator =
-          condition.indexOf(':');
-
-        if (separator === -1) {
-          return;
+  const getRadio=(name)=>form.querySelector(`input[name="${name}"]:checked`)?.value||'';
+  function refreshConditional(){
+    form.querySelectorAll('[data-show-when]').forEach(panel=>{
+      const [name,value]=(panel.dataset.showWhen||'').split(':');
+      let current='';
+      const fields=form.querySelectorAll(`[name="${name}"]`);
+      if(fields.length){
+        const first=fields[0];
+        if(first.type==='radio'||first.type==='checkbox'){
+          current=form.querySelector(`[name="${name}"]:checked`)?.value||'';
+        }else{
+          current=first.value||'';
         }
-
-        const name =
-          condition.slice(0, separator);
-
-        const expected =
-          condition.slice(separator + 1);
-
-        el.classList.toggle(
-          'visible',
-          radio(name) === expected
-        );
-
-      });
-
-
-    const sloganMode =
-      radio('slogan_mode');
-
-    document
-      .getElementById('slogan-detail')
-      ?.classList.toggle(
-        'visible',
-        sloganMode === 'existing' ||
-        sloganMode === 'create'
-      );
-
-
-    form
-      .querySelectorAll('.social-network-item')
-      .forEach((item)=>{
-
-        const checkbox =
-          item.querySelector(
-            'input[type="checkbox"]'
-          );
-
-        const url =
-          item.querySelector(
-            '.social-url'
-          );
-
-        if (!url) return;
-
-        url.style.display =
-          checkbox?.checked
-            ? 'block'
-            : 'none';
-
-      });
-
-    const savedSocialNode = document.getElementById('saved-social-data');
-
-    if (savedSocialNode && savedSocialNode.dataset.restored !== '1') {
-      try {
-        const savedSocial = JSON.parse(savedSocialNode.textContent || '{}');
-        const enabled = new Set(
-          Array.isArray(savedSocial.enabled)
-            ? savedSocial.enabled
-            : Object.keys(savedSocial.networks || {})
-        );
-
-        enabled.forEach((key)=>{
-          const checkbox = form.querySelector(`[name="social_enabled_${key}"]`);
-          if (checkbox) checkbox.checked = true;
-        });
-
-        savedSocialNode.dataset.restored = '1';
-
-        form.querySelectorAll('.social-network-item').forEach((item)=>{
-          const checkbox = item.querySelector('input[type="checkbox"]');
-          const url = item.querySelector('.social-url');
-          if (url) url.style.display = checkbox?.checked ? 'block' : 'none';
-        });
-      } catch (error) {}
-    }
-
-  }
-
-/* ==========================================
-   PROGRESO
-========================================== */
-
-function updateSectionProgress(){
-
-  const checked = (name) =>
-    form.querySelector(
-      `[name="${name}"]:checked`
-    ) !== null;
-
-  const checkedAny = (name) =>
-    form.querySelectorAll(
-      `[name="${name}"]:checked`
-    ).length > 0;
-
-  const hasValue = (name) =>
-    Boolean(
-      (
-        form.querySelector(
-          `[name="${name}"]`
-        )?.value || ''
-      ).trim()
-    );
-
-
-  const sectionData = {
-
-business: [
-
-  checked('customer_type'),
-
-  (()=>{
-
-    const action =
-      val('visitor_action');
-
-    if (!action) {
-      return false;
-    }
-
-    if (action === 'other') {
-      return Boolean(
-        val('visitor_action_other')
-      );
-    }
-
-    return true;
-
-  })()
-
-],
-
-    services: [
-      (()=>{
-        const businessType = radio('business_type');
-        if (!businessType) return false;
-        if (businessType === 'other') return Boolean(val('business_type_other'));
-        return true;
-      })(),
-      Boolean(form.querySelector('.service-item.is-primary [name="service_name"]')?.value.trim()),
-      [...form.querySelectorAll('#service-pool .service-item [name="service_name"]')].some(field => field.value.trim())
-    ],
-
-    coverage: [
-      qa('area_name').some(
-        field => field.value.trim()
-      ),
-      hasValue('coverage_miles')
-    ],
-
-    contact: [
-      hasValue('hours_start') &&
-      hasValue('hours_end'),
-
-      checked('is_24_7'),
-
-      qa('phone_number').some(
-        field => field.value.trim()
-      )
-    ],
-
-   quotes: [
-  checked('free_estimates')
-],
-
-    brand: [
-      document
-        .getElementById('block-slogan')
-        ?.classList.contains('complete') || false,
-
-      document
-        .getElementById('block-mission')
-        ?.classList.contains('complete') || false
-    ],
-
-    certifications: [
-      document
-        .getElementById('block-certifications')
-        ?.classList.contains('complete') || false,
-
-      document
-        .getElementById('block-warranties')
-        ?.classList.contains('complete') || false,
-
-      hasValue('experience_years')
-    ],
-
-    team: [
-      document
-        .getElementById('block-team')
-        ?.classList.contains('complete') || false
-    ],
-
-    marketing: [
-      document
-        .getElementById('block-social')
-        ?.classList.contains('complete') || false
-    ],
-
-    forms: [
-      checkedAny('form_fields'),
-      hasValue('form_receiver_email')
-    ]
-
-  };
-
-
-  document
-    .querySelectorAll(
-      '.requirement-card'
-    )
-    .forEach((card)=>{
-
-      const section =
-        card.dataset.requirementSection;
-
-      const checks =
-        sectionData[section];
-
-      if (!checks?.length) {
-        return;
       }
-
-      const completed =
-        checks.filter(Boolean).length;
-
-      const percent =
-        Math.round(
-          completed /
-          checks.length *
-          100
-        );
-
-      const percentText =
-        card.querySelector(
-          '.requirement-percent'
-        );
-
-      const progressBar =
-        card.querySelector(
-          '.requirement-progress i'
-        );
-
-      const status =
-        card.querySelector(
-          '.requirement-status'
-        );
-
-      if (percentText) {
-        percentText.textContent =
-          `${percent}%`;
-      }
-
-      if (progressBar) {
-        progressBar.style.width =
-          `${percent}%`;
-      }
-
-      if (status) {
-
-        if (percent === 100) {
-          status.textContent =
-            'Completo';
-        }
-
-        else if (percent > 0) {
-          status.textContent =
-            'En progreso';
-        }
-
-        else {
-          status.textContent =
-            'Sin iniciar';
-        }
-
-      }
-
+      panel.hidden=current!==value;
     });
-
-}
-
-
-/* ==========================================
-   ACTUALIZAR BLOQUES Y PROGRESO TOTAL
-========================================== */
-
-function updateChecks(){
-
-  setDone(
-    'block-company',
-    Boolean(
-      val('company_description')
-    )
-  );
-
-
-  /* SLOGAN */
-
-  const sloganMode =
-    radio('slogan_mode');
-
-  setDone(
-    'block-slogan',
-    sloganMode === 'none' ||
-    (
-      (
-        sloganMode === 'existing' ||
-        sloganMode === 'create'
-      ) &&
-      Boolean(
-        val('slogan_text')
-      )
-    )
-  );
-
-
-  /* MISIÓN Y VISIÓN */
-
-  const missionMode =
-    radio('mission_has');
-
-  setDone(
-    'block-mission',
-    (
-      missionMode === 'yes' &&
-      Boolean(
-        val('mission_text')
-      ) &&
-      Boolean(
-        val('vision_text')
-      )
-    ) ||
-    (
-      missionMode === 'no' &&
-      [
-        'mission_origin',
-        'mission_clients',
-        'vision_future',
-        'vision_legacy'
-      ].every(
-        (name) =>
-          Boolean(
-            val(name)
-          )
-      )
-    )
-  );
-
-
-  /* TEAM */
-
-const teamInclude =
-  radio('team_include');
-
-const teamScope =
-  radio('team_scope');
-
-const teamComplete =
-  teamInclude === 'no' ||
-  (
-    teamInclude === 'yes' &&
-    Boolean(teamScope) &&
-    (
-      teamScope !== 'other' ||
-      Boolean(
-        val('team_other')
-      )
-    )
-  );
-
-setDone(
-  'block-team',
-  teamComplete
-);
-
-
-  /* SERVICIOS */
-
-  const serviceInputs = [...form.querySelectorAll('#service-pool .service-item [name="service_name"]')];
-  const validServices = serviceInputs.filter(input => input.value.trim());
-  const primaryService = form.querySelector('#service-pool .service-item.is-primary [name="service_name"]');
-  const primaryName = primaryService?.value.trim();
-
-  setDone('block-services', validServices.length >= 1 && Boolean(primaryName));
-
-  /* ÁREAS */
-
-  setDone(
-    'block-areas',
-    qa('area_name')
-      .some(
-        (input) =>
-          input.value.trim()
-      )
-  );
-
-  setDone(
-    'block-coverage',
-    Boolean(
-      val('coverage_miles')
-    )
-  );
-
-
-  /* HORARIO */
-
-  setDone(
-    'block-hours',
-    Boolean(
-      val('hours_start') &&
-      val('hours_end')
-    )
-  );
-
-  setDone(
-    'block-247',
-    Boolean(
-      radio('is_24_7')
-    )
-  );
-
-
-  /* TELÉFONOS */
-
-  setDone(
-    'block-phones',
-    qa('phone_number')
-      .some(
-        (input) =>
-          input.value.trim()
-      )
-  );
-
-
-  /* REDES */
-
-  const socialMode =
-    radio('social_has');
-
-  const hasSocialSelection = [...form.querySelectorAll('.social-network-item input[type="checkbox"]')].some(input => input.checked);
-
-  setDone('block-social', socialMode === 'no' || (socialMode === 'yes' && hasSocialSelection));
-
-
-  /* CERTIFICACIONES */
-
-  const certifications =
-    radio('certifications_has');
-
-  setDone(
-    'block-certifications',
-    certifications === 'no' ||
-    (
-      certifications === 'yes' &&
-      Boolean(
-        val('certifications_detail')
-      )
-    )
-  );
-
-
-  /* GARANTÍAS */
-
-  const warranties =
-    radio('warranties_has');
-
-  setDone(
-    'block-warranties',
-    warranties === 'no' ||
-    (
-      warranties === 'yes' &&
-      Boolean(
-        val('warranties_detail')
-      )
-    )
-  );
-
-
-  /* EXPERIENCIA */
-
-  setDone(
-    'block-experience',
-    Boolean(
-      val('experience_years')
-    )
-  );
-
-
-  /* PROGRESO DE CADA SECCIÓN */
-
-  updateSectionProgress();
-
-
-  /* PROGRESO TOTAL */
-
-  const clientSections = ['business','brand','team','services','coverage','contact','marketing','forms','quotes','certifications']
-    .map((section)=>
-      document.querySelector(
-        `[data-requirement-section="${section}"]`
-      )
-    )
-    .filter(Boolean);
-
-
-  const percentages =
-    clientSections.map(
-      (card)=>
-        parseInt(
-          card.querySelector(
-            '.requirement-percent'
-          )?.textContent || '0',
-          10
-        ) || 0
-    );
-
-
-  const done =
-    percentages.filter(
-      (value)=>
-        value === 100
-    ).length;
-
-
-  const percent =
-    percentages.length
-      ? Math.round(
-          percentages.reduce(
-            (sum, value)=>
-              sum + value,
-            0
-          ) /
-          percentages.length
-        )
-      : 0;
-
-
-  const top =
-    document.getElementById(
-      'technical-percent'
-    );
-
-  const bottom =
-    document.getElementById(
-      'technical-percent-bottom'
-    );
-
-  const count =
-    document.getElementById(
-      'technical-count'
-    );
-
-  const bar =
-    document.getElementById(
-      'technical-progress-bar'
-    );
-
-
-  if (top) {
-    top.textContent =
-      `${percent}%`;
   }
 
-  if (bottom) {
-    bottom.textContent =
-      `${percent}%`;
+  const serviceTemplates={
+    tree_service:['Tree Removal','Tree Trimming','Tree Pruning','Stump Removal','Stump Grinding','Emergency Tree Service','Storm Damage Cleanup','Land Clearing','Property Cleanup'],
+    roofing:['Roof Repair','Roof Replacement','New Roof Installation','Shingle Roofing','Flat Roofing','Emergency Roof Repair','Roof Inspection','Gutter Installation'],
+    remodeling:['Kitchen Remodeling','Bathroom Remodeling','Basement Remodeling','Home Renovation','Painting','Drywall','Flooring','Decks and Porches','Concrete Work'],
+    other:[]
+  };
+  const serviceRows=document.getElementById('serviceRows');
+  const suggestionBox=document.getElementById('serviceSuggestions');
+  function selectedServices(){return new Set([...serviceRows.querySelectorAll('[name="service_name"]')].map(x=>x.value.trim().toLowerCase()).filter(Boolean));}
+  function reindexServices(){
+    [...serviceRows.querySelectorAll('.service-row')].forEach((row,index)=>{const radio=row.querySelector('[name="service_primary"]');if(radio)radio.value=String(index);});
+    renderSuggestions();
   }
-
-  if (count) {
-    count.textContent =
-      `${done} de ${clientSections.length} secciones completas`;
+  function addService(name='',primary=false){
+    const row=document.createElement('div'); row.className='service-row compact-row';
+    row.innerHTML=`<input name="service_name" placeholder="Nombre del servicio"><label class="service-primary-label"><input type="radio" name="service_primary"> Principal</label><button type="button" class="row-remove service-remove" aria-label="Eliminar">×</button>`;
+    row.querySelector('[name="service_name"]').value=name;
+    row.querySelector('[name="service_primary"]').checked=primary;
+    row.querySelector('.service-remove').addEventListener('click',()=>{row.remove();reindexServices();scheduleAutosave('services');});
+    serviceRows.appendChild(row); reindexServices();
   }
-
-  if (bar) {
-    bar.style.width =
-      `${percent}%`;
+  function renderSuggestions(){
+    const type=getRadio('services_business_type'); const current=selectedServices(); suggestionBox.innerHTML='';
+    const items=serviceTemplates[type]||[];
+    if(!items.length){suggestionBox.innerHTML='<span class="phase-title"><small>Añade los servicios manualmente.</small></span>';return;}
+    items.forEach(name=>{const b=document.createElement('button');b.type='button';b.className='suggestion-pill'+(current.has(name.toLowerCase())?' is-added':'');b.textContent=name;b.disabled=current.has(name.toLowerCase());b.addEventListener('click',()=>{addService(name,!serviceRows.querySelector('[name="service_primary"]:checked'));scheduleAutosave('services');});suggestionBox.appendChild(b);});
   }
+  try{
+    const saved=JSON.parse(document.getElementById('savedServicesData')?.textContent||'{}');
+    (saved.items||[]).filter(item=>item && !item.excluded && item.name).forEach(item=>addService(item.name,Boolean(item.primary)));
+  }catch(e){}
+  document.getElementById('addServiceButton')?.addEventListener('click',()=>{addService('',!serviceRows.querySelector('.service-row'));serviceRows.lastElementChild?.querySelector('input')?.focus();});
+  form.querySelectorAll('[name="services_business_type"]').forEach(el=>el.addEventListener('change',renderSuggestions));
+  renderSuggestions();
 
-}
+  const areaRows=document.getElementById('areaRows');
+  function markAreas(){areasTouched.value='1';}
+  function bindAreaRow(row){row.querySelector('.area-remove')?.addEventListener('click',()=>{row.remove();markAreas();scheduleAutosave('coverage');});row.querySelectorAll('.area-watch').forEach(el=>el.addEventListener('input',markAreas));row.querySelectorAll('.area-watch').forEach(el=>el.addEventListener('change',markAreas));}
+  areaRows.querySelectorAll('.area-row').forEach(bindAreaRow);
+  document.getElementById('addAreaButton')?.addEventListener('click',()=>{const row=document.createElement('div');row.className='area-row compact-row';row.innerHTML='<select name="area_type" class="area-watch"><option value="state">Estado</option><option value="county">Condado</option><option value="city" selected>Ciudad</option></select><input name="area_name" class="area-watch" placeholder="Nombre"><input name="area_parent" class="area-watch" placeholder="Condado relacionado (si es ciudad)"><button type="button" class="row-remove area-remove" aria-label="Eliminar">×</button>';areaRows.appendChild(row);bindAreaRow(row);markAreas();row.querySelector('[name="area_name"]').focus();});
+  form.querySelectorAll('[name="area_strategy"]').forEach(el=>el.addEventListener('change',markAreas));
 
-  /* ==========================================
-     TELEFONOS
-  ========================================== */
+  const phoneRows=document.getElementById('phoneRows');
+  function reindexPhones(){[...phoneRows.querySelectorAll('.phone-row')].forEach((row,index)=>{const primary=row.querySelector('[name="phone_primary"]');const wa=row.querySelector('[name="phone_whatsapp"]');if(primary)primary.value=String(index);if(wa)wa.value=String(index);});}
+  function bindPhoneRow(row){row.querySelector('.phone-remove')?.addEventListener('click',()=>{row.remove();reindexPhones();scheduleAutosave('contact');});}
+  phoneRows.querySelectorAll('.phone-row').forEach(bindPhoneRow);reindexPhones();
+  document.getElementById('addPhoneButton')?.addEventListener('click',()=>{const row=document.createElement('div');row.className='phone-row compact-row';row.innerHTML='<input name="phone_number" placeholder="Teléfono"><label class="mini-check"><input type="radio" name="phone_primary"> Principal</label><label class="mini-check"><input type="checkbox" name="phone_whatsapp"> WhatsApp</label><button type="button" class="row-remove phone-remove" aria-label="Eliminar">×</button>';phoneRows.appendChild(row);bindPhoneRow(row);reindexPhones();row.querySelector('input').focus();});
 
-function normalizePhoneOrder(){
-
-  const rows = [
-    ...form.querySelectorAll(
-      '#phones-list .phone-row'
-    )
+  const socialRows=document.getElementById('socialRows');
+  const socialOptions=[
+    ['facebook','Facebook'],['instagram','Instagram'],['tiktok','TikTok'],['youtube','YouTube'],
+    ['twitter','X / Twitter'],['yelp','Yelp'],['linkedin','LinkedIn'],['nextdoor','Nextdoor']
   ];
-
-  rows.forEach(
-    (row, index)=>{
-
-      const primary =
-        row.querySelector(
-          '[name="phone_primary"]'
-        );
-
-      const whatsapp =
-        row.querySelector(
-          '[name="phone_whatsapp"]'
-        );
-
-      if (primary) {
-        primary.value = index;
-      }
-
-      if (whatsapp) {
-        whatsapp.value = index;
-      }
-
-    }
-  );
-
-}
-
-    
-
-
-  /* ==========================================
-     REMOVE GENERAL
-  ========================================== */
-
-  function wireGeneralRemove(root){
-
-    root
-      .querySelectorAll(
-        '.dynamic-row .row-remove'
-      )
-      .forEach((button)=>{
-
-        if (
-          button.dataset.wiredRemove === '1'
-        ) {
-          return;
-        }
-
-        button.dataset.wiredRemove = '1';
-
-        button.addEventListener(
-          'click',
-          ()=>{
-
-            const row =
-              button.closest(
-                '.dynamic-row'
-              );
-
-            if (!row) return;
-
-            row.remove();
-
-            normalizePhoneOrder();
-
-            updateChecks();
-
-          }
-        );
-
+  function socialSelectHtml(selected=''){
+    return '<option value="">Seleccionar red</option>'+socialOptions.map(([key,label])=>`<option value="${key}"${selected===key?' selected':''}>${label}</option>`).join('')+`<option value="other"${selected==='other'?' selected':''}>Otra red</option>`;
+  }
+  function refreshSocialRow(row){
+    const select=row.querySelector('.social-network-select');
+    const custom=row.querySelector('.social-custom-name');
+    const isOther=select?.value==='other';
+    if(custom)custom.hidden=!isOther;
+    row.classList.toggle('is-custom',isOther);
+    if(isOther)custom?.setAttribute('required','required'); else custom?.removeAttribute('required');
+  }
+  function refreshSocialOptions(){
+    if(!socialRows)return;
+    const selects=[...socialRows.querySelectorAll('.social-network-select')];
+    const chosen=new Set(selects.map(select=>select.value).filter(value=>value&&value!=='other'));
+    selects.forEach(select=>{
+      [...select.options].forEach(option=>{
+        if(!option.value||option.value==='other')return;
+        option.disabled=chosen.has(option.value)&&option.value!==select.value;
       });
-
-  }
-
-
-  /* ==========================================
-     SERVICIOS
-  ========================================== */
-
-  const serviceTemplates = {
-    tree_service: ['Tree Removal','Tree Trimming','Tree Pruning','Stump Removal','Stump Grinding','Emergency Tree Service','Storm Damage Cleanup','Land Clearing','Property Cleanup'],
-    roofing: ['Roof Installation','Roof Replacement','Roof Repair','Emergency Roof Repair','Roof Leak Repair','Shingle Roofing','Metal Roofing','Flat Roofing','Roof Inspection','Gutter Installation','Gutter Repair','Skylight Services'],
-    remodeling: ['Interior Remodeling','Kitchen Remodeling','Bathroom Remodeling','Basement Remodeling','Exterior Remodeling','Flooring','Painting','Drywall','Carpentry','Decks','Patios']
-  };
-
-  function getExistingServiceNames(){
-    return new Set([...form.querySelectorAll('#service-pool .service-item [name="service_name"]')].map(input=>input.value.trim().toLowerCase()).filter(Boolean));
-  }
-
-  function refreshServicePool(){
-    const pool=document.getElementById('service-pool');
-    if(!pool) return;
-    let empty=pool.querySelector('.service-pool-empty');
-    const hasServices=Boolean(pool.querySelector('.service-item'));
-    if(hasServices){ empty?.remove(); }
-    else if(!empty){
-      empty=document.createElement('div');
-      empty.className='service-pool-empty';
-      empty.textContent='Todavía no has seleccionado servicios.';
-      pool.appendChild(empty);
-    }
-  }
-
-  function refreshPrimarySummary(){
-    const primary=form.querySelector('#service-pool .service-item.is-primary [name="service_name"]');
-    const target=document.getElementById('primary-service-name');
-    if(target) target.textContent=primary?.value.trim() || 'Selecciona “Principal” en uno de los servicios.';
-    form.querySelectorAll('#service-pool .service-item').forEach(item=>{
-      const button=item.querySelector('.service-make-primary');
-      if(button) button.textContent=item.classList.contains('is-primary') ? 'Principal ✓' : 'Principal';
     });
   }
-
-  function createServiceRow(name='', isPrimary=false){
-    const row=document.createElement('div');
-    row.className='service-item'+(isPrimary?' is-primary':'');
-    row.innerHTML=`
-      <input type="text" name="service_name" value="" placeholder="Nombre del servicio">
-      <button type="button" class="service-make-primary">Principal</button>
-      <button type="button" class="service-remove">Eliminar</button>`;
-    const input=row.querySelector('[name="service_name"]');
-    if(input) input.value=name;
+  function bindSocialRow(row){
+    const select=row.querySelector('.social-network-select');
+    refreshSocialRow(row);
+    select?.addEventListener('change',()=>{refreshSocialRow(row);refreshSocialOptions();});
+    row.querySelector('.social-remove')?.addEventListener('click',()=>{row.remove();refreshSocialOptions();scheduleAutosave('marketing');});
+  }
+  function addSocialRow(network='',url='',customName=''){
+    if(!socialRows)return null;
+    const row=document.createElement('div');row.className='social-link-row compact-row';
+    row.innerHTML=`<select name="social_network_name" class="social-network-select" aria-label="Red social">${socialSelectHtml(network)}</select><input name="social_network_custom_name" class="social-custom-name" placeholder="Nombre de la red"><input type="url" name="social_network_url" placeholder="https://..." aria-label="Enlace de la red social"><button type="button" class="row-remove social-remove" aria-label="Eliminar red">×</button>`;
+    row.querySelector('.social-custom-name').value=customName||'';
+    row.querySelector('[name="social_network_url"]').value=url||'';
+    socialRows.appendChild(row);bindSocialRow(row);refreshSocialOptions();
     return row;
   }
+  socialRows?.querySelectorAll('.social-link-row').forEach(bindSocialRow);refreshSocialOptions();
+  document.getElementById('addSocialButton')?.addEventListener('click',()=>{const row=addSocialRow();row?.querySelector('.social-network-select')?.focus();});
+  form.querySelectorAll('[name="social_has"]').forEach(el=>el.addEventListener('change',()=>{
+    if(el.checked&&el.value==='yes'&&socialRows&&!socialRows.querySelector('.social-link-row'))addSocialRow();
+  }));
+  if(getRadio('social_has')==='yes'&&socialRows&&!socialRows.querySelector('.social-link-row'))addSocialRow();
 
-  function makePrimary(item){
-    form.querySelectorAll('#service-pool .service-item').forEach(row=>row.classList.remove('is-primary'));
-    item.classList.add('is-primary');
-    refreshPrimarySummary();
-    updateChecks();
-  }
-
-  function wireServiceItems(){
-    form.querySelectorAll('#service-pool .service-item').forEach(item=>{
-      if(item.dataset.serviceWired==='1') return;
-      item.dataset.serviceWired='1';
-      item.querySelector('.service-remove')?.addEventListener('click',()=>{
-        const wasPrimary=item.classList.contains('is-primary');
-        item.remove();
-        if(wasPrimary){
-          const first=form.querySelector('#service-pool .service-item');
-          if(first) first.classList.add('is-primary');
-        }
-        refreshServicePool();
-        refreshPrimarySummary();
-        refreshServiceSuggestions();
-        updateChecks();
-      });
-      item.querySelector('.service-make-primary')?.addEventListener('click',()=>makePrimary(item));
-      item.querySelector('[name="service_name"]')?.addEventListener('input',()=>{
-        refreshPrimarySummary();
-        refreshServiceSuggestions();
-      });
-    });
-    refreshPrimarySummary();
-  }
-
-  function refreshServiceSuggestions(){
-    const container=document.getElementById('service-suggestions');
-    if(!container) return;
-    const type=radio('business_type');
-    container.innerHTML='';
-    if(!type){ container.innerHTML='<div class="service-suggestions-empty">Selecciona el tipo de negocio.</div>'; return; }
-    if(type==='other'){ container.innerHTML='<div class="service-suggestions-empty">Para otro tipo de negocio puedes agregar los servicios manualmente.</div>'; return; }
-    const existing=getExistingServiceNames();
-    (serviceTemplates[type]||[]).forEach(serviceName=>{
-      const button=document.createElement('button');
-      button.type='button';
-      button.className='service-suggestion';
-      button.textContent=serviceName;
-      if(existing.has(serviceName.toLowerCase())){
-        button.classList.add('is-added'); button.disabled=true; button.textContent=`${serviceName} ✓`;
+  function setSaveState(state,text){autosaveBar.classList.remove('autosave-saving','autosave-error');if(state==='saving')autosaveBar.classList.add('autosave-saving');if(state==='error')autosaveBar.classList.add('autosave-error');autosaveStatus.textContent=text;}
+  function phaseFromTarget(target){return target?.closest?.('[data-phase]')?.dataset.phase||lastPhase||'';}
+  function scheduleAutosave(phase){dirty=true;lastPhase=phase||lastPhase;clearTimeout(timer);setSaveState('saving','Cambios pendientes…');timer=setTimeout(()=>autosave(false),700);}
+  async function autosave(keepalive){
+    if(!dirty||finalSubmitting)return;
+    dirty=false;
+    if(controller&&!keepalive)controller.abort(); controller=keepalive?null:new AbortController();
+    const body=new FormData(form);body.delete('finalize');body.set('autosave','1');body.set('autosave_section',lastPhase||'');
+    setSaveState('saving','Guardando borrador…');
+    try{
+      const response=await fetch(form.action||window.location.href,{method:'POST',body,credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'},keepalive:Boolean(keepalive),signal:controller?.signal});
+      if(!response.ok)throw new Error('save');
+      const payload=await response.json();
+      setSaveState('saved',`Borrador guardado${payload.saved_at?' · '+payload.saved_at:''}`);
+      if(typeof payload.progress==='object'){
+        document.getElementById('infoProgressValue').textContent=payload.progress.percent+'%';
+        document.getElementById('infoProgressLabel').textContent=payload.progress.complete+'/'+payload.progress.total+' fases completas';
+        document.getElementById('infoProgressBar').style.width=payload.progress.percent+'%';
       }
-      button.addEventListener('click',()=>{
-        if(button.disabled) return;
-        const pool=document.getElementById('service-pool');
-        if(!pool) return;
-        pool.querySelector('.service-pool-empty')?.remove();
-        const row=createServiceRow(serviceName,!pool.querySelector('.service-item'));
-        pool.appendChild(row);
-        wireServiceItems();
-        refreshServicePool();
-        refreshServiceSuggestions();
-        updateChecks();
-      });
-      container.appendChild(button);
-    });
+    }catch(error){if(error?.name==='AbortError')return;dirty=true;setSaveState('error','Pendiente de sincronizar');}
   }
-
-  form.querySelectorAll('[name="business_type"]').forEach(input=>{
-    input.addEventListener('change',()=>{refreshServiceSuggestions();updateConditionals();updateChecks();});
-  });
-
-  document.getElementById('add-service-item')?.addEventListener('click',()=>{
-    const pool=document.getElementById('service-pool');
-    if(!pool) return;
-    pool.querySelector('.service-pool-empty')?.remove();
-    const row=createServiceRow('',!pool.querySelector('.service-item'));
-    pool.appendChild(row);
-    wireServiceItems(); refreshServicePool(); refreshPrimarySummary(); updateChecks();
-    row.querySelector('[name="service_name"]')?.focus();
-  });
-
-  /* ==========================================
-     FILAS GENERALES
-  ========================================== */
-
-  document
-    .querySelectorAll(
-      '[data-add-row]'
-    )
-    .forEach((button)=>{
-
-      button.addEventListener(
-        'click',
-        ()=>{
-
-          const type =
-            button.dataset.addRow;
-
-          let list =
-            null;
-
-          let html =
-            '';
-
-            if (
-              type === 'area'
-            ) {
-
-              list =
-                document.getElementById(
-                  'areas-list'
-                );
-
-
-              const prefix =
-                'area';
-          
-
-            html = `
-
-              <div
-                class="dynamic-row area-row"
-              >
-
-                <select
-                  name="${prefix}_type"
-                >
-
-                  <option value="state">
-                    Estado
-                  </option>
-
-                  <option value="county">
-                    Condado
-                  </option>
-
-                  <option value="city">
-                    Ciudad
-                  </option>
-
-                </select>
-
-
-                <input
-                  type="text"
-                  name="${prefix}_name"
-                  placeholder="Nombre"
-                >
-
-
-                <button
-                  type="button"
-                  class="row-remove"
-                >
-                  Eliminar
-                </button>
-
-              </div>
-
-            `;
-
-          }
-
-
-          if (
-            type === 'phone'
-          ) {
-
-            list =
-              document.getElementById(
-                'phones-list'
-              );
-
-
-            const index =
-              list
-                ? list.children.length
-                : 0;
-
-
-            html = `
-
-              <div
-                class="dynamic-row phone-row"
-              >
-
-                <input
-                  type="tel"
-                  name="phone_number"
-                  placeholder="(845) 000-0000"
-                >
-
-
-                <label
-                  class="mini-choice"
-                >
-
-                  <input
-                    type="radio"
-                    name="phone_primary"
-                    value="${index}"
-                  >
-
-                  Principal
-
-                </label>
-
-
-                <label
-                  class="mini-choice"
-                >
-
-                  <input
-                    type="checkbox"
-                    name="phone_whatsapp"
-                    value="${index}"
-                  >
-
-                  WhatsApp
-
-                </label>
-
-
-                <button
-                  type="button"
-                  class="row-remove"
-                >
-                  Eliminar
-                </button>
-
-              </div>
-
-            `;
-
-          }
-
-
-          if (
-            type === 'social-custom'
-          ) {
-
-            list =
-              document.getElementById(
-                'social-custom-list'
-              );
-
-
-            html = `
-
-              <div
-                class="dynamic-row custom-social-row"
-              >
-
-                <input
-                  type="text"
-                  name="social_custom_name"
-                  placeholder="Otra red"
-                >
-
-                <input
-                  type="url"
-                  name="social_custom_url"
-                  placeholder="https://..."
-                >
-
-                <button
-                  type="button"
-                  class="row-remove"
-                >
-                  Eliminar
-                </button>
-
-              </div>
-
-            `;
-
-          }
-
-
-          if (
-            !list ||
-            !html
-          ) {
-            return;
-          }
-
-
-          list.insertAdjacentHTML(
-            'beforeend',
-            html
-          );
-
-
-          wireGeneralRemove(list);
-
-          normalizePhoneOrder();
-
-          updateConditionals();
-
-          updateChecks();
-
-        }
-      );
-
-    });
-
-
-/* ==========================================
-   PREPARAR Y RESTAURAR SERVICIOS
-========================================== */
-
-  function prepareServicesForSubmit(){
-    form.querySelectorAll('[data-generated-service-field]').forEach(field=>field.remove());
-    const allServiceItems=[...form.querySelectorAll('#service-pool .service-item')];
-    const primaryItem=form.querySelector('#service-pool .service-item.is-primary');
-    if(primaryItem){
-      const index=allServiceItems.indexOf(primaryItem);
-      if(index>=0){
-        const field=document.createElement('input');
-        field.type='hidden'; field.name='service_primary'; field.value=index; field.dataset.generatedServiceField='1'; form.appendChild(field);
-      }
-    }
-    const businessType=radio('business_type');
-    if(businessType){
-      const hidden=document.createElement('input');
-      hidden.type='hidden'; hidden.name='services_business_type'; hidden.value=businessType; hidden.dataset.generatedServiceField='1'; form.appendChild(hidden);
-    }
-  }
-
-  function restoreSavedServices(){
-    const node=document.getElementById('saved-services-data');
-    const pool=document.getElementById('service-pool');
-    if(!node||!pool) return;
-    let saved={};
-    try{ saved=JSON.parse(node.textContent||'{}'); }catch(error){ return; }
-    pool.querySelectorAll('.service-item').forEach(item=>item.remove());
-    const items=Array.isArray(saved.items)?saved.items:[];
-    items.filter(item=>item&&item.name&&!item.excluded).forEach(item=>pool.appendChild(createServiceRow(item.name,Boolean(item.primary))));
-    if(!pool.querySelector('.service-item.is-primary')){
-      pool.querySelector('.service-item')?.classList.add('is-primary');
-    }
-    wireServiceItems(); refreshServicePool(); refreshPrimarySummary(); refreshServiceSuggestions(); updateChecks();
-  }
-
-  function restoreMultiSelections(){
-    const formNode=document.getElementById('saved-form-data');
-    if(formNode){
-      try{
-        const saved=JSON.parse(formNode.textContent||'{}');
-        const fields=Array.isArray(saved.fields)?saved.fields:[];
-        form.querySelectorAll('[name="form_fields"]').forEach(input=>{ input.checked=fields.includes(input.value); });
-      }catch(error){}
-    }
-    const socialNode=document.getElementById('saved-social-data');
-    if(socialNode){
-      try{
-        const saved=JSON.parse(socialNode.textContent||'{}');
-        const enabled=Array.isArray(saved.enabled)?saved.enabled:[];
-        const networks=saved.networks&&typeof saved.networks==='object'?saved.networks:{};
-        form.querySelectorAll('.social-network-item').forEach(item=>{
-          const key=item.dataset.socialKey;
-          const check=item.querySelector('input[type="checkbox"]');
-          const url=item.querySelector('.social-url');
-          const selected=enabled.includes(key)||Object.prototype.hasOwnProperty.call(networks,key);
-          if(check) check.checked=selected;
-          if(url&&networks[key]!==undefined) url.value=networks[key]||'';
-        });
-      }catch(error){}
-    }
-  }
-
-  /* ==========================================
-     EVENTOS GENERALES
-  ========================================== */
-
-  form.addEventListener(
-    'input',
-    ()=>{
-
-      updateConditionals();
-
-      updateChecks();
-
-    }
-  );
-
-
-  form.addEventListener(
-    'change',
-    ()=>{
-
-      updateConditionals();
-
-      updateChecks();
-
-    }
-  );
-
-
-  form.addEventListener(
-    'submit',
-    ()=>{
-
-      normalizePhoneOrder();
-
-      prepareServicesForSubmit();
-
-    }
-  );
-
-
-  /* ==========================================
-     INICIO
-  ========================================== */
-
-wireGeneralRemove(form);
-
-restoreSavedServices();
-
-normalizePhoneOrder();
-
-restoreMultiSelections();
-
-updateConditionals();
-
-updateChecks();
-
+  form.addEventListener('input',e=>{if(e.target.matches('.area-watch'))markAreas();scheduleAutosave(phaseFromTarget(e.target));});
+  form.addEventListener('change',e=>{refreshConditional();if(e.target.matches('.area-watch,[name="area_strategy"]'))markAreas();if(e.target.name==='services_business_type')renderSuggestions();scheduleAutosave(phaseFromTarget(e.target));});
+  form.addEventListener('submit',()=>{finalSubmitting=true;clearTimeout(timer);setSaveState('saving','Guardando ficha…');});
+  window.addEventListener('pagehide',()=>{if(dirty&&!finalSubmitting)autosave(true);});
+  refreshConditional();
 })();
 </script>
 {% endblock %}

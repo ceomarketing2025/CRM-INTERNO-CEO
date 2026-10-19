@@ -1,147 +1,94 @@
 {% extends 'base.html' %}
-{% block page_heading %}{% if request.GET.view == 'production' %}Ficha de producción{% elif request.GET.view == 'styles' %}Estilos{% else %}Información{% endif %}{% endblock %}
+{% block page_heading %}{% if view_mode == 'production' %}Ficha de producción{% else %}Ficha de información{% endif %}{% endblock %}
 {% block content %}
 <style>
-.client-output-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.client-output-btn{appearance:none;border:1px solid #d8deea;background:#fff;color:#17233f;border-radius:10px;padding:10px 13px;font-size:12px;font-weight:800;cursor:pointer;transition:.18s ease}.client-output-btn:hover{transform:translateY(-1px);border-color:#b7c4dc}.client-output-btn.dev{background:#17233f;color:#fff;border-color:#17233f}.client-output-modal[hidden]{display:none}.client-output-modal{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px}.client-output-backdrop{position:absolute;inset:0;background:rgba(15,25,45,.56)}.client-output-panel{position:relative;width:min(980px,100%);max-height:88vh;background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(15,25,45,.22);display:flex;flex-direction:column;overflow:hidden}.client-output-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid #e8ecf3}.client-output-head h3{margin:0;font-size:20px}.client-output-close{border:0;background:#f2f5f9;border-radius:9px;width:38px;height:38px;cursor:pointer;font-size:20px}.client-output-body{padding:18px 20px;overflow:auto}.client-output-text{width:100%;min-height:420px;resize:vertical;border:1px solid #d8deea;border-radius:12px;padding:16px;font:500 13px/1.6 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;color:#17233f;background:#fbfcfe}.client-output-footer{display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid #e8ecf3}.client-output-copy,.client-output-cancel{border:0;border-radius:10px;padding:11px 16px;font-size:12px;font-weight:800;cursor:pointer}.client-output-copy{background:#17233f;color:#fff}.client-output-cancel{background:#eef2f7;color:#17233f}.client-output-copy.is-copied{background:#1f8a5b}@media(max-width:700px){.client-output-modal{padding:10px}.client-output-panel{max-height:94vh}.client-output-text{min-height:360px}.client-output-actions{flex-direction:column}.client-output-btn{width:100%}}
+.dev-list-page{max-width:1560px;margin:0 auto}.dev-list-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:20px}.dev-list-head h2{margin:4px 0 6px}.dev-list-head p{margin:0;color:#6f7d92}.dev-list{display:grid;gap:10px}.dev-list-row{display:grid;grid-template-columns:minmax(240px,1.35fr) minmax(170px,.8fr) minmax(260px,1fr) minmax(190px,.75fr) auto;gap:18px;align-items:center;padding:17px 18px;border:1px solid #e1e7ef;border-radius:15px;background:#fff}.dev-list-id{min-width:0}.dev-list-code{display:block;margin-bottom:4px;color:#657895;font-size:10px;font-weight:900;letter-spacing:.08em}.dev-list-id h3{margin:0 0 4px;font-size:17px;color:#14213a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dev-list-id p{margin:0;color:#748197;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dev-list-state small,.dev-list-activity small{display:block;margin-bottom:5px;color:#7e8a9d;font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.06em}.dev-list-state strong{display:block;font-size:13px;color:#283a55}.dev-progress{min-width:0}.dev-progress-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:7px}.dev-progress-head strong{font-size:20px;color:#284f91}.dev-progress-head span{font-size:11px;color:#748197}.dev-progress-track{height:7px;border-radius:999px;background:#edf1f6;overflow:hidden}.dev-progress-track i{display:block;height:100%;border-radius:inherit;background:#315ea8}.dev-progress-foot{display:flex;justify-content:space-between;gap:10px;margin-top:7px;color:#718096;font-size:10px}.dev-list-activity{min-width:0}.dev-list-activity strong{display:block;color:#364861;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dev-list-activity span{display:block;margin-top:4px;color:#8591a3;font-size:10px}.dev-list-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px}.dev-list-actions>a,.dev-options>summary{min-height:38px;padding:9px 12px;border:1px solid #dbe3ee;border-radius:10px;background:#fff;color:#2a3c57;text-decoration:none;font-size:11px;font-weight:850;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;white-space:nowrap}.dev-list-actions>a.primary{background:#172b4b;border-color:#172b4b;color:#fff}.dev-options{position:relative}.dev-options>summary{list-style:none}.dev-options>summary::-webkit-details-marker{display:none}.dev-options-menu{position:absolute;right:0;top:calc(100% + 7px);z-index:80;width:210px;padding:8px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;box-shadow:0 15px 35px rgba(20,35,60,.14);display:grid;gap:6px}.dev-options-menu a,.dev-options-menu button{width:100%;border:0;border-radius:9px;background:#f5f7fa;color:#2f415d;padding:10px 11px;text-align:left;font:inherit;font-size:11px;font-weight:800;cursor:pointer;text-decoration:none}.dev-options-menu button:hover,.dev-options-menu a:hover{background:#eaf0f8}.dev-empty{padding:34px;border:1px dashed #d6dee9;border-radius:14px;background:#fff;text-align:center;color:#788599}.client-output-modal[hidden]{display:none}.client-output-modal{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px}.client-output-backdrop{position:absolute;inset:0;background:rgba(15,25,45,.56)}.client-output-panel{position:relative;width:min(980px,100%);max-height:88vh;background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(15,25,45,.22);display:flex;flex-direction:column;overflow:hidden}.client-output-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid #e8ecf3}.client-output-head h3{margin:0;font-size:20px}.client-output-close{border:0;background:#f2f5f9;border-radius:9px;width:38px;height:38px;cursor:pointer;font-size:20px}.client-output-body{padding:18px 20px;overflow:auto}.client-output-text{width:100%;min-height:420px;resize:vertical;border:1px solid #d8deea;border-radius:12px;padding:16px;font:500 13px/1.6 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;color:#17233f;background:#fbfcfe}.client-output-footer{display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid #e8ecf3}.client-output-copy,.client-output-cancel{border:0;border-radius:10px;padding:11px 16px;font-size:12px;font-weight:800;cursor:pointer}.client-output-copy{background:#17233f;color:#fff}.client-output-cancel{background:#eef2f7;color:#17233f}.client-output-copy.is-copied{background:#1f8a5b}@media(max-width:1180px){.dev-list-row{grid-template-columns:minmax(220px,1.2fr) minmax(150px,.7fr) minmax(230px,1fr) auto}.dev-list-activity{display:none}}@media(max-width:850px){.dev-list-row{grid-template-columns:1fr 1fr}.dev-list-actions{justify-content:flex-start}.dev-progress{grid-column:1/-1}.dev-options-menu{left:0;right:auto}}@media(max-width:620px){.dev-list-head{align-items:flex-start;flex-direction:column}.dev-list-row{grid-template-columns:1fr}.dev-progress{grid-column:auto}.dev-list-actions{flex-wrap:wrap}.dev-list-actions>a,.dev-options>summary{width:100%}.dev-options{width:100%}.dev-options-menu{position:static;width:100%;margin-top:6px}.client-output-modal{padding:10px}.client-output-panel{max-height:94vh}.client-output-text{min-height:340px}}
 </style>
 
-<div class="page-intro">
-  <div>
-    <span class="eyebrow">Desarrollo · {% if request.GET.view == 'production' %}Producción{% elif request.GET.view == 'styles' %}Estilos{% else %}Información{% endif %}</span>
-    {% if request.GET.view == 'production' %}
-      <h2>Ficha de producción</h2>
-      <p>Selecciona un proyecto para administrar su estructura, responsables, páginas, condados, servicios y ciudades.</p>
-    {% elif request.GET.view == 'styles' %}
-      <h2>Estilos</h2>
-      <p>Selecciona un proyecto para administrar tipografía, paleta, botones y estructura del header.</p>
-    {% else %}
-      <h2>Información</h2>
-      <p>Selecciona un proyecto para consultar, completar y preparar la información para cliente y Desarrollo.</p>
-    {% endif %}
+<div class="dev-list-page">
+  <div class="dev-list-head">
+    <div>
+      <span class="eyebrow">Desarrollo · {% if view_mode == 'production' %}Producción{% else %}Información{% endif %}</span>
+      {% if view_mode == 'production' %}
+        <h2>Ficha de producción</h2>
+        <p>Primero selecciona el proyecto. Desde su ficha administras estructura, responsables, configuración propia y avance de producción.</p>
+      {% else %}
+        <h2>Ficha de información</h2>
+        <p>Consulta el porcentaje completado, lo que falta y entra a editar toda la información. Cada guardado queda registrado en el log.</p>
+      {% endif %}
+    </div>
   </div>
-</div>
 
-<div class="area-information-grid">
-{% for row in rows %}{% with p=row.project %}
-  <article class="card area-information-card">
-    <div class="area-info-title">
-      <div>
-        <span class="project-code">{{ p.project_code }}</span>
+  <div class="dev-list">
+    {% for row in rows %}{% with p=row.project %}
+    <article class="dev-list-row">
+      <div class="dev-list-id">
+        <span class="dev-list-code">{{ p.project_code }}</span>
         <h3>{{ p.client.business_name }}</h3>
         <p>{{ p.name }} · {{ p.client.full_name|default:'Sin contacto' }}</p>
       </div>
-    </div>
 
-    <div class="area-task-summary">
-      {% if request.GET.view == 'production' %}
-        <div><span>Producción</span><strong>Ficha del proyecto</strong><small>Páginas, condados, servicios, ciudades y secciones internas.</small></div>
-      {% elif request.GET.view == 'styles' %}
-        <div><span>Estilos</span><strong>Tipografía, paleta, botones y header</strong><small>Sistema visual y componentes base del proyecto.</small></div>
-      {% else %}
-        <div><span>Ficha técnica</span><strong>Información del proyecto</strong><small>Datos del cliente, negocio, servicios, cobertura y recursos.</small></div>
-      {% endif %}
-    </div>
-
-    <div class="area-info-actions">
-      {% if request.GET.view == 'production' %}
-        <a href="{% url 'operations:web_production_sheet' p.pk %}">Abrir ficha de producción</a>
-      {% elif request.GET.view == 'styles' %}
-        <a href="{% url 'operations:development_project_styles' p.pk %}">Abrir estilos</a>
-      {% else %}
-        {% if row.questionnaire %}<a href="{% url 'questionnaires:fill' row.questionnaire.pk %}">Abrir información</a>{% else %}<a href="{% url 'questionnaires:create_for_project' p.pk %}?auto=1">Crear información</a>{% endif %}
-      {% endif %}
-      <a href="{% url 'handoff:summary' p.pk %}">Ver resumen</a>
-    </div>
-
-    {% if request.GET.view != 'production' and request.GET.view != 'styles' %}
-      <div class="client-output-actions">
-        <button type="button" class="client-output-btn" data-client-output-title="Mensaje para el cliente" data-client-output-source="client-message-{{ p.pk }}">Mensaje para el cliente</button>
-        <button type="button" class="client-output-btn" data-client-output-title="Estructura para el cliente" data-client-output-source="client-structure-{{ p.pk }}">Estructura para el cliente</button>
-        <button type="button" class="client-output-btn dev" data-client-output-title="Inicio del desarrollo" data-client-output-source="development-start-{{ p.pk }}">Inicio del desarrollo</button>
+      <div class="dev-list-state">
+        {% if view_mode == 'production' %}
+          <small>Producción</small>
+          <strong>{% if row.sheet %}{{ row.production_complete }} de {{ row.production_total }} elementos listos{% else %}Ficha aún sin iniciar{% endif %}</strong>
+        {% else %}
+          <small>Información</small>
+          <strong>{% if row.questionnaire %}{{ row.progress.complete }} de {{ row.progress.total }} campos completados{% else %}Ficha por crear{% endif %}</strong>
+        {% endif %}
       </div>
 
-      <textarea hidden id="client-message-{{ p.pk }}">{{ row.client_message }}</textarea>
-      <textarea hidden id="client-structure-{{ p.pk }}">{{ row.client_structure }}</textarea>
-      <textarea hidden id="development-start-{{ p.pk }}">{{ row.development_start }}</textarea>
-    {% endif %}
-  </article>
-{% endwith %}{% empty %}
-  <div class="card empty">No hay proyectos asignados a Desarrollo.</div>
-{% endfor %}
+      <div class="dev-progress">
+        <div class="dev-progress-head">
+          {% if view_mode == 'production' %}<strong>{{ row.production_percent }}%</strong><span>{% if row.production_remaining %}Faltan {{ row.production_remaining }}{% elif row.production_total %}Completa{% else %}Sin estructura{% endif %}</span>{% else %}<strong>{{ row.progress.percent }}%</strong><span>{% if row.information_remaining %}Faltan {{ row.information_remaining }}{% elif row.questionnaire %}Completa{% else %}Por iniciar{% endif %}</span>{% endif %}
+        </div>
+        <div class="dev-progress-track"><i style="width:{% if view_mode == 'production' %}{{ row.production_percent }}{% else %}{{ row.progress.percent }}{% endif %}%"></i></div>
+        <div class="dev-progress-foot">
+          <span>{% if view_mode == 'production' %}Páginas, counties, servicios, ciudades y secciones{% else %}Datos técnicos y comerciales del proyecto{% endif %}</span>
+        </div>
+      </div>
+
+      <div class="dev-list-activity">
+        <small>Último cambio</small>
+        {% if row.last_log %}<strong>{{ row.last_log.user.display_name|default:'Sistema' }}</strong><span>{{ row.last_log.created_at|date:'d/m/Y H:i' }}</span>{% else %}<strong>Sin movimientos registrados</strong><span>—</span>{% endif %}
+      </div>
+
+      <div class="dev-list-actions">
+        {% if view_mode == 'production' %}
+          <a class="primary" href="{% url 'operations:web_production_sheet' p.pk %}">{% if row.sheet %}Abrir ficha{% else %}Crear ficha{% endif %}</a>
+          <details class="dev-options"><summary>Opciones</summary><div class="dev-options-menu"><a href="{% url 'handoff:summary' p.pk %}">Ver resumen</a>{% if row.questionnaire %}<a href="{% url 'questionnaires:fill' row.questionnaire.pk %}">Ver ficha de información</a>{% endif %}</div></details>
+        {% else %}
+          {% if row.questionnaire %}<a class="primary" href="{% url 'questionnaires:fill' row.questionnaire.pk %}">Abrir / editar</a>{% else %}<a class="primary" href="{% url 'questionnaires:create_for_project' p.pk %}?auto=1">Crear ficha</a>{% endif %}
+          <details class="dev-options"><summary>Opciones</summary><div class="dev-options-menu"><a href="{% url 'handoff:summary' p.pk %}">Ver resumen</a><button type="button" data-client-output-title="Mensaje para el cliente" data-client-output-source="client-message-{{ p.pk }}">Mensaje para el cliente</button><button type="button" data-client-output-title="Inicio del desarrollo" data-client-output-source="development-start-{{ p.pk }}">Inicio del desarrollo</button></div></details>
+          <textarea hidden id="client-message-{{ p.pk }}">{{ row.client_message }}</textarea>
+          <textarea hidden id="development-start-{{ p.pk }}">{{ row.development_start }}</textarea>
+        {% endif %}
+      </div>
+    </article>
+    {% endwith %}{% empty %}
+      <div class="dev-empty">No hay proyectos asignados a Desarrollo.</div>
+    {% endfor %}
+  </div>
 </div>
 
 <div class="client-output-modal" id="clientOutputModal" hidden aria-hidden="true">
   <div class="client-output-backdrop" data-client-output-close></div>
   <section class="client-output-panel" role="dialog" aria-modal="true" aria-labelledby="clientOutputTitle">
-    <div class="client-output-head">
-      <h3 id="clientOutputTitle">Mensaje</h3>
-      <button type="button" class="client-output-close" data-client-output-close aria-label="Cerrar">×</button>
-    </div>
-    <div class="client-output-body">
-      <textarea class="client-output-text" id="clientOutputText" readonly></textarea>
-    </div>
-    <div class="client-output-footer">
-      <button type="button" class="client-output-cancel" data-client-output-close>Cerrar</button>
-      <button type="button" class="client-output-copy" id="clientOutputCopy">Copiar</button>
-    </div>
+    <div class="client-output-head"><h3 id="clientOutputTitle">Mensaje</h3><button type="button" class="client-output-close" data-client-output-close aria-label="Cerrar">×</button></div>
+    <div class="client-output-body"><textarea class="client-output-text" id="clientOutputText" readonly></textarea></div>
+    <div class="client-output-footer"><button type="button" class="client-output-cancel" data-client-output-close>Cerrar</button><button type="button" class="client-output-copy" id="clientOutputCopy">Copiar</button></div>
   </section>
 </div>
-
 <script>
 (function(){
-  const modal=document.getElementById('clientOutputModal');
-  const title=document.getElementById('clientOutputTitle');
-  const text=document.getElementById('clientOutputText');
-  const copy=document.getElementById('clientOutputCopy');
+  const modal=document.getElementById('clientOutputModal'), title=document.getElementById('clientOutputTitle'), text=document.getElementById('clientOutputText'), copy=document.getElementById('clientOutputCopy');
   if(!modal||!title||!text||!copy)return;
-
-  function openModal(button){
-    const source=document.getElementById(button.dataset.clientOutputSource||'');
-    if(!source)return;
-    title.textContent=button.dataset.clientOutputTitle||'Mensaje';
-    text.value=source.value||source.textContent||'';
-    copy.textContent='Copiar';
-    copy.classList.remove('is-copied');
-    modal.hidden=false;
-    modal.setAttribute('aria-hidden','false');
-    document.body.style.overflow='hidden';
-    setTimeout(()=>text.focus(),0);
-  }
-
-  function closeModal(){
-    modal.hidden=true;
-    modal.setAttribute('aria-hidden','true');
-    document.body.style.overflow='';
-  }
-
-  document.querySelectorAll('[data-client-output-source]').forEach(button=>{
-    button.addEventListener('click',()=>openModal(button));
-  });
-
-  modal.querySelectorAll('[data-client-output-close]').forEach(button=>{
-    button.addEventListener('click',closeModal);
-  });
-
-  document.addEventListener('keydown',event=>{
-    if(event.key==='Escape'&&!modal.hidden)closeModal();
-  });
-
-  copy.addEventListener('click',async()=>{
-    try{
-      await navigator.clipboard.writeText(text.value);
-    }catch(error){
-      text.focus();
-      text.select();
-      document.execCommand('copy');
-      text.setSelectionRange(0,0);
-    }
-    copy.textContent='Copiado';
-    copy.classList.add('is-copied');
-    setTimeout(()=>{
-      copy.textContent='Copiar';
-      copy.classList.remove('is-copied');
-    },1600);
-  });
+  function openModal(button){const source=document.getElementById(button.dataset.clientOutputSource||'');if(!source)return;title.textContent=button.dataset.clientOutputTitle||'Mensaje';text.value=source.value||source.textContent||'';copy.textContent='Copiar';copy.classList.remove('is-copied');modal.hidden=false;modal.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';setTimeout(()=>text.focus(),0)}
+  function closeModal(){modal.hidden=true;modal.setAttribute('aria-hidden','true');document.body.style.overflow=''}
+  document.querySelectorAll('[data-client-output-source]').forEach(button=>button.addEventListener('click',()=>openModal(button)));
+  modal.querySelectorAll('[data-client-output-close]').forEach(button=>button.addEventListener('click',closeModal));
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!modal.hidden)closeModal()});
+  copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(text.value)}catch(error){text.focus();text.select();document.execCommand('copy');text.setSelectionRange(0,0)}copy.textContent='Copiado';copy.classList.add('is-copied');setTimeout(()=>{copy.textContent='Copiar';copy.classList.remove('is-copied')},1600)});
 })();
 </script>
 {% endblock %}
